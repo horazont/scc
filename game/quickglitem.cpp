@@ -29,7 +29,7 @@ void load_image_to_texture(io::FileSystem &fs, const std::string &path)
     texture.convertToFormat(QImage::Format_ARGB32);
 
     uint8_t *pixbase = texture.bits();
-    for (unsigned int i = 0; i < texture.width()*texture.height(); i++)
+    for (int i = 0; i < texture.width()*texture.height(); i++)
     {
         const uint8_t A = pixbase[3];
         const uint8_t R = pixbase[2];
