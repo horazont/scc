@@ -8,10 +8,10 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLFunctions_3_2_Core>
 
-#include "../math/matrix.h"
+#include "math/matrix.h"
 
-#include "../io/log.h"
-#include "../engine/scenegraph.h"
+#include "io/log.h"
+#include "render/scenegraph.h"
 
 io::Logger &qml_gl_logger = io::logging().get_logger("qmlgl");
 

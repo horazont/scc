@@ -9,7 +9,7 @@
 
 #include "quickglitem.h"
 
-#include "../io/log.h"
+#include "io/log.h"
 
 
 int main(int argc, char *argv[])

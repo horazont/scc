@@ -10,14 +10,14 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 
-#include "../engine/gl/vbo.h"
-#include "../engine/gl/shader.h"
-#include "../engine/gl/ibo.h"
-#include "../engine/gl/vao.h"
-#include "../engine/gl/texture.h"
-#include "../engine/gl/ubo.h"
+#include "gl/vbo.h"
+#include "gl/shader.h"
+#include "gl/ibo.h"
+#include "gl/vao.h"
+#include "gl/texture.h"
+#include "gl/ubo.h"
 
-#include "../engine/scenegraph.h"
+#include "render/scenegraph.h"
 
 typedef std::chrono::high_resolution_clock hrclock;
 typedef std::chrono::steady_clock monoclock;
