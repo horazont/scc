@@ -18,8 +18,9 @@
 #include "engine/gl/ubo.hpp"
 
 #include "engine/render/scenegraph.hpp"
-
 #include "engine/render/terrain.hpp"
+
+#include "engine/io/filesystem.hpp"
 
 #include "engine/sim/terrain.hpp"
 
@@ -44,6 +45,10 @@ private:
     monoclock::time_point m_t0;
     unsigned int m_nframes;
 
+public:
+    engine::Texture2D &test_texture;
+
+
 public slots:
     void paint();
 
@@ -53,6 +58,7 @@ public:
     void boost_camera_rot(const Vector2f &by);
     void set_viewport_size(const QSize &size);
     void sync();
+    void zoom_camera(const float by);
 
 };
 
@@ -64,6 +70,7 @@ public:
     QuickGLItem(QQuickItem *parent = 0);
 
 private:
+    io::FileSystem m_vfs;
     std::unique_ptr<QuickGLScene> m_renderer;
     Vector2f m_hover_pos;
     monoclock::time_point m_t;
@@ -72,6 +79,7 @@ protected:
     void hoverMoveEvent(QHoverEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
     virtual QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *);
 
 public slots:

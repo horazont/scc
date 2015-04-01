@@ -27,8 +27,8 @@ HEADERS += \
     quickglitem.hpp
 
 unix {
-    copyfiles.commands = echo cp -r $$PWD/resources ./
+    copyfiles.commands = rm -rf ./resources; cp -r $$PWD/resources ./
 }
 
-# QMAKE_EXTRA_TARGETS += copyfiles
-# POST_TARGETDEPS += copyfiles
+QMAKE_EXTRA_TARGETS += copyfiles
+POST_TARGETDEPS += copyfiles

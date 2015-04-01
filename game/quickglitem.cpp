@@ -11,9 +11,46 @@
 #include "engine/math/matrix.hpp"
 
 #include "engine/io/log.hpp"
+#include "engine/io/mount.hpp"
 #include "engine/render/scenegraph.hpp"
 
 io::Logger &qml_gl_logger = io::logging().get_logger("qmlgl");
+
+
+void load_image_to_texture(io::FileSystem &fs, const std::string &path)
+{
+    std::basic_string<uint8_t> texture_data;
+    {
+        std::unique_ptr<io::Stream> texfile(fs.open(path, io::OpenMode::READ));
+        texture_data = texfile->read_all();
+    }
+
+    QImage texture = QImage::fromData((const unsigned char*)texture_data.data(), texture_data.size());
+    texture.convertToFormat(QImage::Format_ARGB32);
+
+    uint8_t *pixbase = texture.bits();
+    for (unsigned int i = 0; i < texture.width()*texture.height(); i++)
+    {
+        const uint8_t A = pixbase[3];
+        const uint8_t R = pixbase[2];
+        const uint8_t G = pixbase[1];
+        const uint8_t B = pixbase[0];
+
+        pixbase[0] = R;
+        pixbase[1] = G;
+        pixbase[2] = B;
+        pixbase[3] = A;
+
+        pixbase += 4;
+    }
+
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+                    0, 0,
+                    texture.width(), texture.height(),
+                    GL_RGBA,
+                    GL_UNSIGNED_BYTE,
+                    texture.bits());
+}
 
 
 class GridNode: public engine::scenegraph::Node
@@ -127,7 +164,8 @@ QuickGLScene::QuickGLScene(QObject *parent):
     m_scenegraph(),
     m_t(hrclock::now()),
     m_t0(monoclock::now()),
-    m_nframes(0)
+    m_nframes(0),
+    test_texture(m_resources.emplace<engine::Texture2D>("test_texture", GL_RGBA, 512, 512))
 {
     /*engine::scenegraph::Transformation &transform =
             m_scenegraph.root().emplace<engine::scenegraph::Transformation>();
@@ -156,6 +194,7 @@ void QuickGLScene::paint()
     glClearColor(0.4, 0.3, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    test_texture.bind();
     m_scenegraph.render(m_camera);
 
     hrclock::time_point t1 = hrclock::now();
@@ -198,12 +237,30 @@ void QuickGLScene::sync()
     m_scenegraph.sync();
 }
 
+void QuickGLScene::zoom_camera(const float by)
+{
+    float distance = m_camera.controller().distance();
+    distance -= by;
+    if (distance < 5.0) {
+        distance = 5.0;
+    } else if (distance > 50.0) {
+        distance = 50.0;
+    }
+
+    m_camera.controller().set_distance(distance, true);
+}
+
 
 QuickGLItem::QuickGLItem(QQuickItem *parent):
     QQuickItem(parent),
     m_renderer(nullptr),
     m_t(monoclock::now())
 {
+    m_vfs.mount("/resources",
+                std::unique_ptr<io::MountDirectory>(
+                    new io::MountDirectory("resources/", true)),
+                io::MountPriority::FileSystem);
+
     setFlags(QQuickItem::ItemHasContents);
     setAcceptHoverEvents(false);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -238,6 +295,12 @@ void QuickGLItem::mousePressEvent(QMouseEvent *event)
 {
     qml_gl_logger.log(io::LOG_DEBUG, "press");
     m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
+}
+
+void QuickGLItem::wheelEvent(QWheelEvent *event)
+{
+    qml_gl_logger.log(io::LOG_DEBUG, "wheel");
+    m_renderer->zoom_camera(event->angleDelta().y() / 10.);
 }
 
 QSGNode *QuickGLItem::updatePaintNode(
@@ -384,6 +447,11 @@ void QuickGLItem::sync()
         connect(window(), SIGNAL(beforeRendering()),
                 m_renderer.get(), SLOT(paint()),
                 Qt::DirectConnection);
+        m_renderer->test_texture.bind();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        load_image_to_texture(m_vfs, "/resources/textures/grass00.png");
+        GLEW_GET_FUN(__glewGenerateMipmap)(GL_TEXTURE_2D);
     }
     m_renderer->set_viewport_size(window()->size() * window()->devicePixelRatio());
     m_renderer->sync();
