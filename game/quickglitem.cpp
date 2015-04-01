@@ -336,6 +336,8 @@ QuickGLScene::QuickGLScene(QObject *parent):
     m_camera.controller().set_distance(40.0);
     m_camera.controller().set_rot(Vector2f(0, 0));
     m_camera.controller().set_pos(Vector3f(0, 0, 20.));
+    m_camera.controller().restrict_2d_box(Vector2f(-10, -10),
+                                          Vector2f(74, 74));
 }
 
 QuickGLScene::~QuickGLScene()
@@ -450,13 +452,12 @@ void QuickGLItem::hoverMoveEvent(QHoverEvent *event)
     m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
 
     if (m_renderer) {
-        Ray r = m_renderer->camera().ray(m_hover_pos);
-        float t;
+        Vector3f at;
         bool hit;
-        std::tie(t, hit) = intersect_plane(r, Vector3f(0, 0, 20), Vector3f(0, 0, 1));
+        std::tie(at, hit) = hittest(m_hover_pos);
         if (hit) {
             m_renderer->set_pointer_visible(true);
-            m_renderer->set_pointer_position(r.origin + r.direction*t);
+            m_renderer->set_pointer_position(at);
         } else {
             m_renderer->set_pointer_visible(false);
         }
@@ -473,17 +474,50 @@ void QuickGLItem::mouseMoveEvent(QMouseEvent *event)
 
     m_hover_pos = new_pos;
 
-    if (event->buttons() & Qt::LeftButton) {
-        m_renderer->boost_camera(Vector2f(dist[eX], -dist[eY])*10.0);
-    } else if (event->buttons() & Qt::RightButton) {
+    if (event->buttons() & Qt::RightButton) {
         m_renderer->boost_camera_rot(Vector2f(dist[eY], dist[eX]));
+    }
+
+    if (m_dragging) {
+        const Ray viewray = m_renderer->camera().ray(m_hover_pos);
+        bool hit;
+        float t;
+        std::tie(t, hit) = intersect_plane(
+                    viewray,
+                    Vector3f(0, 0, m_drag_point[eZ]),
+                    Vector3f(0, 0, 1));
+        if (!hit) {
+            qml_gl_logger.log(io::LOG_WARNING,
+                              "drag followup hittest failed, "
+                              "disabling dragging");
+            m_dragging = false;
+        } else {
+            const Vector3f now_at = viewray.origin + viewray.direction*t;
+            const Vector3f moved = m_drag_point - now_at;
+            m_renderer->camera().controller().set_pos(m_drag_camera_pos + moved);
+            m_drag_camera_pos = m_renderer->camera().controller().pos();
+            /* m_renderer->set_pointer_position(now_at); */
+        }
     }
 }
 
 void QuickGLItem::mousePressEvent(QMouseEvent *event)
 {
-    qml_gl_logger.log(io::LOG_DEBUG, "press");
-    m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
+    qml_gl_logger.logf(io::LOG_DEBUG, "press %d", event->button());
+    if (event->button() == Qt::LeftButton) {
+        std::tie(m_drag_point, m_dragging) = hittest(Vector2f(event->pos().x(), event->pos().y()));
+        if (m_dragging) {
+            m_drag_camera_pos = m_renderer->camera().controller().pos();
+        }
+    }
+}
+
+void QuickGLItem::mouseReleaseEvent(QMouseEvent *event)
+{
+    qml_gl_logger.logf(io::LOG_DEBUG, "release %d", event->button());
+    if (event->button() == Qt::LeftButton) {
+        m_dragging = false;
+    }
 }
 
 void QuickGLItem::wheelEvent(QWheelEvent *event)
@@ -502,6 +536,20 @@ QSGNode *QuickGLItem::updatePaintNode(
     }
     oldNode->markDirty(QSGNode::DirtyForceUpdate);
     return oldNode;
+}
+
+std::tuple<Vector3f, bool> QuickGLItem::hittest(const Vector2f viewport)
+{
+    const Ray ray = m_renderer->camera().ray(m_hover_pos);
+
+    float t;
+    bool hit;
+    std::tie(t, hit) = intersect_plane(ray, Vector3f(0, 0, 20), Vector3f(0, 0, 1));
+    if (!hit) {
+        return std::make_tuple(Vector3f(), false);
+    }
+
+    return std::make_tuple(ray.origin + ray.direction*t, true);
 }
 
 void QuickGLItem::handle_window_changed(QQuickWindow *win)

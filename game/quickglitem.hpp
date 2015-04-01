@@ -56,7 +56,7 @@ public:
         return m_terrain;
     }
 
-    inline const engine::PerspectivalCamera &camera() const
+    inline engine::PerspectivalCamera &camera()
     {
         return m_camera;
     }
@@ -88,13 +88,20 @@ private:
     std::unique_ptr<QuickGLScene> m_renderer;
     Vector2f m_hover_pos;
     monoclock::time_point m_t;
+    bool m_dragging;
+    Vector3f m_drag_camera_pos;
+    Vector3f m_drag_point;
 
 protected:
     void hoverMoveEvent(QHoverEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     virtual QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *);
+
+public:
+    std::tuple<Vector3f, bool> hittest(const Vector2f viewport);
 
 public slots:
     void cleanup();
