@@ -88,11 +88,11 @@ public:
         m_vao = decl.make_vao(m_material.shader(), true);
 
         m_material.shader().bind();
-        m_material.shader().check_uniform_block<engine::scenegraph::RenderContext::MatrixUBO>(
+        m_material.shader().check_uniform_block<engine::RenderContext::MatrixUBO>(
                     "MatrixBlock");
         m_material.shader().bind_uniform_block(
                     "MatrixBlock",
-                    engine::scenegraph::RenderContext::MATRIX_BLOCK_UBO_SLOT);
+                    engine::RenderContext::MATRIX_BLOCK_UBO_SLOT);
     }
 
 private:
@@ -105,7 +105,7 @@ private:
     engine::IBOAllocation m_ibo_alloc;
 
 public:
-    void render(engine::scenegraph::RenderContext &context) override
+    void render(engine::RenderContext &context) override
     {
         context.draw_elements(GL_LINES, *m_vao, m_material, m_ibo_alloc);
     }

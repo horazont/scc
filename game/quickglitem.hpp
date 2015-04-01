@@ -33,8 +33,8 @@ public:
 private:
     bool m_initialized;
     engine::ResourceManager m_resources;
-    engine::scenegraph::PerspectivalCamera m_camera;
-    engine::scenegraph::SceneGraph m_scenegraph;
+    engine::PerspectivalCamera m_camera;
+    engine::SceneGraph m_scenegraph;
     hrclock::time_point m_t;
     monoclock::time_point m_t0;
     unsigned int m_nframes;
