@@ -155,6 +155,155 @@ public:
 };
 
 
+class PointerNode: public engine::scenegraph::Node
+{
+public:
+    PointerNode(const float radius):
+        engine::scenegraph::Node(),
+        m_vbo(engine::VBOFormat({
+                                    engine::VBOAttribute(3)
+                                })),
+        m_vbo_alloc(m_vbo.allocate(8)),
+        m_ibo_alloc(m_ibo.allocate(36))
+    {
+        {
+            auto slice = engine::VBOSlice<Vector3f>(m_vbo_alloc, 0);
+            slice[0] = Vector3f(-radius, -radius, -radius);
+            slice[1] = Vector3f(radius, -radius, -radius);
+            slice[2] = Vector3f(radius, radius, -radius);
+            slice[3] = Vector3f(-radius, radius, -radius);
+
+            slice[4] = Vector3f(-radius, -radius, radius);
+            slice[5] = Vector3f(-radius, radius, radius);
+            slice[6] = Vector3f(radius, radius, radius);
+            slice[7] = Vector3f(radius, -radius, radius);
+        }
+
+        {
+            uint16_t *dest = m_ibo_alloc.get();
+            // bottom
+            *dest++ = 1;
+            *dest++ = 0;
+            *dest++ = 2;
+
+            *dest++ = 2;
+            *dest++ = 0;
+            *dest++ = 3;
+
+            // back
+            *dest++ = 0;
+            *dest++ = 1;
+            *dest++ = 4;
+
+            *dest++ = 4;
+            *dest++ = 1;
+            *dest++ = 7;
+
+            // right
+            *dest++ = 2;
+            *dest++ = 6;
+            *dest++ = 1;
+
+            *dest++ = 1;
+            *dest++ = 6;
+            *dest++ = 7;
+
+            // front
+            *dest++ = 3;
+            *dest++ = 5;
+            *dest++ = 2;
+
+            *dest++ = 2;
+            *dest++ = 5;
+            *dest++ = 6;
+
+            // left
+            *dest++ = 4;
+            *dest++ = 5;
+            *dest++ = 0;
+
+            *dest++ = 0;
+            *dest++ = 5;
+            *dest++ = 3;
+
+            // top
+            *dest++ = 4;
+            *dest++ = 7;
+            *dest++ = 5;
+
+            *dest++ = 5;
+            *dest++ = 7;
+            *dest++ = 6;
+        }
+
+        m_vbo_alloc.mark_dirty();
+        m_ibo_alloc.mark_dirty();
+
+        bool success = m_material.shader().attach(
+                    GL_VERTEX_SHADER,
+                    "#version 330\n"
+                    "layout(std140) uniform MatrixBlock {"
+                    "  layout(row_major) mat4 proj;"
+                    "  layout(row_major) mat4 view;"
+                    "  layout(row_major) mat4 model;"
+                    "  layout(row_major) mat3 normal;"
+                    "};"
+                    "in vec3 position;"
+                    "void main() {"
+                    "  gl_Position = proj * view * model * vec4(position, 1.f);"
+                    "}");
+
+        success = success && m_material.shader().attach(
+                    GL_FRAGMENT_SHADER,
+                    "#version 330\n"
+                    "out vec4 color;"
+                    "void main() {"
+                    "  color = vec4(0.8, 0.9, 1.0, 0.8);"
+                    "}");
+
+        success = success && m_material.shader().link();
+
+        if (!success) {
+            throw std::runtime_error("failed to link shader");
+        }
+
+        engine::ArrayDeclaration decl;
+        decl.declare_attribute("position", m_vbo, 0);
+        decl.set_ibo(&m_ibo);
+
+        m_vao = decl.make_vao(m_material.shader(), true);
+
+        m_material.shader().bind();
+        m_material.shader().check_uniform_block<engine::RenderContext::MatrixUBO>(
+                    "MatrixBlock");
+        m_material.shader().bind_uniform_block(
+                    "MatrixBlock",
+                    engine::RenderContext::MATRIX_BLOCK_UBO_SLOT);
+    }
+
+private:
+    engine::VBO m_vbo;
+    engine::IBO m_ibo;
+    engine::Material m_material;
+    std::unique_ptr<engine::VAO> m_vao;
+
+    engine::VBOAllocation m_vbo_alloc;
+    engine::IBOAllocation m_ibo_alloc;
+
+public:
+    void render(engine::RenderContext &context) override
+    {
+        context.draw_elements(GL_TRIANGLES, *m_vao, m_material, m_ibo_alloc);
+    }
+
+    void sync() override
+    {
+        m_vao->sync();
+    }
+
+};
+
+
 QuickGLScene::QuickGLScene(QObject *parent):
     QObject(parent),
     m_initialized(false),
@@ -176,9 +325,16 @@ QuickGLScene::QuickGLScene(QObject *parent):
     engine::Terrain &terrain_node = m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
     terrain_node.set_grass_texture(&test_texture);
 
+    engine::scenegraph::Transformation &transform =
+                m_scenegraph.root().emplace<engine::scenegraph::Transformation>();
+    transform.emplace_child<PointerNode>(0.5);
+    transform.transformation() = translation4(Vector3(0, 0, 20));
+
     m_camera.controller().set_distance(40.0);
     m_camera.controller().set_rot(Vector2f(0, 0));
     m_camera.controller().set_pos(Vector3f(0, 0, 20.));
+
+
 }
 
 QuickGLScene::~QuickGLScene()
@@ -194,6 +350,11 @@ void QuickGLScene::paint()
 
     glClearColor(0.4, 0.3, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     test_texture.bind();
     m_scenegraph.render(m_camera);
@@ -342,7 +503,7 @@ void QuickGLItem::handle_window_changed(QQuickWindow *win)
         format.setRedBufferSize(8);
         format.setGreenBufferSize(8);
         format.setBlueBufferSize(8);
-        format.setAlphaBufferSize(8);
+        format.setAlphaBufferSize(0);
         format.setStencilBufferSize(8);
         format.setDepthBufferSize(24);
 
