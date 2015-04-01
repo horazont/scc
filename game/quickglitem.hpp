@@ -44,10 +44,22 @@ private:
     hrclock::time_point m_t;
     monoclock::time_point m_t0;
     unsigned int m_nframes;
+    engine::scenegraph::Transformation *m_pointer_parent;
+    std::unique_ptr<engine::scenegraph::Node> m_tmp_pointer;
 
 public:
     engine::Texture2D &test_texture;
 
+public:
+    inline sim::Terrain &terrain()
+    {
+        return m_terrain;
+    }
+
+    inline const engine::PerspectivalCamera &camera() const
+    {
+        return m_camera;
+    }
 
 public slots:
     void paint();
@@ -57,6 +69,8 @@ public:
     void boost_camera(const Vector2f &by);
     void boost_camera_rot(const Vector2f &by);
     void set_viewport_size(const QSize &size);
+    void set_pointer_position(const Vector3f &pos);
+    void set_pointer_visible(bool visible);
     void sync();
     void zoom_camera(const float by);
 

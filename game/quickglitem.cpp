@@ -328,16 +328,14 @@ QuickGLScene::QuickGLScene(QObject *parent):
     engine::Terrain &terrain_node = m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
     terrain_node.set_grass_texture(&test_texture);
 
-    engine::scenegraph::Transformation &transform =
-                m_scenegraph.root().emplace<engine::scenegraph::Transformation>();
-    transform.emplace_child<PointerNode>(0.5);
-    transform.transformation() = translation4(Vector3(0, 0, 20));
+    m_pointer_parent = &m_scenegraph.root().emplace<
+            engine::scenegraph::Transformation>();
+    m_pointer_parent->emplace_child<PointerNode>(0.5);
+    m_pointer_parent->transformation() = translation4(Vector3(0, 0, 20));
 
     m_camera.controller().set_distance(40.0);
     m_camera.controller().set_rot(Vector2f(0, 0));
     m_camera.controller().set_pos(Vector3f(0, 0, 20.));
-
-
 }
 
 QuickGLScene::~QuickGLScene()
@@ -389,6 +387,20 @@ void QuickGLScene::boost_camera_rot(const Vector2f &by)
     m_camera.controller().boost_rotation(by);
 }
 
+void QuickGLScene::set_pointer_position(const Vector3f &pos)
+{
+    m_pointer_parent->transformation() = translation4(pos);
+}
+
+void QuickGLScene::set_pointer_visible(bool visible)
+{
+    if (visible && m_tmp_pointer) {
+        m_pointer_parent->set_child(std::move(m_tmp_pointer));
+    } else if (!visible && !m_tmp_pointer) {
+        m_tmp_pointer = m_pointer_parent->swap_child(nullptr);
+    }
+}
+
 void QuickGLScene::set_viewport_size(const QSize &size)
 {
     m_camera.set_viewport(size.width(), size.height());
@@ -427,7 +439,7 @@ QuickGLItem::QuickGLItem(QQuickItem *parent):
                 io::MountPriority::FileSystem);
 
     setFlags(QQuickItem::ItemHasContents);
-    setAcceptHoverEvents(false);
+    setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
     connect(this, SIGNAL(windowChanged(QQuickWindow*)),
             this, SLOT(handle_window_changed(QQuickWindow*)));
@@ -435,8 +447,20 @@ QuickGLItem::QuickGLItem(QQuickItem *parent):
 
 void QuickGLItem::hoverMoveEvent(QHoverEvent *event)
 {
-    qml_gl_logger.log(io::LOG_DEBUG, "hover");
     m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
+
+    if (m_renderer) {
+        Ray r = m_renderer->camera().ray(m_hover_pos);
+        float t;
+        bool hit;
+        std::tie(t, hit) = intersect_plane(r, Vector3f(0, 0, 20), Vector3f(0, 0, 1));
+        if (hit) {
+            m_renderer->set_pointer_visible(true);
+            m_renderer->set_pointer_position(r.origin + r.direction*t);
+        } else {
+            m_renderer->set_pointer_visible(false);
+        }
+    }
 }
 
 void QuickGLItem::mouseMoveEvent(QMouseEvent *event)
