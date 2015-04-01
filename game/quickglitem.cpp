@@ -123,6 +123,7 @@ QuickGLScene::QuickGLScene(QObject *parent):
     m_initialized(false),
     m_resources(),
     m_camera(),
+    m_terrain(65, 65),
     m_scenegraph(),
     m_t(hrclock::now()),
     m_t0(monoclock::now()),
@@ -134,9 +135,11 @@ QuickGLScene::QuickGLScene(QObject *parent):
     transform.transformation() = translation4(Vector3(100, 100, 0)) * rotation4(eZ, 1.4);*/
 
     m_scenegraph.root().emplace<GridNode>(64, 64, 1);
+    m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
 
-    m_camera.controller().set_distance(20.0);
-    m_camera.controller().set_rot(Vector2f(45.f/180.f*M_PI, 45.f/180.f*M_PI));
+    m_camera.controller().set_distance(40.0);
+    m_camera.controller().set_rot(Vector2f(0, 0));
+    m_camera.controller().set_pos(Vector3f(0, 0, 20.));
 }
 
 QuickGLScene::~QuickGLScene()
@@ -166,9 +169,20 @@ void QuickGLScene::paint()
     m_nframes += 1;
 }
 
-void QuickGLScene::set_pos(const QPoint &pos)
+void QuickGLScene::advance(engine::TimeInterval seconds)
 {
-    m_pos = Vector2f(pos.x(), pos.y());
+    m_camera.controller().advance(seconds);
+    m_scenegraph.advance(seconds);
+}
+
+void QuickGLScene::boost_camera(const Vector2f &by)
+{
+    m_camera.controller().boost_movement(Vector3f(by[eX], by[eY], 0.));
+}
+
+void QuickGLScene::boost_camera_rot(const Vector2f &by)
+{
+    m_camera.controller().boost_rotation(by);
 }
 
 void QuickGLScene::set_viewport_size(const QSize &size)
@@ -187,7 +201,8 @@ void QuickGLScene::sync()
 
 QuickGLItem::QuickGLItem(QQuickItem *parent):
     QQuickItem(parent),
-    m_renderer(nullptr)
+    m_renderer(nullptr),
+    m_t(monoclock::now())
 {
     setFlags(QQuickItem::ItemHasContents);
     setAcceptHoverEvents(false);
@@ -199,19 +214,30 @@ QuickGLItem::QuickGLItem(QQuickItem *parent):
 void QuickGLItem::hoverMoveEvent(QHoverEvent *event)
 {
     qml_gl_logger.log(io::LOG_DEBUG, "hover");
-    m_hover_pos = event->pos();
+    m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
 }
 
 void QuickGLItem::mouseMoveEvent(QMouseEvent *event)
 {
     qml_gl_logger.log(io::LOG_DEBUG, "move");
-    m_hover_pos = event->pos();
+
+    const Vector2f new_pos = Vector2f(event->pos().x(),
+                                      event->pos().y());
+    const Vector2f dist = m_hover_pos - new_pos;
+
+    m_hover_pos = new_pos;
+
+    if (event->buttons() & Qt::LeftButton) {
+        m_renderer->boost_camera(Vector2f(dist[eX], -dist[eY])*10.0);
+    } else if (event->buttons() & Qt::RightButton) {
+        m_renderer->boost_camera_rot(Vector2f(dist[eY], dist[eX]));
+    }
 }
 
 void QuickGLItem::mousePressEvent(QMouseEvent *event)
 {
     qml_gl_logger.log(io::LOG_DEBUG, "press");
-    m_hover_pos = event->pos();
+    m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
 }
 
 QSGNode *QuickGLItem::updatePaintNode(
@@ -238,6 +264,9 @@ void QuickGLItem::handle_window_changed(QQuickWindow *win)
         connect(win, SIGNAL(sceneGraphInvalidated()),
                 this, SLOT(cleanup()),
                 Qt::DirectConnection);
+        connect(win, SIGNAL(beforeRendering()),
+                this, SLOT(new_frame()),
+                Qt::QueuedConnection);
 
         win->setSurfaceType(QSurface::OpenGLSurface);
 
@@ -357,8 +386,25 @@ void QuickGLItem::sync()
                 Qt::DirectConnection);
     }
     m_renderer->set_viewport_size(window()->size() * window()->devicePixelRatio());
-    m_renderer->set_pos(m_hover_pos);
     m_renderer->sync();
+}
+
+void QuickGLItem::new_frame()
+{
+    const monoclock::time_point now = monoclock::now();
+    const engine::TimeInterval seconds = std::chrono::duration_cast<
+            std::chrono::duration<float, std::ratio<1> >
+            >(now - m_t).count();
+
+    qml_gl_logger.logf(io::LOG_DEBUG, "frame time: %.4f s", seconds);
+
+    if (m_renderer) {
+        m_renderer->advance(seconds);
+    } else {
+        qml_gl_logger.log(io::LOG_WARNING, "no renderer");
+    }
+
+    m_t = now;
 }
 
 void QuickGLItem::cleanup()

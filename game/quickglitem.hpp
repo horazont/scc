@@ -19,6 +19,10 @@
 
 #include "engine/render/scenegraph.hpp"
 
+#include "engine/render/terrain.hpp"
+
+#include "engine/sim/terrain.hpp"
+
 typedef std::chrono::high_resolution_clock hrclock;
 typedef std::chrono::steady_clock monoclock;
 
@@ -34,17 +38,19 @@ private:
     bool m_initialized;
     engine::ResourceManager m_resources;
     engine::PerspectivalCamera m_camera;
+    sim::Terrain m_terrain;
     engine::SceneGraph m_scenegraph;
     hrclock::time_point m_t;
     monoclock::time_point m_t0;
     unsigned int m_nframes;
-    Vector2f m_pos;
 
 public slots:
     void paint();
 
 public:
-    void set_pos(const QPoint &pos);
+    void advance(engine::TimeInterval seconds);
+    void boost_camera(const Vector2f &by);
+    void boost_camera_rot(const Vector2f &by);
     void set_viewport_size(const QSize &size);
     void sync();
 
@@ -59,7 +65,8 @@ public:
 
 private:
     std::unique_ptr<QuickGLScene> m_renderer;
-    QPoint m_hover_pos;
+    Vector2f m_hover_pos;
+    monoclock::time_point m_t;
 
 protected:
     void hoverMoveEvent(QHoverEvent *event) override;
@@ -69,6 +76,7 @@ protected:
 
 public slots:
     void cleanup();
+    void new_frame();
     void sync();
 
 private slots:
