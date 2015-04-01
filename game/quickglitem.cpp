@@ -173,7 +173,8 @@ QuickGLScene::QuickGLScene(QObject *parent):
     transform.transformation() = translation4(Vector3(100, 100, 0)) * rotation4(eZ, 1.4);*/
 
     m_scenegraph.root().emplace<GridNode>(64, 64, 1);
-    m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
+    engine::Terrain &terrain_node = m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
+    terrain_node.set_grass_texture(&test_texture);
 
     m_camera.controller().set_distance(40.0);
     m_camera.controller().set_rot(Vector2f(0, 0));
