@@ -1,15 +1,15 @@
 #include <iostream>
 
-#include "GL/glew.h"
+#include <GL/glew.h>
 
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQuickWindow>
 
-#include "quickglitem.h"
+#include "quickglitem.hpp"
 
-#include "io/log.h"
+#include "engine/io/log.hpp"
 
 
 int main(int argc, char *argv[])

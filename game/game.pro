@@ -24,7 +24,7 @@ include(deployment.pri)
 CONFIG += object_parallel_to_source
 
 HEADERS += \
-    quickglitem.h
+    quickglitem.hpp
 
 unix {
     copyfiles.commands = echo cp -r $$PWD/resources ./

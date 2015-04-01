@@ -1,4 +1,4 @@
-#include "quickglitem.h"
+#include "quickglitem.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -8,10 +8,10 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLFunctions_3_2_Core>
 
-#include "math/matrix.h"
+#include "engine/math/matrix.hpp"
 
-#include "io/log.h"
-#include "render/scenegraph.h"
+#include "engine/io/log.hpp"
+#include "engine/render/scenegraph.hpp"
 
 io::Logger &qml_gl_logger = io::logging().get_logger("qmlgl");
 
