@@ -103,15 +103,18 @@ public:
                     "  layout(row_major) mat3 normal;"
                     "};"
                     "in vec3 position;"
+                    "out vec2 posxy;"
                     "void main() {"
                     "  gl_Position = proj*view*model*vec4(position, 1.0f);"
+                    "  posxy = position.xy;"
                     "}") ||
                 !m_material.shader().attach(
                     GL_FRAGMENT_SHADER,
                     "#version 330\n"
                     "out vec4 color;"
+                    "in vec2 posxy;"
                     "void main() {"
-                    "  color = vec4(0.5, 0.5, 0.5, 1.0);"
+                    "  color = vec4(posxy/"+std::to_string(xcells/2)+".f, 0.5, 1.0);"
                     "}") ||
                 !m_material.shader().link())
         {
