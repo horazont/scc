@@ -10,7 +10,8 @@ SOURCES += \
     application.cpp \
     quickglscene.cpp \
     mainmenu.cpp \
-    mode.cpp
+    mode.cpp \
+    terraform.cpp
 
 RESOURCES += qml.qrc
 
@@ -30,7 +31,8 @@ HEADERS += \
     application.hpp \
     quickglscene.hpp \
     mainmenu.hpp \
-    mode.hpp
+    mode.hpp \
+    terraform.hpp
 
 unix {
     copyfiles.commands = rm -rf ./resources; cp -r $$PWD/resources ./

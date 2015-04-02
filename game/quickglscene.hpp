@@ -33,6 +33,11 @@ signals:
     void after_gl_sync();
     void before_gl_sync();
 
+protected:
+    QSGNode *updatePaintNode(
+            QSGNode *oldNode,
+            UpdatePaintNodeData *data);
+
 public slots:
     void before_rendering();
     void cleanup();

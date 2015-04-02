@@ -9,8 +9,9 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 
-#include <quickglscene.hpp>
+#include "engine/io/filesystem.hpp"
 
+#include "quickglscene.hpp"
 #include "mode.hpp"
 
 
@@ -18,16 +19,25 @@ class Application: public QQuickWindow
 {
     Q_OBJECT
 public:
+    enum Mode {
+        MAIN_MENU,
+        TERRAFORM,
+    };
+
+public:
     Application();
     ~Application();
 
 private:
     std::unique_ptr<ApplicationMode> m_curr_mode;
     QuickGLScene *m_gl_scene;
+    io::FileSystem m_vfs;
 
 protected:
+    QQmlEngine &engine();
     ApplicationMode &ensure_mode();
     QuickGLScene &ensure_scene();
+    void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
 
 signals:
 
@@ -38,6 +48,13 @@ public:
     {
         return ensure_scene();
     }
+
+    inline io::FileSystem &vfs()
+    {
+        return m_vfs;
+    }
+
+    void enter_mode(Mode mode);
 
 };
 

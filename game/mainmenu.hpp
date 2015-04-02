@@ -27,17 +27,12 @@ public:
     ~MainMenu() override;
 
 private:
-    QQmlComponent m_loader;
-    QQuickItem *m_item;
-    QuickGLScene *m_gl_scene;
-
     std::unique_ptr<MainMenuScene> m_scene;
 
     QMetaObject::Connection m_gl_sync_conn;
 
 protected:
     void prepare_scene();
-    void load();
 
 signals:
 

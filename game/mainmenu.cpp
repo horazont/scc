@@ -9,44 +9,14 @@ static io::Logger &app_logger = io::logging().get_logger("app");
 
 
 MainMenu::MainMenu(QQmlEngine *engine):
-    m_loader(engine, QUrl("qrc:/qml/MainMenu.qml"))
+    ApplicationMode("MainMenu", engine, QUrl("qrc:/qml/MainMenu.qml"))
 {
 
 }
 
 MainMenu::~MainMenu()
 {
-    if (m_item) {
-        delete m_item;
-    }
-}
 
-void MainMenu::load()
-{
-    switch (m_loader.status()) {
-    case QQmlComponent::Null:
-    case QQmlComponent::Loading:
-    {
-        app_logger.log(io::LOG_EXCEPTION)
-                << "unexpected QML component status ("
-                << m_loader.status()
-                << ")"
-                << io::submit;
-        return;
-    }
-    case QQmlComponent::Ready:
-    {
-        component_ready(&m_loader);
-        break;
-    }
-    case QQmlComponent::Error:
-    {
-        component_error(&m_loader);
-        return;
-    }
-    }
-
-    m_item = qobject_cast<QQuickItem*>(m_loader.create());
 }
 
 void MainMenu::prepare_scene()
@@ -68,14 +38,6 @@ void MainMenu::before_gl_sync()
 void MainMenu::activate(Application &app, QQuickItem &parent)
 {
     ApplicationMode::activate(app, parent);
-
-    if (!m_item) {
-        load();
-    }
-
-    m_item->setParentItem(&parent);
-    m_gl_scene = &app.scene();
-
     m_gl_sync_conn = connect(
                 m_gl_scene, &QuickGLScene::before_gl_sync,
                 this, &MainMenu::before_gl_sync,

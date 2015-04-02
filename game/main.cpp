@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
                 << io::submit;
         return 1;
     }
+    app->enter_mode(Application::TERRAFORM);
 
     io::logging().log(io::LOG_INFO) << "QML scene created" << io::submit;
 

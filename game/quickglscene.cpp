@@ -5,6 +5,8 @@
 #include <QOpenGLContext>
 #include <QQuickWindow>
 
+#include <QSGOpacityNode>
+
 #include "engine/io/log.hpp"
 
 static io::Logger &qml_gl_logger = io::logging().get_logger("app.qgl");
@@ -17,6 +19,7 @@ QuickGLScene::QuickGLScene():
     m_scenegraph(nullptr),
     m_render_scenegraph(nullptr)
 {
+    setFlags(QQuickItem::ItemHasContents);
     connect(this, SIGNAL(windowChanged(QQuickWindow*)),
             this, SLOT(window_changed(QQuickWindow*)));
 }
@@ -26,12 +29,24 @@ QuickGLScene::~QuickGLScene()
 
 }
 
+QSGNode *QuickGLScene::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *data)
+{
+    update();
+    if (!oldNode) {
+        oldNode = new QSGOpacityNode();
+    }
+    oldNode->markDirty(QSGNode::DirtyForceUpdate);
+    return oldNode;
+}
+
 void QuickGLScene::before_rendering()
 {
     const monoclock::time_point now = monoclock::now();
     const engine::TimeInterval dt = std::chrono::duration_cast<
             std::chrono::duration<float, std::ratio<1> >
             >(now - m_t).count();
+
+    /* qml_gl_logger.logf(io::LOG_DEBUG, "frametime: %.4f s", dt); */
 
     emit advance(dt);
     if (m_scenegraph && m_camera) {
@@ -52,8 +67,15 @@ void QuickGLScene::paint()
     glClearColor(0.5, 0.4, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     if (m_scenegraph && m_camera) {
         m_scenegraph->render(*m_camera);
+    } else {
+        qml_gl_logger.log(io::LOG_WARNING, "nothing to draw");
     }
 }
 
@@ -72,6 +94,7 @@ void QuickGLScene::sync()
 void QuickGLScene::window_changed(QQuickWindow *win)
 {
     if (!win) {
+        qml_gl_logger.log(io::LOG_WARNING, "lost window!");
         return;
     }
 

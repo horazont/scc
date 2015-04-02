@@ -5,7 +5,10 @@ import QtQuick.Layouts 1.0
 
 Item {
     id: item1
-    width: 48;
+    width: 48
+    anchors.left: parent.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
 
     Component {
         id: myToolStyle;
@@ -18,7 +21,6 @@ Item {
             }
         }
     }
-
 
     ToolBar {
         id: tools1
@@ -50,8 +52,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 0
                 style: myToolStyle
-                checkable: true
-                onClicked: management.toolButtonActivated(this)
+                onClicked: Terraform.switch_to_tool_raise()
             }
 
             ToolButton {
@@ -64,8 +65,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 0
                 style: myToolStyle
-                checkable: true
-                onClicked: management.toolButtonActivated(this)
+                onClicked: Terraform.switch_to_tool_lower()
             }
 
             ToolButton {
@@ -78,8 +78,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 0
                 style: myToolStyle
-                checkable: true
-                onClicked: management.toolButtonActivated(this)
+                onClicked: Terraform.switch_to_tool_flatten()
             }
 
             Item {
