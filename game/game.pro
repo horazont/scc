@@ -7,7 +7,10 @@ unix:LIBS += -lGLEW -lGLU
 
 SOURCES += \
     main.cpp \
-    quickglitem.cpp
+    application.cpp \
+    quickglscene.cpp \
+    mainmenu.cpp \
+    mode.cpp
 
 RESOURCES += qml.qrc
 
@@ -24,7 +27,10 @@ include(deployment.pri)
 CONFIG += object_parallel_to_source
 
 HEADERS += \
-    quickglitem.hpp
+    application.hpp \
+    quickglscene.hpp \
+    mainmenu.hpp \
+    mode.hpp
 
 unix {
     copyfiles.commands = rm -rf ./resources; cp -r $$PWD/resources ./

@@ -2,5 +2,9 @@
     <qresource prefix="/">
         <file>qml/main.qml</file>
         <file>qml/MainForm.ui.qml</file>
+        <file>qml/Terra.qml</file>
+        <file>qml/TerraForm.ui.qml</file>
+        <file>qml/MainMenu.qml</file>
+        <file>qml/MainMenuForm.ui.qml</file>
     </qresource>
 </RCC>
