@@ -12,15 +12,9 @@
 #include "application.hpp"
 
 
-void load_image_to_texture(io::FileSystem &fs, const std::string &path)
+void load_image_to_texture(const QString &url)
 {
-    std::basic_string<uint8_t> texture_data;
-    {
-        std::unique_ptr<io::Stream> texfile(fs.open(path, io::OpenMode::READ));
-        texture_data = texfile->read_all();
-    }
-
-    QImage texture = QImage::fromData((const unsigned char*)texture_data.data(), texture_data.size());
+    QImage texture = QImage(url);
     texture.convertToFormat(QImage::Format_ARGB32);
 
     uint8_t *pixbase = texture.bits();
@@ -195,7 +189,7 @@ void TerraformMode::prepare_scene()
     scene.m_grass = &scene.m_resources.emplace<engine::Texture2D>(
                 "grass", GL_RGBA, 512, 512);
     scene.m_grass->bind();
-    load_image_to_texture(m_app->vfs(), "/resources/textures/grass00.png");
+    load_image_to_texture(":/textures/grass00.png");
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
     scene.m_terrain_node->set_grass_texture(scene.m_grass);

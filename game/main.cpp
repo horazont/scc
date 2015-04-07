@@ -6,6 +6,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQuickWindow>
+#include <QResource>
 
 #include "quickglscene.hpp"
 #include "application.hpp"
@@ -33,6 +34,10 @@ int main(int argc, char *argv[])
     io::logging().log(io::LOG_DEBUG) << "Application registered with QML" << io::submit;
 
     io::logging().log(io::LOG_INFO) << "QtQuick items registered" << io::submit;
+
+    io::logging().log(io::LOG_INFO) << "Loading resource packs" << io::submit;
+    QResource::registerResource("qml.rcc");
+    QResource::registerResource("textures.rcc");
 
     QQmlEngine engine;
     io::logging().log(io::LOG_INFO) << "QML engine initialized" << io::submit;

@@ -19,6 +19,33 @@ set(GAME_SRC
   terraform.cpp
   )
 
+set(GAME_QML_RESOURCES
+  resources/qml/main.qml
+  resources/qml/MainForm.ui.qml
+  resources/qml/Terra.qml
+  resources/qml/TerraForm.ui.qml
+  resources/qml/MainMenu.qml
+  resources/qml/MainMenuForm.ui.qml
+  )
+
+set(GAME_TEXTURE_RESOURCES
+  resources/textures/grass00.png
+  )
+
+add_custom_target(game-resources)
+
+function(add_resource_pack PACKNAME QRC SOURCES)
+  add_custom_target(
+    game-resource-${PACKNAME}
+    COMMAND rcc "${CMAKE_CURRENT_SOURCE_DIR}/${QRC}" -binary -o "${PACKNAME}.rcc"
+    SOURCES ${SOURCES} ${QRC}
+  )
+  add_dependencies(game-resources game-resource-${PACKNAME})
+endfunction(add_resource_pack)
+
+add_resource_pack("qml" "resources/qml.qrc" "${GAME_QML_RESOURCES}")
+add_resource_pack("textures" "resources/textures.qrc" "${GAME_TEXTURE_RESOURCES}")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${OPENGL_INCLUDE_DIR})
 include_directories(${GLEW_INCLUDE_DIR})
@@ -30,3 +57,4 @@ target_link_libraries(game Qt5::Qml)
 target_link_libraries(game engine)
 target_link_libraries(game ${OPENGL_LIBRARIES})
 target_link_libraries(game ${GLEW_LIBRARIES})
+add_dependencies(game game-resources)

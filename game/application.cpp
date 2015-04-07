@@ -16,10 +16,7 @@ Application::Application():
     m_curr_mode(nullptr),
     m_gl_scene(nullptr)
 {
-    m_vfs.mount("/resources",
-                std::unique_ptr<io::MountDirectory>(
-                    new io::MountDirectory("resources/", true)),
-                io::MountPriority::FileSystem);
+
 }
 
 Application::~Application()

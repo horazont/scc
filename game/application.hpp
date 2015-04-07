@@ -31,7 +31,6 @@ public:
 private:
     std::unique_ptr<ApplicationMode> m_curr_mode;
     QuickGLScene *m_gl_scene;
-    io::FileSystem m_vfs;
 
 protected:
     QQmlEngine &engine();
@@ -47,11 +46,6 @@ public:
     inline QuickGLScene &scene()
     {
         return ensure_scene();
-    }
-
-    inline io::FileSystem &vfs()
-    {
-        return m_vfs;
     }
 
     void enter_mode(Mode mode);
