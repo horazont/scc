@@ -12,12 +12,6 @@
 
 #include "engine/io/log.hpp"
 
-void statusChanged(QQmlComponent *comp,
-                   QQmlComponent::Status new_status)
-{
-
-}
-
 int main(int argc, char *argv[])
 {
     io::logging().attach_sink<io::LogAsynchronousSink>(

@@ -29,7 +29,8 @@ QuickGLScene::~QuickGLScene()
 
 }
 
-QSGNode *QuickGLScene::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *data)
+QSGNode *QuickGLScene::updatePaintNode(QSGNode *oldNode,
+                                       UpdatePaintNodeData*)
 {
     update();
     if (!oldNode) {

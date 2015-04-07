@@ -98,7 +98,7 @@ void component_error(QQmlComponent *comp)
 }
 
 
-void component_ready(QQmlComponent *comp)
+void component_ready(QQmlComponent*)
 {
     app_logger.log(io::LOG_INFO, "QML component loaded");
 }
