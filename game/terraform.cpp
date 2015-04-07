@@ -48,11 +48,12 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(65, 65),
+    m_terrain(6, 20),
     m_dragging(false)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
+    m_terrain.root()->set_height_rect(sim::TerrainRect(4, 4, 16, 16), 23);
 }
 
 void TerraformMode::before_gl_sync()
@@ -60,6 +61,7 @@ void TerraformMode::before_gl_sync()
     prepare_scene();
     m_gl_scene->setup_scene(m_scene->m_scenegraph,
                             m_scene->m_camera);
+    m_scene->m_terrain_node->update();
 }
 
 void TerraformMode::geometryChanged(const QRectF &oldSize,
@@ -147,12 +149,15 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
             const int x = pos[eX];
             const int y = pos[eY];
             std::cout << x << ", " << y << std::endl;
-            if (x >= 0 && x < m_terrain.m_width &&
-                    y >= 0 && y < m_terrain.m_height)
+            if (x >= 0 && x < m_terrain.width() &&
+                    y >= 0 && y < m_terrain.height())
             {
-                std::cout << (unsigned int)m_terrain.get(x, y);
-                m_terrain.set(x, y, m_terrain.get(x, y)+1);
-                std::cout << " " << (unsigned int)m_terrain.get(x, y) << std::endl;
+                std::cout << (unsigned int)m_terrain.root()->sample_int(x, y);
+                m_terrain.root()->set_height_rect(
+                            sim::TerrainRect(x, y, x+1, y+1),
+                            m_terrain.root()->sample_int(x, y)+1);
+                m_terrain.root()->cleanup();
+                std::cout << " " << (unsigned int)m_terrain.root()->sample_int(x, y) << std::endl;
             }
         }
     }
@@ -191,7 +196,9 @@ void TerraformMode::prepare_scene()
     scene.m_grass->bind();
     load_image_to_texture(":/textures/grass00.png");
 
-    scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::Terrain>(m_terrain);
+    scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::QuadTerrainNode>(
+                m_terrain.root(),
+                64);
     scene.m_terrain_node->set_grass_texture(scene.m_grass);
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<

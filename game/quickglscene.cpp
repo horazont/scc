@@ -68,8 +68,8 @@ void QuickGLScene::paint()
     glClearColor(0.5, 0.4, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    /*glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);*/
     glFrontFace(GL_CCW);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
