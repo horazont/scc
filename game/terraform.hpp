@@ -7,7 +7,7 @@
 
 #include "engine/render/camera.hpp"
 #include "engine/render/scenegraph.hpp"
-#include "engine/render/quadterrain.hpp"
+#include "engine/render/fancyterrain.hpp"
 
 #include "engine/sim/terrain.hpp"
 
@@ -21,7 +21,7 @@ struct TerraformScene
     engine::SceneGraph m_scenegraph;
     engine::PerspectivalCamera m_camera;
     engine::Texture2D *m_grass;
-    engine::QuadTerrainNode *m_terrain_node;
+    engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
 };
 
@@ -34,7 +34,7 @@ public:
 
 private:
     std::unique_ptr<TerraformScene> m_scene;
-    sim::QuadTerrain m_terrain;
+    sim::Terrain m_terrain;
 
     QMetaObject::Connection m_before_gl_sync_conn;
 
