@@ -48,7 +48,7 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(64),
+    m_terrain(129),
     m_dragging(false)
 {
     setAcceptHoverEvents(true);
@@ -145,8 +145,8 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
         std::tie(pos, hit) = hittest(m_hover_pos);
         if (hit) {
             std::cout << pos << std::endl;
-            const int x = pos[eX];
-            const int y = pos[eY];
+            const int x = round(pos[eX]);
+            const int y = round(pos[eY]);
             std::cout << x << ", " << y << std::endl;
             if (x >= 0 && x < m_terrain.size() &&
                     y >= 0 && y < m_terrain.size())
@@ -196,7 +196,7 @@ void TerraformMode::prepare_scene()
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
                 m_terrain,
-                64, 32);
+                65, 32);
     /* scene.m_terrain_node->set_grass_texture(scene.m_grass); */
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
