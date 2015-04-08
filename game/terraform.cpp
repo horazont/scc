@@ -48,7 +48,7 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(129),
+    m_terrain(2049),
     m_dragging(false)
 {
     setAcceptHoverEvents(true);
@@ -179,11 +179,11 @@ void TerraformMode::prepare_scene()
 
     scene.m_scenegraph.root().emplace<engine::GridNode>(64, 64, 1);
 
-    scene.m_camera.controller().set_distance(40.0);
+    scene.m_camera.controller().set_distance(100.0);
     scene.m_camera.controller().set_rot(Vector2f(-45, 0));
     scene.m_camera.controller().set_pos(Vector3f(0, 0, 20.));
     /* scene.m_camera.set_fovy(45.); */
-    scene.m_camera.set_zfar(100.0);
+    scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
 
     const QSize viewport = window()->size() * window()->devicePixelRatio();
