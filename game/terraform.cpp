@@ -48,7 +48,7 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(64, 64),
+    m_terrain(64),
     m_dragging(false)
 {
     setAcceptHoverEvents(true);
@@ -148,8 +148,8 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
             const int x = pos[eX];
             const int y = pos[eY];
             std::cout << x << ", " << y << std::endl;
-            if (x >= 0 && x < m_terrain.m_width &&
-                    y >= 0 && y < m_terrain.m_height)
+            if (x >= 0 && x < m_terrain.size() &&
+                    y >= 0 && y < m_terrain.size())
             {
                 std::cout << (unsigned int)m_terrain.get(x, y);
                 m_terrain.set(
