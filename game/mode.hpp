@@ -1,7 +1,7 @@
 #ifndef SCC_MODE_H
 #define SCC_MODE_H
 
-#include <GL/glew.h>
+#include "fixups.hpp"
 
 #include <QQuickItem>
 
