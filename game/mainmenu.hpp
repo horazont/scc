@@ -1,7 +1,7 @@
 #ifndef SCC_MAINMENU_H
 #define SCC_MAINMENU_H
 
-#include <GL/glew.h>
+#include "fixups.hpp"
 
 #include "engine/common/resource.hpp"
 #include "engine/render/scenegraph.hpp"

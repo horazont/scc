@@ -1,7 +1,7 @@
 #ifndef QUICKGLSCENE_HPP
 #define QUICKGLSCENE_HPP
 
-#include <GL/glew.h>
+#include "fixups.hpp"
 
 #include <chrono>
 

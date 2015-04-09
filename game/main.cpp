@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <GL/glew.h>
+#include "fixups.hpp"
 
 #include <QApplication>
 #include <QQmlApplicationEngine>

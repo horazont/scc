@@ -8,6 +8,7 @@ find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(SIGC++ REQUIRED)
 
 
 set(GAME_SRC
@@ -17,6 +18,10 @@ set(GAME_SRC
   mode.cpp
   quickglscene.cpp
   terraform.cpp
+  )
+
+set(GAME_HEADERS
+  fixups.hpp
   )
 
 set(GAME_QML_RESOURCES
@@ -50,11 +55,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${OPENGL_INCLUDE_DIR})
 include_directories(${GLEW_INCLUDE_DIR})
 
-add_executable(game ${GAME_SRC})
+add_executable(game ${GAME_SRC} ${GAME_HEADERS})
 target_link_libraries(game Qt5::Widgets)
 target_link_libraries(game Qt5::Quick)
 target_link_libraries(game Qt5::Qml)
 target_link_libraries(game engine)
+target_link_libraries(game sigc++)
 target_link_libraries(game ${OPENGL_LIBRARIES})
 target_link_libraries(game ${GLEW_LIBRARIES})
 add_dependencies(game game-resources)

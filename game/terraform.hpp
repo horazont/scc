@@ -1,7 +1,7 @@
 #ifndef SCC_TERRAFORM_H
 #define SCC_TERRAFORM_H
 
-#include <GL/glew.h>
+#include "fixups.hpp"
 
 #include <QQmlEngine>
 
