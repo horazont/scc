@@ -5,6 +5,8 @@
 
 #include "engine/io/filesystem.hpp"
 
+#include "engine/math/intersect.hpp"
+
 #include "engine/render/grid.hpp"
 #include "engine/render/terrain.hpp"
 #include "engine/render/pointer.hpp"
@@ -111,10 +113,10 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
         const Ray viewray = m_scene->m_camera.ray(m_hover_pos);
         bool hit;
         float t;
-        std::tie(t, hit) = intersect_plane(
-                    viewray,
+        std::tie(t, hit) = isect_plane_ray(
                     Vector3f(0, 0, m_drag_point[eZ]),
-                    Vector3f(0, 0, 1));
+                    Vector3f(0, 0, 1),
+                    viewray);
         if (!hit) {
             /* qml_gl_logger.log(io::LOG_WARNING,
                               "drag followup hittest failed, "
@@ -227,7 +229,7 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
     float t;
     bool hit;
-    std::tie(t, hit) = intersect_plane(ray, Vector3f(0, 0, 20), Vector3f(0, 0, 1));
+    std::tie(t, hit) = isect_plane_ray(Vector3f(0, 0, 20), Vector3f(0, 0, 1), ray);
     if (!hit) {
         return std::make_tuple(Vector3f(), false);
     }
