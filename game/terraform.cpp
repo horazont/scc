@@ -6,6 +6,7 @@
 #include "engine/io/filesystem.hpp"
 
 #include "engine/math/intersect.hpp"
+#include "engine/math/perlin.hpp"
 
 #include "engine/render/grid.hpp"
 #include "engine/render/terrain.hpp"
@@ -55,7 +56,11 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
-    m_terrain.set(0, 0, 10);
+    m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
+                                               Vector3(13, 13, 3),
+                                               0.45,
+                                               12,
+                                               128));
 }
 
 void TerraformMode::before_gl_sync()
@@ -179,11 +184,11 @@ void TerraformMode::prepare_scene()
     m_scene = std::unique_ptr<TerraformScene>(new TerraformScene());
     TerraformScene &scene = *m_scene;
 
-    scene.m_scenegraph.root().emplace<engine::GridNode>(64, 64, 1);
+    scene.m_scenegraph.root().emplace<engine::GridNode>(2048, 2048, 64);
 
-    scene.m_camera.controller().set_distance(100.0);
+    scene.m_camera.controller().set_distance(50.0);
     scene.m_camera.controller().set_rot(Vector2f(-45, 0));
-    scene.m_camera.controller().set_pos(Vector3f(0, 0, 20.));
+    scene.m_camera.controller().set_pos(Vector3f(0, 0, 0.));
     /* scene.m_camera.set_fovy(45.); */
     scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
@@ -229,7 +234,7 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
     float t;
     bool hit;
-    std::tie(t, hit) = isect_plane_ray(Vector3f(0, 0, 20), Vector3f(0, 0, 1), ray);
+    std::tie(t, hit) = isect_plane_ray(Vector3f(0, 0, 0), Vector3f(0, 0, 1), ray);
     if (!hit) {
         return std::make_tuple(Vector3f(), false);
     }
