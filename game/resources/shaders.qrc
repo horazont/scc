@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>shaders/terrain/main.frag</file>
+        <file>shaders/terrain/main.vert</file>
+    </qresource>
+</RCC>

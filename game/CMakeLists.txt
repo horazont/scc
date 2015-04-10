@@ -37,12 +37,17 @@ set(GAME_TEXTURE_RESOURCES
   resources/textures/grass00.png
   )
 
+set(GAME_SHADER_RESOURCES
+  resources/shaders/terrain/main.vert
+  resources/shaders/terrain/main.frag
+  )
+
 add_custom_target(game-resources)
 
 function(add_resource_pack PACKNAME QRC SOURCES)
   add_custom_target(
     game-resource-${PACKNAME}
-    COMMAND rcc "${CMAKE_CURRENT_SOURCE_DIR}/${QRC}" -binary -o "${PACKNAME}.rcc"
+    COMMAND rcc-qt5 "${CMAKE_CURRENT_SOURCE_DIR}/${QRC}" --binary -o "${CMAKE_CURRENT_BINARY_DIR}/${PACKNAME}.rcc"
     SOURCES ${SOURCES} ${QRC}
   )
   add_dependencies(game-resources game-resource-${PACKNAME})
@@ -50,6 +55,7 @@ endfunction(add_resource_pack)
 
 add_resource_pack("qml" "resources/qml.qrc" "${GAME_QML_RESOURCES}")
 add_resource_pack("textures" "resources/textures.qrc" "${GAME_TEXTURE_RESOURCES}")
+add_resource_pack("shaders" "resources/shaders.qrc" "${GAME_SHADER_RESOURCES}")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${OPENGL_INCLUDE_DIR})
