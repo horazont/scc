@@ -31,16 +31,17 @@ vec2 morph_vertex(vec2 grid_pos, vec2 vertex, float morph_k)
 
 float morph_k(vec3 viewpoint, vec2 world_pos)
 {
-   float dist = length(viewpoint - vec3(world_pos, 0)) - chunk_size*scale_to_radius/2.f;
+   float dist = length(viewpoint - vec3(world_pos, 0)) - chunk_size*scale_to_radius;
    float normdist = dist/(scale_to_radius*chunk_size);
    return clamp((normdist - 0.6) * 2.5, 0, 1);
 }
 
 void main() {
    vec2 model_vertex = position * chunk_size + chunk_translation;
-   tc0 = model_vertex.xy / 5.0;
    vec2 morphed = morph_vertex(position, model_vertex, morph_k(lod_viewpoint, model_vertex));
    vec2 morphed_object = (morphed - chunk_translation) / chunk_size;
+   tc0 = morphed.xy / 5.0;
+
    vec2 lookup_coord = heightmap_base + morphed_object.xy * heightmap_factor;
    float height = textureLod(heightmap, lookup_coord, 0).r;
 
