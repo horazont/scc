@@ -26,6 +26,13 @@ struct TerraformScene
 };
 
 
+enum class TerraformTool {
+    RAISE,
+    LOWER,
+    FLATTEN
+};
+
+
 class TerraformMode: public ApplicationMode
 {
     Q_OBJECT
@@ -43,6 +50,8 @@ private:
     Vector3f m_drag_point;
     Vector3f m_drag_camera_pos;
 
+    TerraformTool m_tool;
+
 protected:
     void geometryChanged(const QRectF &newGeometry,
                          const QRectF &oldGeometry) override;
@@ -50,8 +59,21 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
     void prepare_scene();
+
+protected:
+    void apply_tool(const unsigned int x0,
+                    const unsigned int y0);
+    void tool_flatten(sim::Terrain::HeightField &field,
+                      const sim::TerrainRect &r,
+                      const unsigned int x0,
+                      const unsigned int y0);
+    void tool_raise(sim::Terrain::HeightField &field,
+                    const sim::TerrainRect &r);
+    void tool_lower(sim::Terrain::HeightField &field,
+                    const sim::TerrainRect &r);
 
 public slots:
     void before_gl_sync();

@@ -51,15 +51,17 @@ void load_image_to_texture(const QString &url)
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(2049),
-    m_dragging(false)
+    m_dragging(false),
+    m_tool(TerraformTool::RAISE)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
-    m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
+    /* m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
                                                Vector3(13, 13, 3),
                                                0.45,
                                                12,
-                                               128));
+                                               128));*/
+    m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2));
 }
 
 void TerraformMode::before_gl_sync()
@@ -157,11 +159,8 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
             if (x >= 0 && x < m_terrain.size() &&
                     y >= 0 && y < m_terrain.size())
             {
-                std::cout << (unsigned int)m_terrain.get(x, y);
-                m_terrain.set(
-                            x, y,
-                            m_terrain.get(x, y)+1);
-                std::cout << " " << (unsigned int)m_terrain.get(x, y) << std::endl;
+                apply_tool(x, y);
+                m_terrain.notify_heightmap_changed();
             }
         }
     }
@@ -172,6 +171,17 @@ void TerraformMode::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::MiddleButton) {
         m_dragging = false;
     }
+}
+
+void TerraformMode::wheelEvent(QWheelEvent *event)
+{
+    if (!m_scene) {
+        return;
+    }
+
+    m_scene->m_camera.controller().set_distance(
+                m_scene->m_camera.controller().distance()-event->angleDelta().y()/10.
+                );
 }
 
 void TerraformMode::prepare_scene()
@@ -203,11 +213,87 @@ void TerraformMode::prepare_scene()
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
                 m_terrain,
                 65, 32);
-    /* scene.m_terrain_node->set_grass_texture(scene.m_grass); */
+    scene.m_terrain_node->attach_grass_texture(scene.m_grass);
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
     scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
+}
+
+void TerraformMode::apply_tool(const unsigned int x0,
+                               const unsigned int y0)
+{
+    sim::TerrainRect r(x0, y0, x0+6, y0+6);
+    if (x0 < 5) {
+        r.set_x0(0);
+    } else {
+        r.set_x0(x0-5);
+    }
+    if (y0 < 5) {
+        r.set_y0(0);
+    } else {
+        r.set_y0(y0-5);
+    }
+    if (r.x1() > m_terrain.size()) {
+        r.set_x1(m_terrain.size());
+    }
+    if (r.y1() > m_terrain.size()) {
+        r.set_y1(m_terrain.size());
+    }
+
+    sim::Terrain::HeightField *heightmap = nullptr;
+    auto lock = m_terrain.writable_field(heightmap);
+
+    switch (m_tool) {
+    case TerraformTool::FLATTEN:
+    {
+        tool_flatten(*heightmap, r, x0, y0);
+        break;
+    }
+    case TerraformTool::RAISE:
+    {
+        tool_raise(*heightmap, r);
+        break;
+    }
+    case TerraformTool::LOWER:
+    {
+        tool_lower(*heightmap, r);
+        break;
+    }
+    }
+}
+
+void TerraformMode::tool_flatten(sim::Terrain::HeightField &field,
+                                 const sim::TerrainRect &r,
+                                 const unsigned int x0,
+                                 const unsigned int y0)
+{
+    const sim::Terrain::height_t height = field[y0*m_terrain.size()+x0];
+    for (unsigned int y = r.y0(); y < r.y1(); y++) {
+        for (unsigned int x = r.x0(); x < r.x1(); x++) {
+            field[y*m_terrain.size()+x] = height;
+        }
+    }
+}
+
+void TerraformMode::tool_raise(sim::Terrain::HeightField &field,
+                               const sim::TerrainRect &r)
+{
+    for (unsigned int y = r.y0(); y < r.y1(); y++) {
+        for (unsigned int x = r.x0(); x < r.x1(); x++) {
+            field[y*m_terrain.size()+x] += 1;
+        }
+    }
+}
+
+void TerraformMode::tool_lower(sim::Terrain::HeightField &field,
+                               const sim::TerrainRect &r)
+{
+    for (unsigned int y = r.y0(); y < r.y1(); y++) {
+        for (unsigned int x = r.x0(); x < r.x1(); x++) {
+            field[y*m_terrain.size()+x] -= 1;
+        }
+    }
 }
 
 void TerraformMode::activate(Application &app, QQuickItem &parent)
@@ -243,15 +329,15 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
 void TerraformMode::switch_to_tool_flatten()
 {
-    std::cout << "flatten" << std::endl;
+    m_tool = TerraformTool::FLATTEN;
 }
 
 void TerraformMode::switch_to_tool_lower()
 {
-    std::cout << "lower" << std::endl;
+    m_tool = TerraformTool::LOWER;
 }
 
 void TerraformMode::switch_to_tool_raise()
 {
-    std::cout << "raise" << std::endl;
+    m_tool = TerraformTool::RAISE;
 }
