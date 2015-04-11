@@ -196,7 +196,7 @@ void TerraformMode::prepare_scene()
     m_scene = std::unique_ptr<TerraformScene>(new TerraformScene());
     TerraformScene &scene = *m_scene;
 
-    scene.m_scenegraph.root().emplace<engine::GridNode>(2048, 2048, 64);
+    /* scene.m_scenegraph.root().emplace<engine::GridNode>(2048, 2048, 64); */
 
     scene.m_camera.controller().set_distance(50.0);
     scene.m_camera.controller().set_rot(Vector2f(-45, 0));
