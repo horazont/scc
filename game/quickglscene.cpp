@@ -74,8 +74,8 @@ void QuickGLScene::paint()
     glFrontFace(GL_CCW);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (m_scenegraph && m_camera) {
-        m_scenegraph->render(*m_camera);
+    if (m_render_scenegraph) {
+        m_render_scenegraph->render();
     } else {
         qml_gl_logger.log(io::LOG_WARNING, "nothing to draw");
     }
@@ -85,10 +85,8 @@ void QuickGLScene::sync()
 {
     emit before_gl_sync();
     m_render_scenegraph = m_scenegraph;
-    m_render_camera = m_camera;
-    if (m_render_scenegraph && m_render_camera) {
-        m_render_scenegraph->sync();
-        m_render_camera->sync();
+    if (m_render_scenegraph && m_camera) {
+        m_render_scenegraph->sync(*m_camera);
     }
     emit after_gl_sync();
 }
