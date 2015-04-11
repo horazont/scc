@@ -1,8 +1,11 @@
 #version 330 core
 
 out vec4 outcolor;
-in vec2 tc0;
-in vec2 data_texcoord;
+
+in TerrainData {
+    vec2 tc0;
+    vec2 data_texcoord;
+};
 
 uniform sampler2D normalt;
 uniform sampler2D grass;
@@ -89,10 +92,10 @@ void main()
 
     const vec3 sundiffuse = vec3(1, 0.99, 0.95);
     const float sunpower = 2.f;
-    const vec3 sundir = normalize(vec3(1, 1, 10));
+    const vec3 sundir = normalize(vec3(1, 1, 4));
     const vec3 skydiffuse = vec3(0.95, 0.99, 1);
     const float skypower = 1.3f;
-    const vec3 skydir = normalize(vec3(-1, -1, 10));
+    const vec3 skydir = normalize(vec3(-1, -1, 4));
 
     vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
     color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, skydir, skydiffuse, skypower);

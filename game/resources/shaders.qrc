@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>shaders/terrain/main.frag</file>
         <file>shaders/terrain/main.vert</file>
+        <file>shaders/generic/normal_debug.frag</file>
+        <file>shaders/terrain/normal_debug.geom</file>
     </qresource>
 </RCC>
