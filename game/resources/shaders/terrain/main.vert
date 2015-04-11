@@ -18,8 +18,11 @@ const float grid_size = 64;
 const float scale_to_radius = 1.984375;
 
 in vec2 position;
-out vec2 tc0;
-out vec2 data_texcoord;
+
+out TerrainData {
+    vec2 tc0;
+    vec2 data_texcoord;
+};
 
 vec2 morph_vertex(vec2 grid_pos, vec2 vertex, float morph_k)
 {
