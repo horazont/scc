@@ -1,6 +1,6 @@
 #version 330 core
 
-out vec4 color;
+out vec4 outcolor;
 in vec2 tc0;
 in vec2 data_texcoord;
 
@@ -43,20 +43,22 @@ float specularG(const in float roughness,
 }
 
 vec3 sunlight(
-    const in vec3 n_normal,
-    const in vec3 n_eyedir,
-    const in float nDotV,
-    const in vec3 diffuse_colour,
-    const in vec3 specular_colour,
-    const in float roughness)
+        const in vec3 n_normal,
+        const in vec3 n_eyedir,
+        const in float nDotV,
+        const in vec3 diffuse_colour,
+        const in vec3 specular_colour,
+        const in float roughness,
+        const in vec3 n_lightdir,
+        const in vec3 light_diffuse,
+        const in float light_power)
 {
-    const vec3 sundiffuse = vec3(1, 0.99, 0.95);
+    /* const vec3 sundiffuse = vec3(1, 0.99, 0.95);
     const float sunpower = 3.f;
 
-    vec3 v_lightdir = vec3(1, 1, 10);
-    vec3 n_half = normalize(normalize(v_lightdir) + n_eyedir);
+    vec3 v_lightdir = vec3(1, 1, 10); */
+    vec3 n_half = normalize(n_lightdir + n_eyedir);
 
-    vec3 n_lightdir = normalize(v_lightdir);
     /* n_half = normalize(v_lightdir + v_eyedir); */
 
     float nDotL = max(1e-5, dot(n_normal, n_lightdir));
@@ -69,7 +71,7 @@ vec3 sunlight(
             * specularD(roughness, nDotH)
             * specularG(roughness, nDotV, nDotL);
 
-    return (diffuse + specular) * (nDotL * sundiffuse * sunpower);
+    return (diffuse + specular) * (nDotL * light_diffuse * light_power);
 }
 
 void main()
@@ -85,5 +87,15 @@ void main()
     vec3 diffuse_colour = base_colour * (1.f - metallic);
     vec3 specular_colour = mix(vec3(0.04f), base_colour, metallic);
 
-    color = vec4(sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness), 1.0f);
+    const vec3 sundiffuse = vec3(1, 0.99, 0.95);
+    const float sunpower = 2.f;
+    const vec3 sundir = normalize(vec3(1, 1, 10));
+    const vec3 skydiffuse = vec3(0.95, 0.99, 1);
+    const float skypower = 1.3f;
+    const vec3 skydir = normalize(vec3(-1, -1, 10));
+
+    vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
+    color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, skydir, skydiffuse, skypower);
+
+    outcolor = vec4(color, 1.0f);
 }
