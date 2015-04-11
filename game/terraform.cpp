@@ -51,6 +51,7 @@ void load_image_to_texture(const QString &url)
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(2049),
+    m_terrain_interface(m_terrain, 65),
     m_dragging(false),
     m_tool(TerraformTool::RAISE)
 {
@@ -211,8 +212,7 @@ void TerraformMode::prepare_scene()
     load_image_to_texture(":/textures/grass00.png");
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
-                m_terrain,
-                65, 32);
+                m_terrain_interface, 32);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
