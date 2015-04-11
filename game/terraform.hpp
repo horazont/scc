@@ -42,6 +42,7 @@ public:
 private:
     std::unique_ptr<TerraformScene> m_scene;
     sim::Terrain m_terrain;
+    engine::FancyTerrainInterface m_terrain_interface;
 
     QMetaObject::Connection m_before_gl_sync_conn;
 
