@@ -13,6 +13,8 @@
 
 #include "application.hpp"
 
+static io::Logger &logger = io::logging().get_logger("app.terraform");
+
 
 void load_image_to_texture(const QString &url)
 {
