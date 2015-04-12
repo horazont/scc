@@ -14,10 +14,8 @@ static io::Logger &qml_gl_logger = io::logging().get_logger("app.qgl");
 
 QuickGLScene::QuickGLScene():
     m_t(monoclock::now()),
-    m_camera(nullptr),
-    m_render_camera(nullptr),
-    m_scenegraph(nullptr),
-    m_render_scenegraph(nullptr)
+    m_rendergraph(nullptr),
+    m_render_rendergraph(nullptr)
 {
     setFlags(QQuickItem::ItemHasContents);
     connect(this, SIGNAL(windowChanged(QQuickWindow*)),
@@ -50,10 +48,6 @@ void QuickGLScene::before_rendering()
     /* qml_gl_logger.logf(io::LOG_DEBUG, "frametime: %.4f s", dt); */
 
     emit advance(dt);
-    if (m_scenegraph && m_camera) {
-        m_scenegraph->advance(dt);
-        m_camera->advance(dt);
-    }
 
     m_t = now;
 }
@@ -66,16 +60,15 @@ void QuickGLScene::cleanup()
 void QuickGLScene::paint()
 {
     /* glClearColor(0.5, 0.4, 0.3, 1.0); */
-    glClearColor(0., 0., 0., 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (m_render_scenegraph) {
-        m_render_scenegraph->render();
+    if (m_render_rendergraph) {
+        glGetError();
+        m_render_rendergraph->render();
+        engine::raise_last_gl_error();
     } else {
         qml_gl_logger.log(io::LOG_WARNING, "nothing to draw");
     }
@@ -84,9 +77,9 @@ void QuickGLScene::paint()
 void QuickGLScene::sync()
 {
     emit before_gl_sync();
-    m_render_scenegraph = m_scenegraph;
-    if (m_render_scenegraph && m_camera) {
-        m_render_scenegraph->sync(*m_camera);
+    m_render_rendergraph = m_rendergraph;
+    if (m_render_rendergraph) {
+        m_render_rendergraph->sync();
     }
     emit after_gl_sync();
 }
@@ -220,9 +213,7 @@ void QuickGLScene::window_changed(QQuickWindow *win)
                                     << io::submit;
 }
 
-void QuickGLScene::setup_scene(engine::SceneGraph &scenegraph,
-                               engine::Camera &camera)
+void QuickGLScene::setup_scene(engine::RenderGraph *rendergraph)
 {
-    m_scenegraph = &scenegraph;
-    m_camera = &camera;
+    m_rendergraph = rendergraph;
 }

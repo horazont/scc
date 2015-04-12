@@ -23,10 +23,8 @@ public:
 private:
     monoclock::time_point m_t;
 
-    engine::Camera *m_camera;
-    engine::Camera *m_render_camera;
-    engine::SceneGraph *m_scenegraph;
-    engine::SceneGraph *m_render_scenegraph;
+    engine::RenderGraph *m_rendergraph;
+    engine::RenderGraph *m_render_rendergraph;
 
 signals:
     void advance(engine::TimeInterval seconds);
@@ -48,8 +46,7 @@ private slots:
     void window_changed(QQuickWindow *win);
 
 public:
-    void setup_scene(engine::SceneGraph &scenegraph,
-                     engine::Camera &camera);
+    void setup_scene(engine::RenderGraph *rendergraph);
 
 };
 

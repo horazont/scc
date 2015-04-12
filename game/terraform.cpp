@@ -67,11 +67,32 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2));
 }
 
+void TerraformMode::advance(engine::TimeInterval dt)
+{
+    if (m_scene) {
+        m_scene->m_camera.advance(dt);
+        m_scene->m_scenegraph.advance(dt);
+    }
+}
+
 void TerraformMode::before_gl_sync()
 {
     prepare_scene();
-    m_gl_scene->setup_scene(m_scene->m_scenegraph,
-                            m_scene->m_camera);
+    if (m_scene->m_fbo->width() != m_scene->m_window.width() ||
+            m_scene->m_fbo->height() != m_scene->m_window.height())
+    {
+        /* m_scene->m_window.bind(engine::RenderTarget::Usage::BOTH);
+        m_scene->m_fbo->resize(m_scene->m_window.width(),
+                               m_scene->m_window.height()); */
+        // make a new FBO
+        *m_scene->m_fbo = engine::FBO(m_scene->m_window.width(),
+                                      m_scene->m_window.height());
+        m_scene->m_fbo->make_color_buffer(0, GL_RGBA8);
+        m_scene->m_fbo->make_depth_buffer(GL_DEPTH_COMPONENT24);
+    }
+    m_scene->m_camera.sync();
+    m_gl_scene->setup_scene(&m_scene->m_rendergraph);
+    const QSize size = window()->size() * window()->devicePixelRatio();
 }
 
 void TerraformMode::geometryChanged(const QRectF &oldSize,
@@ -79,9 +100,10 @@ void TerraformMode::geometryChanged(const QRectF &oldSize,
 {
     QQuickItem::geometryChanged(oldSize, newSize);
     std::cout << "viewport changed" << std::endl;
+    const QSize size = window()->size() * window()->devicePixelRatio();
+    m_viewport_size = engine::ViewportSize(size.width(), size.height());
     if (m_scene) {
-        const QSize size = window()->size() * window()->devicePixelRatio();
-        m_scene->m_camera.set_viewport(size.width(), size.height());
+        m_scene->m_window.set_size(size.width(), size.height());
     }
 }
 
@@ -119,7 +141,7 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
     }
 
     if (m_dragging) {
-        const Ray viewray = m_scene->m_camera.ray(m_hover_pos);
+        const Ray viewray = m_scene->m_camera.ray(m_hover_pos, m_viewport_size);
         bool hit;
         float t;
         std::tie(t, hit) = isect_plane_ray(
@@ -196,6 +218,31 @@ void TerraformMode::prepare_scene()
     m_scene = std::unique_ptr<TerraformScene>(new TerraformScene());
     TerraformScene &scene = *m_scene;
 
+    const QSize size = window()->size() * window()->devicePixelRatio();
+    scene.m_window.set_size(size.width(), size.height());
+
+    scene.m_fbo = &scene.m_resources.emplace<engine::FBO>(
+                "backbuffer",
+                size.width(), size.height());
+    scene.m_fbo->make_color_buffer(0, GL_RGBA8);
+    scene.m_fbo->make_depth_buffer(GL_DEPTH_COMPONENT24);
+
+    engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
+                *scene.m_fbo,
+                scene.m_rendergraph.new_scene(
+                    scene.m_scenegraph,
+                    scene.m_camera));
+    scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
+
+    engine::BlitNode &blit = scene.m_rendergraph.new_node<engine::BlitNode>(*scene.m_fbo, scene.m_window);
+    blit.dependencies().push_back(&scene_node);
+
+    /* std::cout << &scene_node << std::endl;
+    std::cout << &blit << std::endl; */
+
+    scene.m_rendergraph.resort();
+
     /* scene.m_scenegraph.root().emplace<engine::GridNode>(2048, 2048, 64); */
 
     scene.m_camera.controller().set_distance(50.0);
@@ -204,9 +251,6 @@ void TerraformMode::prepare_scene()
     /* scene.m_camera.set_fovy(45.); */
     scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
-
-    const QSize viewport = window()->size() * window()->devicePixelRatio();
-    scene.m_camera.set_viewport(viewport.width(), viewport.height());
 
     scene.m_grass = &scene.m_resources.emplace<engine::Texture2D>(
                 "grass", GL_RGBA, 512, 512);
@@ -301,6 +345,9 @@ void TerraformMode::tool_lower(sim::Terrain::HeightField &field,
 void TerraformMode::activate(Application &app, QQuickItem &parent)
 {
     ApplicationMode::activate(app, parent);
+    m_advance_conn = connect(m_gl_scene, &QuickGLScene::advance,
+                             this, &TerraformMode::advance,
+                             Qt::QueuedConnection);
     m_before_gl_sync_conn = connect(m_gl_scene, &QuickGLScene::before_gl_sync,
                                     this, &TerraformMode::before_gl_sync,
                                     Qt::DirectConnection);
@@ -317,7 +364,7 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
     if (!m_scene) {
         return std::make_tuple(Vector3f(), false);
     }
-    const Ray ray = m_scene->m_camera.ray(viewport);
+    const Ray ray = m_scene->m_camera.ray(viewport, m_viewport_size);
 
     float t;
     bool hit;
