@@ -18,6 +18,9 @@
 struct TerraformScene
 {
     engine::ResourceManager m_resources;
+    engine::FBO *m_fbo;
+    engine::WindowRenderTarget m_window;
+    engine::RenderGraph m_rendergraph;
     engine::SceneGraph m_scenegraph;
     engine::PerspectivalCamera m_camera;
     engine::Texture2D *m_grass;
@@ -44,8 +47,10 @@ private:
     sim::Terrain m_terrain;
     engine::FancyTerrainInterface m_terrain_interface;
 
+    QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_before_gl_sync_conn;
 
+    engine::ViewportSize m_viewport_size;
     Vector2f m_hover_pos;
     bool m_dragging;
     Vector3f m_drag_point;
@@ -77,6 +82,7 @@ protected:
                     const sim::TerrainRect &r);
 
 public slots:
+    void advance(engine::TimeInterval dt);
     void before_gl_sync();
 
 public:

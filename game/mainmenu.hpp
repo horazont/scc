@@ -13,6 +13,7 @@ class QuickGLScene;
 
 struct MainMenuScene
 {
+    engine::RenderGraph m_rendergraph;
     engine::ResourceManager m_resources;
     engine::SceneGraph m_scenegraph;
     engine::PerspectivalCamera m_camera;

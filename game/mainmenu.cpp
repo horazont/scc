@@ -31,8 +31,7 @@ void MainMenu::prepare_scene()
 void MainMenu::before_gl_sync()
 {
     prepare_scene();
-    m_gl_scene->setup_scene(m_scene->m_scenegraph,
-                            m_scene->m_camera);
+    m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
 
 void MainMenu::activate(Application &app, QQuickItem &parent)
