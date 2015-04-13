@@ -4,5 +4,7 @@
         <file>shaders/terrain/main.vert</file>
         <file>shaders/generic/normal_debug.frag</file>
         <file>shaders/terrain/normal_debug.geom</file>
+        <file>shaders/overlay/main.frag</file>
+        <file>shaders/overlay/main.vert</file>
     </qresource>
 </RCC>
