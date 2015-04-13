@@ -142,13 +142,13 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
 
     if (m_dragging) {
         const Ray viewray = m_scene->m_camera.ray(m_hover_pos, m_viewport_size);
-        bool hit;
+        PlaneSide side;
         float t;
-        std::tie(t, hit) = isect_plane_ray(
-                    Vector3f(0, 0, m_drag_point[eZ]),
-                    Vector3f(0, 0, 1),
+        std::tie(t, side) = isect_plane_ray(
+                    Plane(Vector3f(0, 0, m_drag_point[eZ]),
+                          Vector3f(0, 0, 1)),
                     viewray);
-        if (!hit) {
+        if (side == PlaneSide::NEGATIVE_NORMAL) {
             /* qml_gl_logger.log(io::LOG_WARNING,
                               "drag followup hittest failed, "
                               "disabling dragging"); */
@@ -367,9 +367,10 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
     const Ray ray = m_scene->m_camera.ray(viewport, m_viewport_size);
 
     float t;
-    bool hit;
-    std::tie(t, hit) = isect_plane_ray(Vector3f(0, 0, 0), Vector3f(0, 0, 1), ray);
-    if (!hit) {
+    PlaneSide side;
+    std::tie(t, side) = isect_plane_ray(Plane(Vector3f(0, 0, 0),
+                                              Vector3f(0, 0, 1)), ray);
+    if (side == PlaneSide::NEGATIVE_NORMAL) {
         return std::make_tuple(Vector3f(), false);
     }
 
