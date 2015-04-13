@@ -78,18 +78,6 @@ void TerraformMode::advance(engine::TimeInterval dt)
 void TerraformMode::before_gl_sync()
 {
     prepare_scene();
-    if (m_scene->m_fbo->width() != m_scene->m_window.width() ||
-            m_scene->m_fbo->height() != m_scene->m_window.height())
-    {
-        /* m_scene->m_window.bind(engine::RenderTarget::Usage::BOTH);
-        m_scene->m_fbo->resize(m_scene->m_window.width(),
-                               m_scene->m_window.height()); */
-        // make a new FBO
-        *m_scene->m_fbo = engine::FBO(m_scene->m_window.width(),
-                                      m_scene->m_window.height());
-        m_scene->m_fbo->make_color_buffer(0, GL_RGBA8);
-        m_scene->m_fbo->make_depth_buffer(GL_DEPTH_COMPONENT24);
-    }
     m_scene->m_camera.sync();
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
     const QSize size = window()->size() * window()->devicePixelRatio();
@@ -221,25 +209,13 @@ void TerraformMode::prepare_scene()
     const QSize size = window()->size() * window()->devicePixelRatio();
     scene.m_window.set_size(size.width(), size.height());
 
-    scene.m_fbo = &scene.m_resources.emplace<engine::FBO>(
-                "backbuffer",
-                size.width(), size.height());
-    scene.m_fbo->make_color_buffer(0, GL_RGBA8);
-    scene.m_fbo->make_depth_buffer(GL_DEPTH_COMPONENT24);
-
     engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
-                *scene.m_fbo,
+                scene.m_window,
                 scene.m_rendergraph.new_scene(
                     scene.m_scenegraph,
                     scene.m_camera));
     scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
-
-    engine::BlitNode &blit = scene.m_rendergraph.new_node<engine::BlitNode>(*scene.m_fbo, scene.m_window);
-    blit.dependencies().push_back(&scene_node);
-
-    /* std::cout << &scene_node << std::endl;
-    std::cout << &blit << std::endl; */
 
     scene.m_rendergraph.resort();
 
