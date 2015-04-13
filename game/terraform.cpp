@@ -239,7 +239,7 @@ void TerraformMode::prepare_scene()
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
-    scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
+    scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(0.1);
 }
 
 void TerraformMode::apply_tool(const unsigned int x0,
