@@ -52,7 +52,7 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(2049),
+    m_terrain(4097),
     m_terrain_interface(m_terrain, 65),
     m_dragging(false),
     m_tool(TerraformTool::RAISE)
