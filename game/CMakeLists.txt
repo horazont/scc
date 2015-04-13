@@ -42,6 +42,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/terrain/normal_debug.geom
   resources/shaders/terrain/main.vert
   resources/shaders/terrain/main.frag
+  resources/shaders/overlay/main.vert
+  resources/shaders/overlay/main.frag
   )
 
 add_custom_target(game-resources)
