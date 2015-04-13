@@ -18,7 +18,6 @@
 struct TerraformScene
 {
     engine::ResourceManager m_resources;
-    engine::FBO *m_fbo;
     engine::WindowRenderTarget m_window;
     engine::RenderGraph m_rendergraph;
     engine::SceneGraph m_scenegraph;
