@@ -366,15 +366,7 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
     }
     const Ray ray = m_scene->m_camera.ray(viewport, m_viewport_size);
 
-    float t;
-    PlaneSide side;
-    std::tie(t, side) = isect_plane_ray(Plane(Vector3f(0, 0, 0),
-                                              Vector3f(0, 0, 1)), ray);
-    if (side == PlaneSide::NEGATIVE_NORMAL) {
-        return std::make_tuple(Vector3f(), false);
-    }
-
-    return std::make_tuple(ray.origin + ray.direction*t, true);
+    return m_terrain_interface.hittest(ray);
 }
 
 void TerraformMode::switch_to_tool_flatten()
