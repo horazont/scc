@@ -173,7 +173,6 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
                     y >= 0 && y < m_terrain.size())
             {
                 apply_tool(x, y);
-                m_terrain.notify_heightmap_changed();
             }
         }
     }
@@ -263,26 +262,29 @@ void TerraformMode::apply_tool(const unsigned int x0,
         r.set_y1(m_terrain.size());
     }
 
-    sim::Terrain::HeightField *heightmap = nullptr;
-    auto lock = m_terrain.writable_field(heightmap);
+    {
+        sim::Terrain::HeightField *heightmap = nullptr;
+        auto lock = m_terrain.writable_field(heightmap);
 
-    switch (m_tool) {
-    case TerraformTool::FLATTEN:
-    {
-        tool_flatten(*heightmap, r, x0, y0);
-        break;
+        switch (m_tool) {
+        case TerraformTool::FLATTEN:
+        {
+            tool_flatten(*heightmap, r, x0, y0);
+            break;
+        }
+        case TerraformTool::RAISE:
+        {
+            tool_raise(*heightmap, r);
+            break;
+        }
+        case TerraformTool::LOWER:
+        {
+            tool_lower(*heightmap, r);
+            break;
+        }
+        }
     }
-    case TerraformTool::RAISE:
-    {
-        tool_raise(*heightmap, r);
-        break;
-    }
-    case TerraformTool::LOWER:
-    {
-        tool_lower(*heightmap, r);
-        break;
-    }
-    }
+    m_terrain.notify_heightmap_changed(r);
 }
 
 void TerraformMode::tool_flatten(sim::Terrain::HeightField &field,
