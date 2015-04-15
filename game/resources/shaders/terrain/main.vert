@@ -13,12 +13,11 @@ uniform vec2 heightmap_base;
 uniform sampler2D heightmap;
 uniform sampler2D normalt;
 uniform vec3 lod_viewpoint;
-
 uniform float zoffset;
+uniform float heightmap_factor/*  = 0.03076923076923077; */;
 
-const float heightmap_factor = 0.03076923076923077;
 const float grid_size = 64;
-const float scale_to_radius = 1.984375;
+uniform float scale_to_radius/* = 1.984375; */;
 
 in vec2 position;
 
