@@ -26,6 +26,7 @@ struct TerraformScene
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
     engine::Material *m_overlay;
+    engine::Texture2D *m_brush;
 };
 
 
@@ -33,6 +34,57 @@ enum class TerraformTool {
     RAISE,
     LOWER,
     FLATTEN
+};
+
+class Brush
+{
+public:
+    typedef float density_t;
+
+public:
+    Brush();
+    virtual ~Brush();
+
+public:
+    virtual density_t sample(const float x, const float y) const = 0;
+
+};
+
+class BitmapBrush: public Brush
+{
+public:
+    BitmapBrush(const unsigned int base_size);
+
+private:
+    unsigned int m_base_size;
+    std::vector<density_t> m_pixels;
+
+public:
+    inline unsigned int base_size() const
+    {
+        return m_base_size;
+    }
+
+    inline void set(unsigned int x, unsigned int y, density_t value)
+    {
+        assert(x < m_base_size && y < m_base_size);
+        m_pixels[y*m_base_size+x] = value;
+    }
+
+    inline density_t get(unsigned int x, unsigned int y) const
+    {
+        assert(x < m_base_size && y < m_base_size);
+        return m_pixels[y*m_base_size+x];
+    }
+
+    inline density_t *scanline(unsigned int y)
+    {
+        return &m_pixels[y*m_base_size];
+    }
+
+public:
+    density_t sample(float x, float y) const override;
+
 };
 
 
@@ -59,6 +111,11 @@ private:
 
     TerraformTool m_tool;
 
+    BitmapBrush m_test_brush;
+    BitmapBrush *m_curr_brush;
+    bool m_brush_changed;
+    float m_brush_size;
+
 protected:
     void geometryChanged(const QRectF &newGeometry,
                          const QRectF &oldGeometry) override;
@@ -78,7 +135,8 @@ protected:
                       const unsigned int x0,
                       const unsigned int y0);
     void tool_raise(sim::Terrain::HeightField &field,
-                    const sim::TerrainRect &r);
+                    const float x0,
+                    const float y0);
     void tool_lower(sim::Terrain::HeightField &field,
                     const sim::TerrainRect &r);
 
