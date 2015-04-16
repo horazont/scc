@@ -9,7 +9,7 @@
 
 #include "engine/io/log.hpp"
 
-static io::Logger &qml_gl_logger = io::logging().get_logger("app.qgl");
+static io::Logger &logger = io::logging().get_logger("app.qgl");
 
 
 QuickGLScene::QuickGLScene():
@@ -70,7 +70,7 @@ void QuickGLScene::paint()
         m_render_rendergraph->render();
         engine::raise_last_gl_error();
     } else {
-        qml_gl_logger.log(io::LOG_WARNING, "nothing to draw");
+        logger.log(io::LOG_WARNING, "nothing to draw");
     }
 }
 
@@ -87,11 +87,11 @@ void QuickGLScene::sync()
 void QuickGLScene::window_changed(QQuickWindow *win)
 {
     if (!win) {
-        qml_gl_logger.log(io::LOG_WARNING, "lost window!");
+        logger.log(io::LOG_WARNING, "lost window!");
         return;
     }
 
-    qml_gl_logger.log(io::LOG_INFO, "initializing window...");
+    logger.log(io::LOG_INFO, "initializing window...");
 
     connect(win, SIGNAL(beforeSynchronizing()),
             this, SLOT(sync()),
@@ -129,7 +129,7 @@ void QuickGLScene::window_changed(QQuickWindow *win)
         throw std::runtime_error("failed to create context");
     }
 
-    qml_gl_logger.log(io::LOG_INFO)
+    logger.log(io::LOG_INFO)
             << "created context, version "
             << context->format().majorVersion()
             << "."
@@ -144,15 +144,15 @@ void QuickGLScene::window_changed(QQuickWindow *win)
     {
         context_ok = false;
         context_info_level = io::LOG_WARNING;
-        qml_gl_logger.log(io::LOG_EXCEPTION)
+        logger.log(io::LOG_EXCEPTION)
                 << "Could not create Core-profile OpenGL 3+ context with depth buffer"
                 << io::submit;
     } else {
-        qml_gl_logger.log(io::LOG_DEBUG,
+        logger.log(io::LOG_DEBUG,
                           "context deemed appropriate, continuing...");
     }
 
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  renderable  : "
             << (context->format().renderableType() == QSurfaceFormat::OpenGL
                 ? "OpenGL"
@@ -162,24 +162,24 @@ void QuickGLScene::window_changed(QQuickWindow *win)
                 ? "OpenVG (software?)"
                 : "unknown")
             << io::submit;
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  rgba        : "
             << context->format().redBufferSize() << " "
             << context->format().greenBufferSize() << " "
             << context->format().blueBufferSize() << " "
             << context->format().alphaBufferSize() << " "
             << io::submit;
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  stencil     : "
             << context->format().stencilBufferSize()
             << io::submit;
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  depth       : " << context->format().depthBufferSize()
             << io::submit;
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  multisamples: " << context->format().samples()
             << io::submit;
-    qml_gl_logger.log(context_info_level)
+    logger.log(context_info_level)
             << "  profile     : "
             << (context->format().profile() == QSurfaceFormat::CoreProfile
                 ? "core"
@@ -192,24 +192,24 @@ void QuickGLScene::window_changed(QQuickWindow *win)
 
     context->makeCurrent(win);
 
-    qml_gl_logger.log(io::LOG_INFO)
+    logger.log(io::LOG_INFO)
             << "initializing GLEW in experimental mode"
             << io::submit;
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     if (err != GLEW_OK) {
         const std::string error = std::string((const char*)glewGetErrorString(err));
-        qml_gl_logger.log(io::LOG_EXCEPTION)
+        logger.log(io::LOG_EXCEPTION)
                 << "GLEW failed to initialize"
                 << error
                 << io::submit;
         throw std::runtime_error("failed to initialize GLEW: " + error);
     }
 
-    qml_gl_logger.log(io::LOG_DEBUG) << "turning off clear" << io::submit;
+    logger.log(io::LOG_DEBUG) << "turning off clear" << io::submit;
     win->setClearBeforeRendering(false);
 
-    qml_gl_logger.log(io::LOG_INFO) << "Window and rendering context initialized :)"
+    logger.log(io::LOG_INFO) << "Window and rendering context initialized :)"
                                     << io::submit;
 }
 
