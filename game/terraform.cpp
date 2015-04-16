@@ -7,6 +7,7 @@
 
 #include "engine/math/intersect.hpp"
 #include "engine/math/perlin.hpp"
+#include "engine/math/algo.hpp"
 
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
@@ -49,13 +50,63 @@ void load_image_to_texture(const QString &url)
 }
 
 
+Brush::Brush()
+{
+
+}
+
+Brush::~Brush()
+{
+
+}
+
+
+BitmapBrush::BitmapBrush(const unsigned int base_size):
+    m_base_size(base_size),
+    m_pixels(base_size*base_size, 0)
+{
+    assert(m_base_size < (unsigned int)std::numeric_limits<int>::max());
+}
+
+BitmapBrush::density_t BitmapBrush::sample(float x, float y) const
+{
+    /* std::cout << x << " " << y << " "; */
+
+    x = (x + 1.0)*(m_base_size-1) / 2.0;
+    y = (y + 1.0)*(m_base_size-1) / 2.0;
+
+    /* std::cout << x << " " << y << std::endl; */
+
+    int x0 = std::trunc(x);
+    int y0 = std::trunc(y);
+    float xfrac = frac(x);
+    float yfrac = frac(y);
+    assert(x0 >= 0 && x0 < (int)m_base_size && y0 >= 0 && y0 < (int)m_base_size);
+    assert(xfrac == 0 || x0 < (int)m_base_size-1);
+    assert(yfrac == 0 || y0 < (int)m_base_size-1);
+
+    density_t x0y0 = get(x0, y0);
+    density_t x1y0 = get(std::ceil(x0 + xfrac), y0);
+    density_t x0y1 = get(x0, std::ceil(y0 + yfrac));
+    density_t x1y1 = get(std::ceil(x0 + xfrac), std::ceil(y0 + yfrac));
+
+    density_t density_x0 = interp_linear(x0y0, x0y1, yfrac);
+    density_t density_x1 = interp_linear(x1y0, x1y1, yfrac);
+
+    return interp_linear(density_x0, density_x1, xfrac);
+}
+
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(4097),
     m_terrain_interface(m_terrain, 65),
     m_dragging(false),
-    m_tool(TerraformTool::RAISE)
+    m_tool(TerraformTool::RAISE),
+    m_test_brush(65),
+    m_curr_brush(&m_test_brush),
+    m_brush_changed(true),
+    m_brush_size(128)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -64,7 +115,26 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
                                                0.45,
                                                12,
                                                128));*/
-    m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2));
+    /* m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2)); */
+    m_terrain.notify_heightmap_changed();
+
+    // simple gaussian brush
+    const float sigma = 4.0;
+    for (unsigned int y = 0; y < 65; y++)
+    {
+        for (unsigned int x = 0; x < 65; x++)
+        {
+            const float r = std::sqrt(sqr(float(x) - 32)+sqr(float(y) - 32));
+            float density = std::exp(-sqr(r)/(2*sqr(sigma)));
+            /*if (r >= 32) {
+                density = 0;
+            } else {
+                density = 1.0 - r / 32.;
+            }*/
+            m_test_brush.set(x, y, density);
+
+        }
+    }
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -79,14 +149,49 @@ void TerraformMode::before_gl_sync()
 {
     prepare_scene();
     m_scene->m_camera.sync();
-    m_scene->m_overlay->shader().bind();
-    glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
-                m_hover_world[eX], m_hover_world[eY]);
-    m_scene->m_terrain_node->configure_overlay(
-                *m_scene->m_overlay,
-                sim::TerrainRect(std::max(0.f, m_hover_world[eX]-6),
-                                 std::max(0.f, m_hover_world[eY]-6),
-                                 m_hover_world[eX]+6, m_hover_world[eY]+6));
+
+    if (m_brush_changed) {
+        if (m_curr_brush) {
+            std::vector<Brush::density_t> buf(65*65);
+            const float scale = 1./32;
+            for (int y = -32; y < 32; y++) {
+                for (int x = -32; x < 32; x++) {
+                    buf[(y+32)*65 + (x+32)] = m_curr_brush->sample(x*scale, y*scale);
+                }
+            }
+            m_scene->m_brush->bind();
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 65, 65, GL_RED, GL_FLOAT,
+                            buf.data());
+        } else {
+            m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
+        }
+        m_brush_changed = false;
+    }
+    if (m_curr_brush) {
+        m_scene->m_overlay->shader().bind();
+        glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
+                    m_hover_world[eX], m_hover_world[eY]);
+        glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
+                    m_brush_size/2);
+        m_scene->m_terrain_node->configure_overlay(
+                    *m_scene->m_overlay,
+                    sim::TerrainRect(std::max(0.f, m_hover_world[eX]-m_brush_size),
+                                     std::max(0.f, m_hover_world[eY]-m_brush_size),
+                                     m_hover_world[eX]+m_brush_size, m_hover_world[eY]+m_brush_size));
+    }
+    /*{
+        Vector3f pos = m_scene->m_camera.controller().pos();
+        pos[eX] = std::max(std::min(pos[eX], float(m_terrain.size())),
+                           0.f);
+        pos[eY] = std::max(std::min(pos[eY], float(m_terrain.size())),
+                           0.f);
+        const sim::Terrain::HeightField *field = nullptr;
+        auto lock = m_terrain.readonly_field(field);
+        m_scene->m_camera.controller().set_pos(
+                    Vector3f(pos[eX], pos[eY],
+                             (*field)[(unsigned int)(pos[eY])*m_terrain.size()+(unsigned int)(pos[eX])]
+                    ));
+    }*/
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
     const QSize size = window()->size() * window()->devicePixelRatio();
 }
@@ -253,29 +358,38 @@ void TerraformMode::prepare_scene()
 
     scene.m_overlay = &scene.m_resources.emplace<engine::Material>("materials/overlay");
     scene.m_overlay->shader().attach_resource(GL_FRAGMENT_SHADER,
-                                              ":/shaders/terrain/pointer_overlay.frag");
+                                              ":/shaders/terrain/brush_overlay.frag");
     scene.m_terrain_node->configure_overlay_material(*scene.m_overlay);
     scene.m_terrain_node->configure_overlay(*scene.m_overlay, sim::TerrainRect(70, 70, 250, 250));
+
+    scene.m_brush = &scene.m_resources.emplace<engine::Texture2D>(
+                "textures/brush", GL_R32F, 65, 65, GL_RED, GL_FLOAT);
+    engine::raise_last_gl_error();
+    scene.m_brush->bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     scene.m_overlay->shader().bind();
     glUniform2f(scene.m_overlay->shader().uniform_location("center"),
                 160, 160);
+    scene.m_overlay->attach_texture("brush", scene.m_brush);
 
 }
 
 void TerraformMode::apply_tool(const unsigned int x0,
                                const unsigned int y0)
 {
-    sim::TerrainRect r(x0, y0, x0+6, y0+6);
-    if (x0 < 5) {
+    const int rounded_size = std::round(m_brush_size);
+    sim::TerrainRect r(x0, y0, x0+rounded_size, y0+rounded_size);
+    if (x0 < rounded_size) {
         r.set_x0(0);
     } else {
-        r.set_x0(x0-5);
+        r.set_x0(x0-rounded_size);
     }
-    if (y0 < 5) {
+    if (y0 < rounded_size) {
         r.set_y0(0);
     } else {
-        r.set_y0(y0-5);
+        r.set_y0(y0-rounded_size);
     }
     if (r.x1() > m_terrain.size()) {
         r.set_x1(m_terrain.size());
@@ -296,7 +410,7 @@ void TerraformMode::apply_tool(const unsigned int x0,
         }
         case TerraformTool::RAISE:
         {
-            tool_raise(*heightmap, r);
+            tool_raise(*heightmap, x0-m_brush_size/2, y0-m_brush_size/2);
             break;
         }
         case TerraformTool::LOWER:
@@ -323,11 +437,33 @@ void TerraformMode::tool_flatten(sim::Terrain::HeightField &field,
 }
 
 void TerraformMode::tool_raise(sim::Terrain::HeightField &field,
-                               const sim::TerrainRect &r)
+                               const float x0,
+                               const float y0)
 {
-    for (unsigned int y = r.y0(); y < r.y1(); y++) {
-        for (unsigned int x = r.x0(); x < r.x1(); x++) {
-            field[y*m_terrain.size()+x] += 1;
+    const int xi0 = std::round(x0);
+    const int yi0 = std::round(y0);
+    const int size = std::round(m_brush_size);
+
+    for (int y = 0; y < size; y++) {
+        const int yterrain = y + yi0;
+        if (yterrain < 0) {
+            continue;
+        }
+        if (yterrain >= (int)m_terrain.size()) {
+            break;
+        }
+        const float ybrush = (float(y)/size - 0.5) * 2.0;
+        for (int x = 0; x < size; x++) {
+            const int xterrain = x + xi0;
+            if (xterrain < 0) {
+                continue;
+            }
+            if (xterrain >= (int)m_terrain.size()) {
+                break;
+            }
+            const float xbrush = (float(x)/size - 0.5) * 2.0;
+
+            field[yterrain*m_terrain.size()+xterrain] += m_curr_brush->sample(xbrush, ybrush);
         }
     }
 }

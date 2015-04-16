@@ -45,6 +45,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/terrain/main.frag
   resources/shaders/terrain/test_overlay.frag
   resources/shaders/terrain/pointer_overlay.frag
+  resources/shaders/terrain/brush_overlay.frag
   resources/shaders/overlay/main.vert
   resources/shaders/overlay/main.frag
   )
