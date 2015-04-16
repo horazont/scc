@@ -13,8 +13,9 @@ layout(std140) uniform MatrixBlock {
 } mats;
 
 in TerrainData {
+    vec3 world;
     vec2 tc0;
-    vec2 data_texcoord;
+    vec3 normal;
 } terrain_in[3];
 
 out NDData {
@@ -25,7 +26,7 @@ uniform sampler2D normalt;
 
 void main() {
    for (int i = 0; i < 3; i++) {
-       vec3 normal = textureLod(normalt, terrain_in[i].data_texcoord, 0).xyz;
+       vec3 normal = terrain_in[i].normal;
        gl_Position = gl_in[i].gl_Position;
        nd_out.normal = normal;
        EmitVertex();
@@ -38,7 +39,7 @@ void main() {
 
    /* for (int i = 0; i < gl_in.length(); i++) {
       gl_Position = gl_in[i].gl_Position;
-      nd_out.normal = textureLod(normalt, terrain_in[i].data_texcoord, 0).xyz;
+      nd_out.normal = terrain_in[i].normal;
       /* nd_out[i].data_texcoord = terrain_in[i].data_texcoord;
       nd_out[i].tc0 = terrain_in[i].tc0;
       EmitVertex();

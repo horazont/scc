@@ -14,6 +14,8 @@ uniform sampler2D heightmap;
 uniform sampler2D normalt;
 uniform vec3 lod_viewpoint;
 
+uniform float zoffset;
+
 const float heightmap_factor = 0.03076923076923077;
 const float grid_size = 64;
 const float scale_to_radius = 1.984375;
@@ -53,6 +55,9 @@ void main() {
 
    world = vec3(morphed, height);
 
-   gl_Position = mats.proj * mats.view * mats.model * vec4(
-       morphed, height, 1.f);
+   float dist = length(lod_viewpoint - world);
+
+   vec4 final_position = mats.proj * mats.view * mats.model * vec4(
+               morphed, height+zoffset*dist*0.0001, 1.f);
+   gl_Position = final_position;
 }
