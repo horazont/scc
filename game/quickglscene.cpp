@@ -54,7 +54,8 @@ void QuickGLScene::before_rendering()
 
 void QuickGLScene::cleanup()
 {
-    throw std::runtime_error("cleanup not implemented");
+    /* throw std::runtime_error("cleanup not implemented"); */
+    logger.log(io::LOG_ERROR, "cleanup not implemented");
 }
 
 void QuickGLScene::paint()
