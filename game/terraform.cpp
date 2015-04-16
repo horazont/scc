@@ -79,6 +79,14 @@ void TerraformMode::before_gl_sync()
 {
     prepare_scene();
     m_scene->m_camera.sync();
+    m_scene->m_overlay->shader().bind();
+    glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
+                m_hover_world[eX], m_hover_world[eY]);
+    m_scene->m_terrain_node->configure_overlay(
+                *m_scene->m_overlay,
+                sim::TerrainRect(std::max(0.f, m_hover_world[eX]-6),
+                                 std::max(0.f, m_hover_world[eY]-6),
+                                 m_hover_world[eX]+6, m_hover_world[eY]+6));
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
     const QSize size = window()->size() * window()->devicePixelRatio();
 }
@@ -108,7 +116,9 @@ void TerraformMode::hoverMoveEvent(QHoverEvent *event)
     bool hit;
     std::tie(hit_pos, hit) = hittest(new_pos);
     if (hit) {
-        m_scene->m_pointer_trafo_node->transformation() = translation4(hit_pos);
+        m_hover_world = hit_pos;
+        m_scene->m_pointer_trafo_node->transformation() = translation4(
+                    hit_pos);
     }
 }
 
@@ -146,6 +156,7 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
             const Vector3f moved = m_drag_point - now_at;
             m_scene->m_camera.controller().set_pos(m_drag_camera_pos + moved);
             m_drag_camera_pos = m_scene->m_camera.controller().pos();
+            m_hover_world = now_at;
             m_scene->m_pointer_trafo_node->transformation() = translation4(
                         now_at);
         }
@@ -238,7 +249,18 @@ void TerraformMode::prepare_scene()
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
-    scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(0.1);
+    scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
+
+    scene.m_overlay = &scene.m_resources.emplace<engine::Material>("materials/overlay");
+    scene.m_overlay->shader().attach_resource(GL_FRAGMENT_SHADER,
+                                              ":/shaders/terrain/pointer_overlay.frag");
+    scene.m_terrain_node->configure_overlay_material(*scene.m_overlay);
+    scene.m_terrain_node->configure_overlay(*scene.m_overlay, sim::TerrainRect(70, 70, 250, 250));
+
+    scene.m_overlay->shader().bind();
+    glUniform2f(scene.m_overlay->shader().uniform_location("center"),
+                160, 160);
+
 }
 
 void TerraformMode::apply_tool(const unsigned int x0,
