@@ -11,6 +11,7 @@ uniform float chunk_size;
 uniform vec2 chunk_translation;
 uniform vec2 heightmap_base;
 uniform sampler2D heightmap;
+uniform sampler2D normalt;
 uniform vec3 lod_viewpoint;
 
 const float heightmap_factor = 0.03076923076923077;
@@ -20,8 +21,9 @@ const float scale_to_radius = 1.984375;
 in vec2 position;
 
 out TerrainData {
+    vec3 world;
     vec2 tc0;
-    vec2 data_texcoord;
+    vec3 normal;
 };
 
 vec2 morph_vertex(vec2 grid_pos, vec2 vertex, float morph_k)
@@ -47,8 +49,9 @@ void main() {
 
    vec2 lookup_coord = heightmap_base + morphed_object.xy * heightmap_factor;
    float height = textureLod(heightmap, lookup_coord, 0).r;
+   normal = textureLod(normalt, lookup_coord, 0).xyz;
 
-   data_texcoord = lookup_coord;
+   world = vec3(morphed, height);
 
    gl_Position = mats.proj * mats.view * mats.model * vec4(
        morphed, height, 1.f);
