@@ -25,6 +25,7 @@ struct TerraformScene
     engine::Texture2D *m_grass;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
+    engine::Material *m_overlay;
 };
 
 
@@ -54,6 +55,7 @@ private:
     bool m_dragging;
     Vector3f m_drag_point;
     Vector3f m_drag_camera_pos;
+    Vector3f m_hover_world;
 
     TerraformTool m_tool;
 

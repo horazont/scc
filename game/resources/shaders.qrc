@@ -6,5 +6,7 @@
         <file>shaders/terrain/normal_debug.geom</file>
         <file>shaders/overlay/main.frag</file>
         <file>shaders/overlay/main.vert</file>
+        <file>shaders/terrain/test_overlay.frag</file>
+        <file>shaders/terrain/pointer_overlay.frag</file>
     </qresource>
 </RCC>
