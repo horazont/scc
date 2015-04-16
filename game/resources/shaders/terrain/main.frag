@@ -3,11 +3,11 @@
 out vec4 outcolor;
 
 in TerrainData {
+    vec3 world;
     vec2 tc0;
-    vec2 data_texcoord;
-};
+    vec3 normal;
+} terraindata;
 
-uniform sampler2D normalt;
 uniform sampler2D grass;
 
 vec3 diffuseF(const in vec3 colour)
@@ -80,13 +80,13 @@ vec3 sunlight(
 void main()
 {
     vec3 eyedir = normalize(vec3(-1, -1, 1));
-    vec3 normal = normalize(texture2D(normalt, data_texcoord).xyz);
+    vec3 normal = normalize(terraindata.normal);
     float nDotV = max(1e-5, dot(normal, eyedir));
 
     const float metallic = 0.1f;
     const float roughness = 0.8f;
 
-    vec3 base_colour = texture2D(grass, tc0).rgb;
+    vec3 base_colour = texture2D(grass, terraindata.tc0).rgb;
     vec3 diffuse_colour = base_colour * (1.f - metallic);
     vec3 specular_colour = mix(vec3(0.04f), base_colour, metallic);
 
