@@ -3,5 +3,6 @@
         <file>textures/grass00.png</file>
         <file>textures/sand00.png</file>
         <file>textures/rock00.png</file>
+        <file>textures/blend00.png</file>
     </qresource>
 </RCC>

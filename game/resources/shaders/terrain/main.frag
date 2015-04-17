@@ -10,6 +10,7 @@ in TerrainData {
 
 uniform sampler2D grass;
 uniform sampler2D rock;
+uniform sampler2D blend;
 
 vec3 diffuseF(const in vec3 colour)
 {
@@ -83,6 +84,22 @@ vec3 interp_colour(vec3 c1, vec3 c2, float t)
     return c1*(1-t) + c2*t;
 }
 
+float blend_with_texture(vec2 texcoord, float value)
+{
+    /*if (value <= 0.0 || value >= 3.0) {
+        return value / 3.0;
+    }*/
+
+    float result;
+    float blendtex = texture2D(blend, texcoord).r;
+    if (value > 1.0f && value < 1.5f) {
+        value = 1.0f;
+    } else if (value >= 1.5f) {
+        value -= 0.5f;
+    }
+    return clamp(blendtex + (value - 1.0f), 0, 1);
+}
+
 void main()
 {
     vec3 eyedir = normalize(vec3(-1, -1, 1));
@@ -93,7 +110,9 @@ void main()
     const float roughness = 0.8f;
 
 
-    float steepness = 1.f - abs(dot(normal, vec3(0, 0, 1)));
+    float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*5.f;
+
+    float steepness = blend_with_texture(terraindata.tc0/3.f, base_steepness);
 
     vec3 base_colour = interp_colour(texture2D(grass, terraindata.tc0).rgb,
                                      texture2D(rock, terraindata.tc0).rgb,
@@ -110,7 +129,6 @@ void main()
 
     vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
     color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, skydir, skydiffuse, skypower);
-
 
     outcolor = vec4(color, 1.0f);
 }

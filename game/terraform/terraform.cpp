@@ -309,10 +309,17 @@ void TerraformMode::prepare_scene()
     scene.m_rock->bind();
     load_image_to_texture(":/textures/rock00.png");
 
+    scene.m_blend = &scene.m_resources.emplace<engine::Texture2D>(
+                "blend", GL_RED, 256, 256);
+    scene.m_blend->bind();
+    load_image_to_texture(":/textures/blend00.png");
+    engine::raise_last_gl_error();
+
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
                 m_terrain_interface, 32);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
+    scene.m_terrain_node->attach_blend_texture(scene.m_blend);
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
