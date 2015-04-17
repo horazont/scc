@@ -102,14 +102,15 @@ void main()
     vec3 specular_colour = mix(vec3(0.04f), base_colour, metallic);
 
     const vec3 sundiffuse = vec3(1, 0.99, 0.95);
-    const float sunpower = 2.f;
+    const float sunpower = 2.3f;
     const vec3 sundir = normalize(vec3(1, 1, 4));
     const vec3 skydiffuse = vec3(0.95, 0.99, 1);
-    const float skypower = 1.3f;
+    const float skypower = 1.0f;
     const vec3 skydir = normalize(vec3(-1, -1, 4));
 
     vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
     color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, skydir, skydiffuse, skypower);
+
 
     outcolor = vec4(color, 1.0f);
 }
