@@ -26,6 +26,7 @@ struct TerraformScene
     engine::PerspectivalCamera m_camera;
     engine::Texture2D *m_grass;
     engine::Texture2D *m_rock;
+    engine::Texture2D *m_blend;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
     engine::Material *m_overlay;
