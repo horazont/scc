@@ -17,7 +17,7 @@ set(GAME_SRC
   mainmenu.cpp
   mode.cpp
   quickglscene.cpp
-  terraform.cpp
+  terraform/terraform.cpp
   )
 
 set(GAME_HEADERS

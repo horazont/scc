@@ -6,7 +6,7 @@
 #include "engine/io/log.hpp"
 
 #include "mainmenu.hpp"
-#include "terraform.hpp"
+#include "terraform/terraform.hpp"
 
 static io::Logger &app_logger = io::logging().get_logger("app");
 
