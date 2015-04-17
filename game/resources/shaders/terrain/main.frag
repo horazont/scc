@@ -9,6 +9,7 @@ in TerrainData {
 } terraindata;
 
 uniform sampler2D grass;
+uniform sampler2D rock;
 
 vec3 diffuseF(const in vec3 colour)
 {
@@ -77,6 +78,11 @@ vec3 sunlight(
     return (diffuse + specular) * (nDotL * light_diffuse * light_power);
 }
 
+vec3 interp_colour(vec3 c1, vec3 c2, float t)
+{
+    return c1*(1-t) + c2*t;
+}
+
 void main()
 {
     vec3 eyedir = normalize(vec3(-1, -1, 1));
@@ -86,7 +92,12 @@ void main()
     const float metallic = 0.1f;
     const float roughness = 0.8f;
 
-    vec3 base_colour = texture2D(grass, terraindata.tc0).rgb;
+
+    float steepness = 1.f - abs(dot(normal, vec3(0, 0, 1)));
+
+    vec3 base_colour = interp_colour(texture2D(grass, terraindata.tc0).rgb,
+                                     texture2D(rock, terraindata.tc0).rgb,
+                                     steepness);
     vec3 diffuse_colour = base_colour * (1.f - metallic);
     vec3 specular_colour = mix(vec3(0.04f), base_colour, metallic);
 
