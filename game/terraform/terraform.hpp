@@ -14,6 +14,8 @@
 #include "mode.hpp"
 #include "quickglscene.hpp"
 
+#include "terraform/brush.hpp"
+
 
 struct TerraformScene
 {
@@ -37,56 +39,6 @@ enum class TerraformTool {
     FLATTEN
 };
 
-class Brush
-{
-public:
-    typedef float density_t;
-
-public:
-    Brush();
-    virtual ~Brush();
-
-public:
-    virtual density_t sample(const float x, const float y) const = 0;
-
-};
-
-class BitmapBrush: public Brush
-{
-public:
-    BitmapBrush(const unsigned int base_size);
-
-private:
-    unsigned int m_base_size;
-    std::vector<density_t> m_pixels;
-
-public:
-    inline unsigned int base_size() const
-    {
-        return m_base_size;
-    }
-
-    inline void set(unsigned int x, unsigned int y, density_t value)
-    {
-        assert(x < m_base_size && y < m_base_size);
-        m_pixels[y*m_base_size+x] = value;
-    }
-
-    inline density_t get(unsigned int x, unsigned int y) const
-    {
-        assert(x < m_base_size && y < m_base_size);
-        return m_pixels[y*m_base_size+x];
-    }
-
-    inline density_t *scanline(unsigned int y)
-    {
-        return &m_pixels[y*m_base_size];
-    }
-
-public:
-    density_t sample(float x, float y) const override;
-
-};
 
 
 class TerraformMode: public ApplicationMode
@@ -112,10 +64,9 @@ private:
 
     TerraformTool m_tool;
 
-    BitmapBrush m_test_brush;
-    BitmapBrush *m_curr_brush;
+    GaussBrush m_test_brush;
+    BrushFrontend m_brush_frontend;
     bool m_brush_changed;
-    float m_brush_size;
 
 protected:
     void geometryChanged(const QRectF &newGeometry,
@@ -156,6 +107,9 @@ public:
     Q_INVOKABLE void switch_to_tool_raise();
     Q_INVOKABLE void switch_to_tool_lower();
     Q_INVOKABLE void switch_to_tool_flatten();
+
+    Q_INVOKABLE void set_brush_size(float size);
+    Q_INVOKABLE void set_brush_strength(float strength);
 
 };
 

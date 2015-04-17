@@ -50,63 +50,13 @@ void load_image_to_texture(const QString &url)
 }
 
 
-Brush::Brush()
-{
-
-}
-
-Brush::~Brush()
-{
-
-}
-
-
-BitmapBrush::BitmapBrush(const unsigned int base_size):
-    m_base_size(base_size),
-    m_pixels(base_size*base_size, 0)
-{
-    assert(m_base_size < (unsigned int)std::numeric_limits<int>::max());
-}
-
-BitmapBrush::density_t BitmapBrush::sample(float x, float y) const
-{
-    /* std::cout << x << " " << y << " "; */
-
-    x = (x + 1.0)*(m_base_size-1) / 2.0;
-    y = (y + 1.0)*(m_base_size-1) / 2.0;
-
-    /* std::cout << x << " " << y << std::endl; */
-
-    int x0 = std::trunc(x);
-    int y0 = std::trunc(y);
-    float xfrac = frac(x);
-    float yfrac = frac(y);
-    assert(x0 >= 0 && x0 < (int)m_base_size && y0 >= 0 && y0 < (int)m_base_size);
-    assert(xfrac == 0 || x0 < (int)m_base_size-1);
-    assert(yfrac == 0 || y0 < (int)m_base_size-1);
-
-    density_t x0y0 = get(x0, y0);
-    density_t x1y0 = get(std::ceil(x0 + xfrac), y0);
-    density_t x0y1 = get(x0, std::ceil(y0 + yfrac));
-    density_t x1y1 = get(std::ceil(x0 + xfrac), std::ceil(y0 + yfrac));
-
-    density_t density_x0 = interp_linear(x0y0, x0y1, yfrac);
-    density_t density_x1 = interp_linear(x1y0, x1y1, yfrac);
-
-    return interp_linear(density_x0, density_x1, xfrac);
-}
-
-
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(4097),
     m_terrain_interface(m_terrain, 65),
     m_dragging(false),
     m_tool(TerraformTool::RAISE),
-    m_test_brush(65),
-    m_curr_brush(&m_test_brush),
-    m_brush_changed(true),
-    m_brush_size(128)
+    m_brush_changed(true)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -118,23 +68,21 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     /* m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2)); */
     m_terrain.notify_heightmap_changed();
 
-    // simple gaussian brush
-    const float sigma = 4.0;
+    /* // simple gaussian brush
+    const float sigma = 9.0;
     for (unsigned int y = 0; y < 65; y++)
     {
         for (unsigned int x = 0; x < 65; x++)
         {
             const float r = std::sqrt(sqr(float(x) - 32)+sqr(float(y) - 32));
             float density = std::exp(-sqr(r)/(2*sqr(sigma)));
-            /*if (r >= 32) {
-                density = 0;
-            } else {
-                density = 1.0 - r / 32.;
-            }*/
             m_test_brush.set(x, y, density);
 
         }
-    }
+    }*/
+
+    m_brush_frontend.set_brush(&m_test_brush);
+    m_brush_frontend.set_brush_size(32);
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -153,13 +101,14 @@ void TerraformMode::before_gl_sync()
     prepare_scene();
     m_scene->m_camera.sync();
 
+    Brush *const curr_brush = m_brush_frontend.curr_brush();
     if (m_brush_changed) {
-        if (m_curr_brush) {
-            std::vector<Brush::density_t> buf(65*65);
+        if (curr_brush) {
+            std::vector<Brush::density_t> buf(65*65, 100);
             const float scale = 1./32;
-            for (int y = -32; y < 32; y++) {
-                for (int x = -32; x < 32; x++) {
-                    buf[(y+32)*65 + (x+32)] = m_curr_brush->sample(x*scale, y*scale);
+            for (int y = -32; y <= 32; y++) {
+                for (int x = -32; x <= 32; x++) {
+                    buf[(y+32)*65 + (x+32)] = curr_brush->sample(x*scale, y*scale);
                 }
             }
             m_scene->m_brush->bind();
@@ -170,17 +119,20 @@ void TerraformMode::before_gl_sync()
         }
         m_brush_changed = false;
     }
-    if (m_curr_brush) {
+    if (curr_brush) {
+        float brush_radius = m_brush_frontend.brush_size()/2.f;
+
         m_scene->m_overlay->shader().bind();
         glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
                     m_hover_world[eX], m_hover_world[eY]);
         glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
-                    m_brush_size/2);
+                    brush_radius);
         m_scene->m_terrain_node->configure_overlay(
                     *m_scene->m_overlay,
-                    sim::TerrainRect(std::max(0.f, m_hover_world[eX]-m_brush_size),
-                                     std::max(0.f, m_hover_world[eY]-m_brush_size),
-                                     m_hover_world[eX]+m_brush_size, m_hover_world[eY]+m_brush_size));
+                    sim::TerrainRect(std::max(0.f, std::floor(m_hover_world[eX]-brush_radius)),
+                                     std::max(0.f, std::floor(m_hover_world[eY]-brush_radius)),
+                                     std::ceil(m_hover_world[eX]+brush_radius),
+                                     std::ceil(m_hover_world[eY]+brush_radius)));
     }
     /*{
         Vector3f pos = m_scene->m_camera.controller().pos();
@@ -389,17 +341,17 @@ void TerraformMode::prepare_scene()
 void TerraformMode::apply_tool(const unsigned int x0,
                                const unsigned int y0)
 {
-    const int rounded_size = std::round(m_brush_size);
-    sim::TerrainRect r(x0, y0, x0+rounded_size, y0+rounded_size);
-    if (x0 < rounded_size) {
+    const float brush_radius = m_brush_frontend.brush_size()/2.f;
+    sim::TerrainRect r(x0, y0, std::ceil(x0+brush_radius), std::ceil(y0+brush_radius));
+    if (x0 < std::ceil(brush_radius)) {
         r.set_x0(0);
     } else {
-        r.set_x0(x0-rounded_size);
+        r.set_x0(x0-std::ceil(brush_radius));
     }
-    if (y0 < rounded_size) {
+    if (y0 < std::ceil(brush_radius)) {
         r.set_y0(0);
     } else {
-        r.set_y0(y0-rounded_size);
+        r.set_y0(y0-std::ceil(brush_radius));
     }
     if (r.x1() > m_terrain.size()) {
         r.set_x1(m_terrain.size());
@@ -420,7 +372,7 @@ void TerraformMode::apply_tool(const unsigned int x0,
         }
         case TerraformTool::RAISE:
         {
-            tool_raise(*heightmap, x0-m_brush_size/2, y0-m_brush_size/2);
+            tool_raise(*heightmap, x0-brush_radius, y0-brush_radius);
             break;
         }
         case TerraformTool::LOWER:
@@ -450,30 +402,33 @@ void TerraformMode::tool_raise(sim::Terrain::HeightField &field,
                                const float x0,
                                const float y0)
 {
-    const int xi0 = std::round(x0);
-    const int yi0 = std::round(y0);
-    const int size = std::round(m_brush_size);
+    const int terrain_xbase= std::round(x0);
+    const int terrain_ybase = std::round(y0);
+    const unsigned int size = m_brush_frontend.brush_size();
+
+    const std::vector<Brush::density_t> &sampled = m_brush_frontend.sampled();
 
     for (int y = 0; y < size; y++) {
-        const int yterrain = y + yi0;
+        const int yterrain = y + terrain_ybase;
         if (yterrain < 0) {
             continue;
         }
         if (yterrain >= (int)m_terrain.size()) {
             break;
         }
-        const float ybrush = (float(y)/size - 0.5) * 2.0;
         for (int x = 0; x < size; x++) {
-            const int xterrain = x + xi0;
+            const int xterrain = x + terrain_xbase;
             if (xterrain < 0) {
                 continue;
             }
             if (xterrain >= (int)m_terrain.size()) {
                 break;
             }
-            const float xbrush = (float(x)/size - 0.5) * 2.0;
 
-            field[yterrain*m_terrain.size()+xterrain] += m_curr_brush->sample(xbrush, ybrush);
+            sim::Terrain::height_t &h = field[yterrain*m_terrain.size()+xterrain];
+            h = std::max(sim::Terrain::min_height,
+                         std::min(sim::Terrain::max_height,
+                                  h + sampled[y*size+x]));
         }
     }
 }
@@ -528,4 +483,17 @@ void TerraformMode::switch_to_tool_lower()
 void TerraformMode::switch_to_tool_raise()
 {
     m_tool = TerraformTool::RAISE;
+}
+
+void TerraformMode::set_brush_strength(float strength)
+{
+    m_brush_frontend.set_brush_strength(strength);
+}
+
+void TerraformMode::set_brush_size(float size)
+{
+    if (size < 0 || size > 1024) {
+        return;
+    }
+    m_brush_frontend.set_brush_size(std::round(size));
 }
