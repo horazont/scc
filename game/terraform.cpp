@@ -243,7 +243,8 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
     m_hover_pos = new_pos;
 
     if (event->buttons() & Qt::RightButton) {
-        m_scene->m_camera.controller().boost_rotation(Vector2f(dist[eY], dist[eX]));
+        /* m_scene->m_camera.controller().boost_rotation(Vector2f(dist[eY], dist[eX])); */
+        m_scene->m_camera.controller().set_rot(m_scene->m_camera.controller().rot() + Vector2f(dist[eY], dist[eX])*0.002);
     }
 
     if (m_dragging) {
