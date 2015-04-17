@@ -143,6 +143,9 @@ void TerraformMode::advance(engine::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
     }
+    if (dt > 0.02) {
+        logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
+    }
 }
 
 void TerraformMode::before_gl_sync()
