@@ -58,6 +58,9 @@ void main() {
    float dist = length(lod_viewpoint - world);
 
    vec4 final_position = mats.proj * mats.view * mats.model * vec4(
-               morphed, height+zoffset*dist*0.0001, 1.f);
+               /* morphed, height+zoffset*dist*0.0001, 1.f); */
+               morphed, height, 1.f);
+
+   final_position.z -= zoffset*dist*0.0001;
    gl_Position = final_position;
 }
