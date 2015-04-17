@@ -17,6 +17,7 @@ set(GAME_SRC
   mainmenu.cpp
   mode.cpp
   quickglscene.cpp
+  terraform/brush.cpp
   terraform/terraform.cpp
   )
 
