@@ -164,7 +164,7 @@ Item {
 
                 Label {
                     id: brushSizeValueLabel
-                    text: sliderHorizontal1.value
+                    text: brushSizeSlider.value
 
                     horizontalAlignment: Text.AlignRight
 
@@ -177,7 +177,7 @@ Item {
                 }
 
                 Slider {
-                    id: sliderHorizontal1
+                    id: brushSizeSlider
                     minimumValue: 1
                     maximumValue: 1024
                     stepSize: 1
@@ -206,7 +206,7 @@ Item {
 
                 Label {
                     id: brushStrengthValueLabel
-                    text: sliderHorizontal2.value
+                    text: brushStrengthSlider.value
 
                     horizontalAlignment: Text.AlignRight
 
@@ -219,7 +219,7 @@ Item {
                 }
 
                 Slider {
-                    id: sliderHorizontal2
+                    id: brushStrengthSlider
 
                     Layout.row: 5
                     Layout.column: 1
