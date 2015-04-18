@@ -386,7 +386,7 @@ void TerraformMode::apply_tool(const unsigned int x0,
         }
         case TerraformTool::LOWER:
         {
-            tool_lower(*heightmap, r);
+            tool_lower(*heightmap, x0-brush_radius, y0-brush_radius);
             break;
         }
         }
@@ -443,11 +443,36 @@ void TerraformMode::tool_raise(sim::Terrain::HeightField &field,
 }
 
 void TerraformMode::tool_lower(sim::Terrain::HeightField &field,
-                               const sim::TerrainRect &r)
+                               const float x0,
+                               const float y0)
 {
-    for (unsigned int y = r.y0(); y < r.y1(); y++) {
-        for (unsigned int x = r.x0(); x < r.x1(); x++) {
-            field[y*m_terrain.size()+x] -= 1;
+    const int terrain_xbase= std::round(x0);
+    const int terrain_ybase = std::round(y0);
+    const unsigned int size = m_brush_frontend.brush_size();
+
+    const std::vector<Brush::density_t> &sampled = m_brush_frontend.sampled();
+
+    for (int y = 0; y < size; y++) {
+        const int yterrain = y + terrain_ybase;
+        if (yterrain < 0) {
+            continue;
+        }
+        if (yterrain >= (int)m_terrain.size()) {
+            break;
+        }
+        for (int x = 0; x < size; x++) {
+            const int xterrain = x + terrain_xbase;
+            if (xterrain < 0) {
+                continue;
+            }
+            if (xterrain >= (int)m_terrain.size()) {
+                break;
+            }
+
+            sim::Terrain::height_t &h = field[yterrain*m_terrain.size()+xterrain];
+            h = std::max(sim::Terrain::min_height,
+                         std::min(sim::Terrain::max_height,
+                                  h - sampled[y*size+x]));
         }
     }
 }
