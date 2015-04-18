@@ -110,7 +110,7 @@ void main()
     const float roughness = 0.8f;
 
 
-    float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*5.f;
+    float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;
 
     float steepness = blend_with_texture(terraindata.tc0/3.f, base_steepness);
 
