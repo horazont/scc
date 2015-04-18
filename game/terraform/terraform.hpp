@@ -91,7 +91,8 @@ protected:
                     const float x0,
                     const float y0);
     void tool_lower(sim::Terrain::HeightField &field,
-                    const sim::TerrainRect &r);
+                    const float x0,
+                    const float y0);
 
 public slots:
     void advance(engine::TimeInterval dt);
