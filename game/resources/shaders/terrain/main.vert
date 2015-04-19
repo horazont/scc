@@ -9,14 +9,13 @@ layout(std140) uniform MatrixBlock {
 
 uniform float chunk_size;
 uniform vec2 chunk_translation;
-uniform vec2 heightmap_base;
 uniform sampler2D heightmap;
 uniform sampler2D normalt;
 uniform vec3 lod_viewpoint;
 uniform float zoffset;
 uniform float heightmap_factor/*  = 0.03076923076923077; */;
 
-const float grid_size = 64;
+const float grid_size = 135;
 uniform float scale_to_radius/* = 1.984375; */;
 
 in vec2 position;
@@ -45,10 +44,11 @@ float morph_k(vec3 viewpoint, vec2 world_pos)
 void main() {
     vec2 model_vertex = position * chunk_size + chunk_translation;
     vec2 morphed = morph_vertex(position, model_vertex, morph_k(lod_viewpoint, model_vertex));
-    vec2 morphed_object = (morphed - chunk_translation) / chunk_size;
+    /* vec2 morphed_object = (morphed - chunk_translation) / chunk_size; */
     tc0 = morphed.xy / 5.0;
 
-    vec2 lookup_coord = heightmap_base + morphed_object.xy * heightmap_factor;
+    vec2 lookup_coord = (morphed + 0.5) * heightmap_factor;
+    /* tc0 = lookup_coord; */
     float height = textureLod(heightmap, lookup_coord, 0).r;
     normal = textureLod(normalt, lookup_coord, 0).xyz;
 

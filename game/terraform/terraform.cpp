@@ -52,8 +52,8 @@ void load_image_to_texture(const QString &url)
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(4097),
-    m_terrain_interface(m_terrain, 65),
+    m_terrain(1081),
+    m_terrain_interface(m_terrain, 136),
     m_dragging(false),
     m_tool(TerraformTool::RAISE),
     m_brush_changed(true)
@@ -293,7 +293,7 @@ void TerraformMode::prepare_scene()
 
     scene.m_camera.controller().set_distance(50.0);
     scene.m_camera.controller().set_rot(Vector2f(-45, 0));
-    scene.m_camera.controller().set_pos(Vector3f(0, 0, 0.));
+    scene.m_camera.controller().set_pos(Vector3f(0, 0, 20));
     scene.m_camera.set_fovy(60. / 180. * M_PI);
     scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
@@ -315,7 +315,7 @@ void TerraformMode::prepare_scene()
     engine::raise_last_gl_error();
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
-                m_terrain_interface, 32);
+                m_terrain_interface);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
