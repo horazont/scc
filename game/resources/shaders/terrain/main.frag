@@ -8,6 +8,8 @@ in TerrainData {
     vec3 normal;
 } terraindata;
 
+uniform vec3 lod_viewpoint;
+
 uniform sampler2D grass;
 uniform sampler2D rock;
 uniform sampler2D blend;
@@ -102,7 +104,7 @@ float blend_with_texture(vec2 texcoord, float value)
 
 void main()
 {
-    vec3 eyedir = normalize(vec3(-1, -1, 1));
+    vec3 eyedir = normalize(lod_viewpoint - terraindata.world);
     vec3 normal = normalize(terraindata.normal);
     float nDotV = max(1e-5, dot(normal, eyedir));
 
