@@ -68,6 +68,14 @@ public:
 };
 
 
+class ParzenBrush: public Brush
+{
+public:
+    density_t sample(float x, float y) const override;
+
+};
+
+
 class BrushFrontend
 {
 public:

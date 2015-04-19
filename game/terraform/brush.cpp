@@ -66,6 +66,21 @@ Brush::density_t GaussBrush::sample(float x, float y) const
 }
 
 
+Brush::density_t ParzenBrush::sample(float x, float y) const
+{
+    const float r = std::sqrt(sqr(x)+sqr(y));
+
+    if (r > 1) {
+        return 0;
+    } else if (r >= 0.5) {
+        return 2.f*pow(1.f-r, 3.f);
+    } else {
+        /* return 1.f-6.f*(pow(r, 2.f)*(1.f+r)); */
+        return 1.f-6.f*pow(r, 2.f)+6.f*pow(r, 3.f);
+    }
+}
+
+
 BrushFrontend::BrushFrontend():
     m_curr_brush(nullptr),
     m_brush_size(1),

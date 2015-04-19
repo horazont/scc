@@ -56,7 +56,7 @@ private:
     Vector3f m_drag_camera_pos;
     Vector3f m_hover_world;
 
-    GaussBrush m_test_brush;
+    ParzenBrush m_test_brush;
     BrushFrontend m_brush_frontend;
     bool m_brush_changed;
 
