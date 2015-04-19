@@ -19,6 +19,7 @@ set(GAME_SRC
   quickglscene.cpp
   terraform/brush.cpp
   terraform/terraform.cpp
+  terraform/terratool.cpp
   )
 
 set(GAME_HEADERS

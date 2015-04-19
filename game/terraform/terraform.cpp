@@ -55,8 +55,11 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_terrain(1081),
     m_terrain_interface(m_terrain, 136),
     m_dragging(false),
-    m_tool(TerraformTool::RAISE),
-    m_brush_changed(true)
+    m_brush_changed(true),
+    m_tool_backend(m_brush_frontend, m_terrain),
+    m_tool_raise_lower(m_tool_backend),
+    m_tool_level(m_tool_backend),
+    m_curr_tool(&m_tool_raise_lower)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -349,130 +352,8 @@ void TerraformMode::prepare_scene()
 void TerraformMode::apply_tool(const unsigned int x0,
                                const unsigned int y0)
 {
-    const float brush_radius = m_brush_frontend.brush_size()/2.f;
-    sim::TerrainRect r(x0, y0, std::ceil(x0+brush_radius), std::ceil(y0+brush_radius));
-    if (x0 < std::ceil(brush_radius)) {
-        r.set_x0(0);
-    } else {
-        r.set_x0(x0-std::ceil(brush_radius));
-    }
-    if (y0 < std::ceil(brush_radius)) {
-        r.set_y0(0);
-    } else {
-        r.set_y0(y0-std::ceil(brush_radius));
-    }
-    if (r.x1() > m_terrain.size()) {
-        r.set_x1(m_terrain.size());
-    }
-    if (r.y1() > m_terrain.size()) {
-        r.set_y1(m_terrain.size());
-    }
-
-    {
-        sim::Terrain::HeightField *heightmap = nullptr;
-        auto lock = m_terrain.writable_field(heightmap);
-
-        switch (m_tool) {
-        case TerraformTool::FLATTEN:
-        {
-            tool_flatten(*heightmap, r, x0, y0);
-            break;
-        }
-        case TerraformTool::RAISE:
-        {
-            tool_raise(*heightmap, x0-brush_radius, y0-brush_radius);
-            break;
-        }
-        case TerraformTool::LOWER:
-        {
-            tool_lower(*heightmap, x0-brush_radius, y0-brush_radius);
-            break;
-        }
-        }
-    }
-    m_terrain.notify_heightmap_changed(r);
-}
-
-void TerraformMode::tool_flatten(sim::Terrain::HeightField &field,
-                                 const sim::TerrainRect &r,
-                                 const unsigned int x0,
-                                 const unsigned int y0)
-{
-    const sim::Terrain::height_t height = field[y0*m_terrain.size()+x0];
-    for (unsigned int y = r.y0(); y < r.y1(); y++) {
-        for (unsigned int x = r.x0(); x < r.x1(); x++) {
-            field[y*m_terrain.size()+x] = height;
-        }
-    }
-}
-
-void TerraformMode::tool_raise(sim::Terrain::HeightField &field,
-                               const float x0,
-                               const float y0)
-{
-    const int terrain_xbase= std::round(x0);
-    const int terrain_ybase = std::round(y0);
-    const unsigned int size = m_brush_frontend.brush_size();
-
-    const std::vector<Brush::density_t> &sampled = m_brush_frontend.sampled();
-
-    for (int y = 0; y < size; y++) {
-        const int yterrain = y + terrain_ybase;
-        if (yterrain < 0) {
-            continue;
-        }
-        if (yterrain >= (int)m_terrain.size()) {
-            break;
-        }
-        for (int x = 0; x < size; x++) {
-            const int xterrain = x + terrain_xbase;
-            if (xterrain < 0) {
-                continue;
-            }
-            if (xterrain >= (int)m_terrain.size()) {
-                break;
-            }
-
-            sim::Terrain::height_t &h = field[yterrain*m_terrain.size()+xterrain];
-            h = std::max(sim::Terrain::min_height,
-                         std::min(sim::Terrain::max_height,
-                                  h + sampled[y*size+x]));
-        }
-    }
-}
-
-void TerraformMode::tool_lower(sim::Terrain::HeightField &field,
-                               const float x0,
-                               const float y0)
-{
-    const int terrain_xbase= std::round(x0);
-    const int terrain_ybase = std::round(y0);
-    const unsigned int size = m_brush_frontend.brush_size();
-
-    const std::vector<Brush::density_t> &sampled = m_brush_frontend.sampled();
-
-    for (int y = 0; y < size; y++) {
-        const int yterrain = y + terrain_ybase;
-        if (yterrain < 0) {
-            continue;
-        }
-        if (yterrain >= (int)m_terrain.size()) {
-            break;
-        }
-        for (int x = 0; x < size; x++) {
-            const int xterrain = x + terrain_xbase;
-            if (xterrain < 0) {
-                continue;
-            }
-            if (xterrain >= (int)m_terrain.size()) {
-                break;
-            }
-
-            sim::Terrain::height_t &h = field[yterrain*m_terrain.size()+xterrain];
-            h = std::max(sim::Terrain::min_height,
-                         std::min(sim::Terrain::max_height,
-                                  h - sampled[y*size+x]));
-        }
+    if (m_curr_tool) {
+        m_curr_tool->primary(x0, y0);
     }
 }
 
@@ -505,17 +386,12 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
 void TerraformMode::switch_to_tool_flatten()
 {
-    m_tool = TerraformTool::FLATTEN;
+    m_curr_tool = &m_tool_level;
 }
 
-void TerraformMode::switch_to_tool_lower()
+void TerraformMode::switch_to_tool_raise_lower()
 {
-    m_tool = TerraformTool::LOWER;
-}
-
-void TerraformMode::switch_to_tool_raise()
-{
-    m_tool = TerraformTool::RAISE;
+    m_curr_tool = &m_tool_raise_lower;
 }
 
 void TerraformMode::set_brush_strength(float strength)

@@ -45,28 +45,15 @@ Item {
 
             ToolButton {
                 id: tool_raise
-                objectName: "tool_raise"
+                objectName: "tool_raise_lower"
                 implicitWidth: 48
                 implicitHeight: 48
-                text: "Rse"
+                text: "R/L"
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.leftMargin: 0
                 style: myToolStyle
-                onClicked: Terraform.switch_to_tool_raise()
-            }
-
-            ToolButton {
-                id: tool_lower
-                objectName: "tool_lower"
-                implicitWidth: 48
-                implicitHeight: 48
-                text: "Low"
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 0
-                style: myToolStyle
-                onClicked: Terraform.switch_to_tool_lower()
+                onClicked: Terraform.switch_to_tool_raise_lower()
             }
 
             ToolButton {
@@ -74,7 +61,7 @@ Item {
                 objectName: "tool_flatten"
                 implicitWidth: 48
                 implicitHeight: 48
-                text: "Flt"
+                text: "Lvl"
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.leftMargin: 0

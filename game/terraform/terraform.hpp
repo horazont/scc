@@ -15,6 +15,7 @@
 #include "quickglscene.hpp"
 
 #include "terraform/brush.hpp"
+#include "terraform/terratool.hpp"
 
 
 struct TerraformScene
@@ -32,14 +33,6 @@ struct TerraformScene
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
 };
-
-
-enum class TerraformTool {
-    RAISE,
-    LOWER,
-    FLATTEN
-};
-
 
 
 class TerraformMode: public ApplicationMode
@@ -63,11 +56,14 @@ private:
     Vector3f m_drag_camera_pos;
     Vector3f m_hover_world;
 
-    TerraformTool m_tool;
-
     GaussBrush m_test_brush;
     BrushFrontend m_brush_frontend;
     bool m_brush_changed;
+
+    ToolBackend m_tool_backend;
+    TerraRaiseLowerTool m_tool_raise_lower;
+    TerraLevelTool m_tool_level;
+    TerraTool *m_curr_tool;
 
 protected:
     void geometryChanged(const QRectF &newGeometry,
@@ -83,16 +79,6 @@ protected:
 protected:
     void apply_tool(const unsigned int x0,
                     const unsigned int y0);
-    void tool_flatten(sim::Terrain::HeightField &field,
-                      const sim::TerrainRect &r,
-                      const unsigned int x0,
-                      const unsigned int y0);
-    void tool_raise(sim::Terrain::HeightField &field,
-                    const float x0,
-                    const float y0);
-    void tool_lower(sim::Terrain::HeightField &field,
-                    const float x0,
-                    const float y0);
 
 public slots:
     void advance(engine::TimeInterval dt);
@@ -106,9 +92,8 @@ public:
     std::tuple<Vector3f, bool> hittest(const Vector2f viewport);
 
 public:
-    Q_INVOKABLE void switch_to_tool_raise();
-    Q_INVOKABLE void switch_to_tool_lower();
     Q_INVOKABLE void switch_to_tool_flatten();
+    Q_INVOKABLE void switch_to_tool_raise_lower();
 
     Q_INVOKABLE void set_brush_size(float size);
     Q_INVOKABLE void set_brush_strength(float strength);
