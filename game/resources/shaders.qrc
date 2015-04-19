@@ -13,5 +13,7 @@
         <file>shaders/testing/fluid_plane.vert</file>
         <file>shaders/testing/fluid_plane.geom</file>
         <file>shaders/terrain/main.geom</file>
+        <file>shaders/frustum/main.frag</file>
+        <file>shaders/frustum/main.vert</file>
     </qresource>
 </RCC>
