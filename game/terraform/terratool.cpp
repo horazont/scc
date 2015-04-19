@@ -88,7 +88,7 @@ struct lower_tool
     sim::Terrain::height_t paint(sim::Terrain::height_t h,
                                  Brush::density_t brush_density) const
     {
-        return h + brush_density;
+        return h - brush_density;
     }
 };
 
