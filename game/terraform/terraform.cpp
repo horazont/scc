@@ -295,7 +295,7 @@ void TerraformMode::prepare_scene()
     scene.m_camera.controller().set_distance(50.0);
     scene.m_camera.controller().set_rot(Vector2f(-45, 0));
     scene.m_camera.controller().set_pos(Vector3f(0, 0, 0.));
-    /* scene.m_camera.set_fovy(45.); */
+    scene.m_camera.set_fovy(60. / 180. * M_PI);
     scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
 
