@@ -282,9 +282,8 @@ void TerraformMode::prepare_scene()
 
     engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
                 scene.m_window,
-                scene.m_rendergraph.new_scene(
-                    scene.m_scenegraph,
-                    scene.m_camera));
+                scene.m_scenegraph,
+                scene.m_camera);
     scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
 
