@@ -196,6 +196,8 @@ void TerraRaiseLowerTool::secondary(const float x0, const float y0)
 TerraLevelTool::TerraLevelTool(ToolBackend &backend):
     TerraTool(backend)
 {
+    m_has_value = true;
+    m_value_name = "Level";
     m_value = 10.f;
 }
 
@@ -226,7 +228,12 @@ void TerraLevelTool::secondary(const float x0, const float y0)
         return;
     }
 
-    const sim::Terrain::HeightField *field = nullptr;
-    auto lock = m_backend.terrain().readonly_field(field);
-    set_value((*field)[terrainy*m_backend.terrain_size()+terrainx]);
+    float new_height;
+    {
+        const sim::Terrain::HeightField *field = nullptr;
+        auto lock = m_backend.terrain().readonly_field(field);
+        new_height = (*field)[terrainy*m_backend.terrain_size()+terrainx];
+    }
+    set_value(new_height);
+    std::cout << "secondary " << new_height << " " << m_value << std::endl;
 }
