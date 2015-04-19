@@ -35,6 +35,15 @@ struct TerraformScene
 };
 
 
+enum MouseMode
+{
+    MOUSE_IDLE,
+    MOUSE_PAINT,
+    MOUSE_DRAG,
+    MOUSE_ROTATE
+};
+
+
 class TerraformMode: public ApplicationMode
 {
     Q_OBJECT
@@ -50,11 +59,18 @@ private:
     QMetaObject::Connection m_before_gl_sync_conn;
 
     engine::ViewportSize m_viewport_size;
-    Vector2f m_hover_pos;
-    bool m_dragging;
+    Vector2f m_mouse_pos_win;
+
+    MouseMode m_mouse_mode;
+
     Vector3f m_drag_point;
     Vector3f m_drag_camera_pos;
-    Vector3f m_hover_world;
+
+    bool m_paint_secondary;
+
+    bool m_mouse_world_pos_updated;
+    bool m_mouse_world_pos_valid;
+    Vector3f m_mouse_world_pos;
 
     ParzenBrush m_test_brush;
     BrushFrontend m_brush_frontend;
@@ -74,11 +90,10 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
 
-    void prepare_scene();
-
 protected:
-    void apply_tool(const unsigned int x0,
-                    const unsigned int y0);
+    void apply_tool(const float x0, const float y0, bool secondary);
+    void ensure_mouse_world_pos();
+    void prepare_scene();
 
 public slots:
     void advance(engine::TimeInterval dt);

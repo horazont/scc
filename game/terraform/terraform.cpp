@@ -54,7 +54,10 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(1081),
     m_terrain_interface(m_terrain, 136),
-    m_dragging(false),
+    m_mouse_mode(MOUSE_IDLE),
+    m_paint_secondary(false),
+    m_mouse_world_pos_updated(false),
+    m_mouse_world_pos_valid(false),
     m_brush_changed(true),
     m_tool_backend(m_brush_frontend, m_terrain),
     m_tool_raise_lower(m_tool_backend),
@@ -94,6 +97,15 @@ void TerraformMode::advance(engine::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
     }
+    if (m_mouse_mode == MOUSE_PAINT) {
+        ensure_mouse_world_pos();
+        if (m_mouse_world_pos_valid) {
+            apply_tool(m_mouse_world_pos[eX], m_mouse_world_pos[eY],
+                       m_paint_secondary);
+        }
+        // terrain under mouse probably changed
+        m_mouse_world_pos_updated = false;
+    }
     if (dt > 0.02) {
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
     }
@@ -105,6 +117,7 @@ void TerraformMode::before_gl_sync()
     m_scene->m_camera.sync();
 
     Brush *const curr_brush = m_brush_frontend.curr_brush();
+    ensure_mouse_world_pos();
     if (m_brush_changed) {
         if (curr_brush) {
             std::vector<Brush::density_t> buf(65*65, 100);
@@ -117,25 +130,28 @@ void TerraformMode::before_gl_sync()
             m_scene->m_brush->bind();
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 65, 65, GL_RED, GL_FLOAT,
                             buf.data());
-        } else {
-            m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
         }
         m_brush_changed = false;
     }
-    if (curr_brush) {
+    if (curr_brush && m_mouse_world_pos_valid) {
         float brush_radius = m_brush_frontend.brush_size()/2.f;
 
         m_scene->m_overlay->shader().bind();
         glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
-                    m_hover_world[eX], m_hover_world[eY]);
+                    m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
         glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
                     brush_radius);
         m_scene->m_terrain_node->configure_overlay(
                     *m_scene->m_overlay,
-                    sim::TerrainRect(std::max(0.f, std::floor(m_hover_world[eX]-brush_radius)),
-                                     std::max(0.f, std::floor(m_hover_world[eY]-brush_radius)),
-                                     std::ceil(m_hover_world[eX]+brush_radius),
-                                     std::ceil(m_hover_world[eY]+brush_radius)));
+                    sim::TerrainRect(std::max(0.f, std::floor(m_mouse_world_pos[eX]-brush_radius)),
+                                     std::max(0.f, std::floor(m_mouse_world_pos[eY]-brush_radius)),
+                                     std::ceil(m_mouse_world_pos[eX]+brush_radius),
+                                     std::ceil(m_mouse_world_pos[eY]+brush_radius)));
+    } else {
+        m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
+    }
+    if (m_mouse_world_pos_valid) {
+        m_scene->m_pointer_trafo_node->transformation() = translation4(m_mouse_world_pos);
     }
     /*{
         Vector3f pos = m_scene->m_camera.controller().pos();
@@ -174,15 +190,8 @@ void TerraformMode::hoverMoveEvent(QHoverEvent *event)
 
     const Vector2f new_pos = Vector2f(event->pos().x(),
                                       event->pos().y());
-    m_hover_pos = new_pos;
-    Vector3f hit_pos;
-    bool hit;
-    std::tie(hit_pos, hit) = hittest(new_pos);
-    if (hit) {
-        m_hover_world = hit_pos;
-        m_scene->m_pointer_trafo_node->transformation() = translation4(
-                    hit_pos);
-    }
+    m_mouse_pos_win = new_pos;
+    m_mouse_world_pos_updated = false;
 }
 
 void TerraformMode::mouseMoveEvent(QMouseEvent *event)
@@ -193,48 +202,87 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
 
     const Vector2f new_pos = Vector2f(event->pos().x(),
                                       event->pos().y());
-    const Vector2f dist = m_hover_pos - new_pos;
+    const Vector2f dist = m_mouse_pos_win - new_pos;
+    m_mouse_pos_win = new_pos;
+    m_mouse_world_pos_updated = false;
 
-    m_hover_pos = new_pos;
-
-    if (event->buttons() & Qt::RightButton) {
-        /* m_scene->m_camera.controller().boost_rotation(Vector2f(dist[eY], dist[eX])); */
-        m_scene->m_camera.controller().set_rot(m_scene->m_camera.controller().rot() + Vector2f(dist[eY], dist[eX])*0.002);
+    switch (m_mouse_mode) {
+    case MOUSE_ROTATE:
+    {
+        m_scene->m_camera.controller().set_rot(
+                    m_scene->m_camera.controller().rot() + Vector2f(dist[eY], dist[eX])*0.002);
+        break;
     }
-
-    if (m_dragging) {
-        const Ray viewray = m_scene->m_camera.ray(m_hover_pos, m_viewport_size);
+    case MOUSE_DRAG:
+    {
+        const Ray viewray = m_scene->m_camera.ray(m_mouse_pos_win,
+                                                  m_viewport_size);
         PlaneSide side;
         float t;
         std::tie(t, side) = isect_plane_ray(
-                    Plane(Vector3f(0, 0, m_drag_point[eZ]),
-                          Vector3f(0, 0, 1)),
+                    Plane(m_drag_point[eZ], Vector3f(0, 0, 1)),
                     viewray);
-        if (side == PlaneSide::NEGATIVE_NORMAL) {
-            /* qml_gl_logger.log(io::LOG_WARNING,
-                              "drag followup hittest failed, "
-                              "disabling dragging"); */
-            m_dragging = false;
-        } else {
-            const Vector3f now_at = viewray.origin + viewray.direction*t;
-            const Vector3f moved = m_drag_point - now_at;
-            m_scene->m_camera.controller().set_pos(m_drag_camera_pos + moved);
-            m_drag_camera_pos = m_scene->m_camera.controller().pos();
-            m_hover_world = now_at;
-            m_scene->m_pointer_trafo_node->transformation() = translation4(
-                        now_at);
+        if (side != PlaneSide::BOTH) {
+            m_mouse_mode = MOUSE_IDLE;
+            break;
         }
+
+        const Vector3f now_at = viewray.origin + viewray.direction*t;
+        const Vector3f moved = m_drag_point - now_at;
+        m_scene->m_camera.controller().set_pos(m_drag_camera_pos + moved);
+        m_drag_camera_pos = m_scene->m_camera.controller().pos();
+        m_mouse_world_pos = now_at;
+        m_mouse_world_pos_updated = true;
+        m_scene->m_pointer_trafo_node->transformation() = translation4(
+                    now_at);
+        break;
     }
+    default:;
+    }
+
 }
 
 void TerraformMode::mousePressEvent(QMouseEvent *event)
 {
-    m_hover_pos = Vector2f(event->pos().x(), event->pos().y());
-    if (event->button() == Qt::MiddleButton) {
-        std::tie(m_drag_point, m_dragging) = hittest(m_hover_pos);
-        if (m_dragging) {
-            m_drag_camera_pos = m_scene->m_camera.controller().pos();
+    if (m_mouse_mode != MOUSE_IDLE) {
+        return;
+    }
+
+    m_mouse_pos_win = Vector2f(event->pos().x(), event->pos().y());
+    m_mouse_world_pos_updated = false;
+
+    switch (event->button())
+    {
+    case Qt::RightButton:
+    case Qt::LeftButton:
+    {
+        m_paint_secondary = (event->button() == Qt::RightButton);
+        m_mouse_mode = MOUSE_PAINT;
+        ensure_mouse_world_pos();
+        if (m_mouse_world_pos_valid) {
+            apply_tool(m_mouse_world_pos[eX], m_mouse_world_pos[eY],
+                       m_paint_secondary);
         }
+        break;
+    }
+    case Qt::MiddleButton:
+    {
+        if (event->modifiers() & Qt::ShiftModifier) {
+            ensure_mouse_world_pos();
+            if (m_mouse_world_pos_valid) {
+                m_drag_point = m_mouse_world_pos;
+                m_drag_camera_pos = m_scene->m_camera.controller().pos();
+                m_mouse_mode = MOUSE_DRAG;
+            }
+        } else {
+            m_mouse_mode = MOUSE_ROTATE;
+        }
+        break;
+    }
+    default:;
+    }
+
+    /* if (event->button() == Qt::MiddleButton) {
     } else if (event->button() == Qt::LeftButton) {
         Vector3f pos;
         bool hit;
@@ -250,13 +298,29 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
                 apply_tool(x, y);
             }
         }
-    }
+    }*/
 }
 
 void TerraformMode::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::MiddleButton) {
-        m_dragging = false;
+    switch (m_mouse_mode)
+    {
+    case MOUSE_PAINT:
+    {
+        if (event->button() & (Qt::RightButton | Qt::LeftButton)) {
+            m_mouse_mode = MOUSE_IDLE;
+        }
+        break;
+    }
+    case MOUSE_DRAG:
+    case MOUSE_ROTATE:
+    {
+        if (event->button() == Qt::MiddleButton) {
+            m_mouse_mode = MOUSE_IDLE;
+        }
+        break;
+    }
+    default:;
     }
 }
 
@@ -269,6 +333,27 @@ void TerraformMode::wheelEvent(QWheelEvent *event)
     m_scene->m_camera.controller().set_distance(
                 m_scene->m_camera.controller().distance()-event->angleDelta().y()/10.
                 );
+}
+
+void TerraformMode::apply_tool(const float x0,
+                               const float y0,
+                               bool secondary)
+{
+    if (m_curr_tool) {
+        if (secondary) {
+            m_curr_tool->secondary(x0, y0);
+        } else {
+            m_curr_tool->primary(x0, y0);
+        }
+    }
+}
+
+void TerraformMode::ensure_mouse_world_pos()
+{
+    if (m_mouse_world_pos_updated) {
+        return;
+    }
+    std::tie(m_mouse_world_pos, m_mouse_world_pos_valid) = hittest(m_mouse_pos_win);
 }
 
 void TerraformMode::prepare_scene()
@@ -347,14 +432,6 @@ void TerraformMode::prepare_scene()
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
 
-}
-
-void TerraformMode::apply_tool(const unsigned int x0,
-                               const unsigned int y0)
-{
-    if (m_curr_tool) {
-        m_curr_tool->primary(x0, y0);
-    }
 }
 
 void TerraformMode::activate(Application &app, QQuickItem &parent)
