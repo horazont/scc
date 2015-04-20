@@ -45,11 +45,11 @@ int main(int argc, char *argv[])
                 )->set_synchronous(true);
     io::logging().log(io::LOG_INFO) << "Log initialized" << io::submit;
 
-    io::logging().get_logger("engine.gl.array").set_level(io::LOG_WARNING);
-    io::logging().get_logger("engine.render.quadterrain").set_level(io::LOG_WARNING);
-    io::logging().get_logger("engine.gl.vao").set_level(io::LOG_WARNING);
-    io::logging().get_logger("engine.render.scenegraph").set_level(io::LOG_WARNING);
-    io::logging().get_logger("engine.render.camera").set_level(io::LOG_WARNING);
+    io::logging().get_logger("gl.array").set_level(io::LOG_WARNING);
+    io::logging().get_logger("render.quadterrain").set_level(io::LOG_WARNING);
+    io::logging().get_logger("gl.vao").set_level(io::LOG_WARNING);
+    io::logging().get_logger("render.scenegraph").set_level(io::LOG_WARNING);
+    io::logging().get_logger("render.camera").set_level(io::LOG_WARNING);
 
     QApplication qapp(argc, argv);
     io::logging().log(io::LOG_INFO) << "QApplication initialized" << io::submit;
