@@ -106,7 +106,7 @@ struct flatten_tool
     sim::Terrain::height_t paint(sim::Terrain::height_t h,
                                  Brush::density_t brush_density) const
     {
-        return interp_linear(new_value, h, brush_density);
+        return interp_linear(h, new_value, brush_density);
     }
 };
 
