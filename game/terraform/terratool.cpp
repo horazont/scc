@@ -1,3 +1,5 @@
+#define QT_NO_KEYWORDS
+
 #include "terraform/terratool.hpp"
 
 #include "engine/math/algo.hpp"
@@ -235,5 +237,4 @@ void TerraLevelTool::secondary(const float x0, const float y0)
         new_height = (*field)[terrainy*m_backend.terrain_size()+terrainx];
     }
     set_value(new_height);
-    std::cout << "secondary " << new_height << " " << m_value << std::endl;
 }

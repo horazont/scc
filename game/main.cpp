@@ -11,6 +11,8 @@
 #include "quickglscene.hpp"
 #include "application.hpp"
 
+#include "terraform/terraform.hpp"
+
 #include "engine/io/log.hpp"
 
 int main(int argc, char *argv[])
@@ -33,15 +35,18 @@ int main(int argc, char *argv[])
     io::logging().log(io::LOG_DEBUG) << "GLScene registered with QML" << io::submit;
     qmlRegisterType<Application>("SCC", 1, 0, "Application");
     io::logging().log(io::LOG_DEBUG) << "Application registered with QML" << io::submit;
+    qmlRegisterType<BrushList>();
+    io::logging().log(io::LOG_DEBUG) << "BrushList registered with QML" << io::submit;
 
     io::logging().log(io::LOG_INFO) << "QtQuick items registered" << io::submit;
 
-    io::logging().log(io::LOG_INFO) << "Loading resource packs" << io::submit;
+    io::logging().log(io::LOG_INFO) << "Registering resource packs" << io::submit;
     QResource::registerResource("qml.rcc");
     QResource::registerResource("textures.rcc");
     QResource::registerResource("shaders.rcc");
 
     QQmlEngine engine;
+    engine.addImageProvider(BrushListImageProvider::provider_name, BrushList::image_provider());
     io::logging().log(io::LOG_INFO) << "QML engine initialized" << io::submit;
     QQmlComponent component(&engine, QUrl("qrc:/qml/main.qml"));
 

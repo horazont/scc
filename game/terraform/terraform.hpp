@@ -3,7 +3,9 @@
 
 #include "fixups.hpp"
 
+#include <QAbstractItemModel>
 #include <QQmlEngine>
+#include <QQuickImageProvider>
 
 #include "engine/render/camera.hpp"
 #include "engine/render/scenegraph.hpp"
@@ -44,9 +46,104 @@ enum MouseMode
 };
 
 
+class BrushListImageProvider: public QQuickImageProvider
+{
+public:
+    typedef unsigned int ImageID;
+    static const QString provider_name;
+
+public:
+    BrushListImageProvider();
+    ~BrushListImageProvider() override;
+
+private:
+    std::shared_timed_mutex m_images_mutex;
+    ImageID m_image_id_ctr;
+    std::unordered_map<ImageID, std::unique_ptr<QPixmap> > m_images;
+
+public:
+    QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override;
+
+public:
+    ImageID publish_pixmap(std::unique_ptr<QPixmap> &&pixmap);
+    void unpublish_pixmap(ImageID id);
+
+    static QString image_id_to_url(ImageID id);
+
+};
+
+
+class BrushWrapper
+{
+public:
+    static constexpr unsigned int preview_size = 32;
+
+public:
+    BrushWrapper(std::unique_ptr<Brush> &&brush, const QString &display_name = "");
+    ~BrushWrapper();
+
+public:
+    std::unique_ptr<Brush> m_brush;
+    QString m_display_name;
+    BrushListImageProvider::ImageID m_image_id;
+    QString m_image_url;
+
+};
+
+
+class BrushList: public QAbstractItemModel
+{
+    Q_OBJECT
+public:
+    enum BrushListRole {
+        ROLE_DISPLAY_NAME = Qt::UserRole+1,
+        ROLE_IMAGE_URL
+    };
+
+public:
+    BrushList(QObject *parent = nullptr);
+
+private:
+    static BrushListImageProvider *m_image_provider;
+    std::vector<std::unique_ptr<BrushWrapper> > m_brushes;
+
+protected:
+    bool valid_brush_index(const QModelIndex &index) const;
+    BrushWrapper *resolve_index(const QModelIndex &index);
+    const BrushWrapper *resolve_index(const QModelIndex &index) const;
+
+public:
+    int columnCount(const QModelIndex &parent) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+    bool hasChildren(const QModelIndex &parent) const override;
+    QModelIndex index(int row, int column, const QModelIndex &parent) const override;
+    QModelIndex parent(const QModelIndex &child) const override;
+    QHash<int, QByteArray> roleNames() const override;
+    int rowCount(const QModelIndex &parent) const override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role) override;
+    QModelIndex sibling(int row, int column, const QModelIndex &idx) const override;
+
+public:
+    void append(std::unique_ptr<Brush> &&brush, const QString &display_name = "");
+
+    inline const std::vector<std::unique_ptr<BrushWrapper> > &vector() const
+    {
+        return m_brushes;
+    }
+
+public:
+    static BrushListImageProvider *image_provider();
+
+};
+
+
 class TerraformMode: public ApplicationMode
 {
     Q_OBJECT
+
+    Q_PROPERTY(BrushList* brush_list_model READ brush_list_model NOTIFY brush_list_model_changed())
+
 public:
     TerraformMode(QQmlEngine *engine);
 
@@ -81,6 +178,8 @@ private:
     TerraLevelTool m_tool_level;
     TerraTool *m_curr_tool;
 
+    BrushList m_brush_objects;
+
 protected:
     void geometryChanged(const QRectF &newGeometry,
                          const QRectF &oldGeometry) override;
@@ -104,14 +203,19 @@ public:
     void deactivate() override;
 
 public:
+    BrushList *brush_list_model();
     std::tuple<Vector3f, bool> hittest(const Vector2f viewport);
 
 public:
     Q_INVOKABLE void switch_to_tool_flatten();
     Q_INVOKABLE void switch_to_tool_raise_lower();
 
+    Q_INVOKABLE void set_brush(int index);
     Q_INVOKABLE void set_brush_size(float size);
     Q_INVOKABLE void set_brush_strength(float strength);
+
+signals:
+    void brush_list_model_changed();
 
 };
 

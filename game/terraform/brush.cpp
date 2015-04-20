@@ -16,40 +16,29 @@ Brush::~Brush()
 
 }
 
-
-BitmapBrush::BitmapBrush(const unsigned int base_size):
-    m_base_size(base_size),
-    m_pixels(base_size*base_size, 0)
+QImage Brush::preview_image(const unsigned int size) const
 {
-    assert(m_base_size < (unsigned int)std::numeric_limits<int>::max());
+    std::vector<Brush::density_t> brush;
+    preview_buffer(size, brush);
+    return brush_preview_to_black_alpha(brush, size);
 }
 
-BitmapBrush::density_t BitmapBrush::sample(float x, float y) const
+
+void FunctionalBrush::preview_buffer(
+        const unsigned int size,
+        std::vector<Brush::density_t> &dest) const
 {
-    /* std::cout << x << " " << y << " "; */
+    dest.resize(size*size);
+    const float factor = 2./size;
 
-    x = (x + 1.0)*(m_base_size-1) / 2.0;
-    y = (y + 1.0)*(m_base_size-1) / 2.0;
-
-    /* std::cout << x << " " << y << std::endl; */
-
-    int x0 = std::trunc(x);
-    int y0 = std::trunc(y);
-    float xfrac = frac(x);
-    float yfrac = frac(y);
-    assert(x0 >= 0 && x0 < (int)m_base_size && y0 >= 0 && y0 < (int)m_base_size);
-    assert(xfrac == 0 || x0 < (int)m_base_size-1);
-    assert(yfrac == 0 || y0 < (int)m_base_size-1);
-
-    density_t x0y0 = get(x0, y0);
-    density_t x1y0 = get(std::ceil(x0 + xfrac), y0);
-    density_t x0y1 = get(x0, std::ceil(y0 + yfrac));
-    density_t x1y1 = get(std::ceil(x0 + xfrac), std::ceil(y0 + yfrac));
-
-    density_t density_x0 = interp_linear(x0y0, x0y1, yfrac);
-    density_t density_x1 = interp_linear(x1y0, x1y1, yfrac);
-
-    return interp_linear(density_x0, density_x1, xfrac);
+    Brush::density_t *dest_ptr = &dest.front();
+    for (unsigned int y = 0; y < size; y++) {
+        const float yf = y*factor - 1.0f;
+        for (unsigned int x = 0; x < size; x++) {
+            const float xf = x*factor - 1.0f;
+            *dest_ptr++ = sample(xf, yf);
+        }
+    }
 }
 
 
@@ -75,8 +64,19 @@ Brush::density_t ParzenBrush::sample(float x, float y) const
     } else if (r >= 0.5) {
         return 2.f*pow(1.f-r, 3.f);
     } else {
-        /* return 1.f-6.f*(pow(r, 2.f)*(1.f+r)); */
-        return 1.f-6.f*pow(r, 2.f)+6.f*pow(r, 3.f);
+        return 1.f+6.f*(pow(r, 2.f)*(r-1.f));
+    }
+}
+
+
+Brush::density_t CircleBrush::sample(float x, float y) const
+{
+    const float r = std::sqrt(sqr(x)+sqr(y));
+
+    if (r > 1) {
+        return 0;
+    } else {
+        return 1;
     }
 }
 
@@ -84,37 +84,22 @@ Brush::density_t ParzenBrush::sample(float x, float y) const
 BrushFrontend::BrushFrontend():
     m_curr_brush(nullptr),
     m_brush_size(1),
-    m_sampling_valid(false)
+    m_sampled_valid(false)
 {
 
-}
-
-void BrushFrontend::resample()
-{
-    m_sampled.resize(m_brush_size*m_brush_size, 0.);
-    if (!m_curr_brush) {
-        return;
-    }
-
-    const float factor = 2./m_brush_size;
-
-    Brush::density_t *dest_ptr = &m_sampled.front();
-    for (unsigned int y = 0; y < m_brush_size; y++) {
-        const float yf = y*factor - 1.0f;
-        for (unsigned int x = 0; x < m_brush_size; x++) {
-            const float xf = x*factor - 1.0f;
-            *dest_ptr++ = m_curr_brush->sample(xf, yf);
-        }
-    }
 }
 
 const std::vector<Brush::density_t> &BrushFrontend::sampled()
 {
-    if (m_sampling_valid) {
+    if (m_sampled_valid) {
         return m_sampled;
     }
-    resample();
-    m_sampling_valid = true;
+    if (!m_curr_brush) {
+        m_sampled.resize(0);
+        return m_sampled;
+    }
+    m_curr_brush->preview_buffer(m_brush_size, m_sampled);
+    m_sampled_valid = true;
     return m_sampled;
 }
 
@@ -124,7 +109,7 @@ void BrushFrontend::set_brush(Brush *brush)
         return;
     }
     m_curr_brush = brush;
-    m_sampling_valid = false;
+    m_sampled_valid = false;
 }
 
 void BrushFrontend::set_brush_size(unsigned int size)
@@ -133,7 +118,7 @@ void BrushFrontend::set_brush_size(unsigned int size)
         return;
     }
     m_brush_size = size;
-    m_sampling_valid = false;
+    m_sampled_valid = false;
 }
 
 void BrushFrontend::set_brush_strength(float strength)
@@ -141,3 +126,21 @@ void BrushFrontend::set_brush_strength(float strength)
     m_brush_strength = strength;
 }
 
+
+QImage brush_preview_to_black_alpha(const std::vector<Brush::density_t> &buffer,
+                                    const unsigned int size)
+{
+    QImage result(size, size, QImage::Format_ARGB32);
+    uint8_t *bits = result.bits();
+    const Brush::density_t *density_ptr = buffer.data();
+    for (int row = 0; row < (int)size; row++) {
+        for (int col = 0; col < (int)size; col++) {
+            const uint8_t density = std::round(clamp(*density_ptr++, 0.f, 1.f) * 255);
+            *bits++ = 0; // R
+            *bits++ = 0; // G
+            *bits++ = 0; // B
+            *bits++ = density; // alpha
+        }
+    }
+    return result;
+}

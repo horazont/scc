@@ -114,23 +114,23 @@ Item {
         }
     }
 
-
     Item {
         id: brushBoxItem
         anchors.bottom: tools1.top
         anchors.left: tools1.left
-        anchors.leftMargin: 8;
-        height: 200
+        anchors.leftMargin: 4;
+        height: 300
         width: 200
 
-        Item {
+        Rectangle {
             anchors.fill: parent;
+
+            color: Qt.rgba(1, 1, 1, 0.8);
 
             GridLayout {
                 id: grid
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
+                anchors.fill: parent
+                anchors.margins: 4;
                 columns: 2
 
                 Label {
@@ -224,6 +224,71 @@ Item {
                     value: 1.0
 
                     onValueChanged: Terraform.set_brush_strength(value)
+                }
+
+                Label {
+                    Layout.row: 6
+                    Layout.column: 1
+
+                    text: qsTr("Brush type")
+                }
+
+                Label {
+                    Layout.row: 6
+                    Layout.column: 2
+
+                    Layout.fillWidth: true
+
+                    text: brushList.currentItem.name
+                }
+
+                GridView {
+                    id: brushList
+
+                    Layout.row: 7
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    Layout.column: 1
+                    Layout.columnSpan: 2
+
+                    cellHeight: 34
+                    cellWidth: 34
+
+                    clip: true
+
+                    model: Terraform.brush_list_model
+
+                    focus: true
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Qt.rgba(1, 1, 1, 1)
+                        z: -1
+                    }
+
+                    delegate: MouseArea {
+                        height: 34
+                        width: 34
+
+                        property string name
+                        name: display_name
+
+                        Image {
+                            anchors.fill: parent;
+                            anchors.margins: 1;
+                            source: image_url
+                            sourceSize: "32x32"
+                        }
+                        onClicked: brushList.currentIndex = index
+                    }
+
+                    highlight: Rectangle {
+                        color: Qt.rgba(1, 0.9, 0.8, 1.0);
+                    }
+                    highlightFollowsCurrentItem: true
+                    highlightMoveDuration: 0
+                    onCurrentIndexChanged: Terraform.set_brush(currentIndex)
                 }
             }
         }

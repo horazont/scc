@@ -50,6 +50,266 @@ void load_image_to_texture(const QString &url)
 }
 
 
+std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
+{
+    if (index.isValid()) {
+        return stream << "QModelIndex(" << index.row() << ", " << index.column() << ")";
+    }
+    return stream << "QModelIndex()";
+}
+
+
+BrushListImageProvider::BrushListImageProvider():
+    QQuickImageProvider(QQmlImageProviderBase::Pixmap),
+    m_image_id_ctr(0)
+{
+
+}
+
+BrushListImageProvider::~BrushListImageProvider()
+{
+    std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
+    m_images.clear();
+}
+
+QPixmap BrushListImageProvider::requestPixmap(
+        const QString &id,
+        QSize *size,
+        const QSize &requestedSize)
+{
+    std::cout << "requestPixmap(" << id.toStdString() << ", <size>, <requestedSize>)" << std::endl;
+    bool ok = false;
+    ImageID image_id = id.toUInt(&ok);
+    if (!ok) {
+        return QPixmap();
+    }
+
+    std::shared_lock<std::shared_timed_mutex> lock(m_images_mutex);
+    auto iter = m_images.find(image_id);
+    if (iter == m_images.end()) {
+        return QPixmap();
+    }
+
+    QPixmap *pixmap = iter->second.get();
+    *size = pixmap->size();
+    if (requestedSize.isValid()) {
+        QPixmap result = pixmap->scaled(requestedSize);
+        return result;
+    }
+    return *pixmap;
+}
+
+BrushListImageProvider::ImageID BrushListImageProvider::publish_pixmap(
+        std::unique_ptr<QPixmap> &&pixmap)
+{
+    ImageID id;
+    {
+        std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
+        id = m_image_id_ctr++;
+        m_images.emplace(id, std::move(pixmap));
+    }
+    return id;
+}
+
+void BrushListImageProvider::unpublish_pixmap(ImageID id)
+{
+    std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
+    auto iter = m_images.find(id);
+    if (iter == m_images.end()) {
+        return;
+    }
+    m_images.erase(iter);
+}
+
+QString BrushListImageProvider::image_id_to_url(ImageID id)
+{
+    return "image://" + provider_name + "/" + QString::number(id);
+}
+
+
+BrushWrapper::BrushWrapper(std::unique_ptr<Brush> &&brush,
+                           const QString &display_name):
+    m_brush(std::move(brush)),
+    m_display_name(display_name),
+    m_image_id(BrushList::image_provider()->publish_pixmap(
+                   std::unique_ptr<QPixmap>(new QPixmap(QPixmap::fromImage(m_brush->preview_image(preview_size)))))),
+    m_image_url(BrushListImageProvider::image_id_to_url(m_image_id))
+{
+
+}
+
+BrushWrapper::~BrushWrapper()
+{
+    BrushList::image_provider()->unpublish_pixmap(m_image_id);
+}
+
+
+BrushList::BrushList(QObject *parent):
+    QAbstractItemModel(parent)
+{
+
+}
+
+bool BrushList::valid_brush_index(const QModelIndex &index) const
+{
+    return (index.isValid()
+            && index.row() < (int)m_brushes.size()
+            && index.row() >= 0
+            && index.column() == 0);
+}
+
+BrushWrapper *BrushList::resolve_index(const QModelIndex &index)
+{
+    if (!valid_brush_index(index)) {
+        return nullptr;
+    }
+    return m_brushes[index.row()].get();
+}
+
+const BrushWrapper *BrushList::resolve_index(const QModelIndex &index) const
+{
+    if (!valid_brush_index(index)) {
+        return nullptr;
+    }
+    return m_brushes[index.row()].get();
+}
+
+int BrushList::columnCount(const QModelIndex &parent) const
+{
+    std::cout << "columnCount(" << parent << ")" << std::endl;
+    if (!valid_brush_index(parent)) {
+        return 0;
+    }
+    return 1;
+}
+
+QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) const
+{
+    std::cout << "data(" << index << ", " << role << ")" << std::endl;
+    const BrushWrapper *brush = resolve_index(index);
+    if (!brush) {
+        return QVariant();
+    }
+
+    switch (role) {
+    case ROLE_DISPLAY_NAME:
+    {
+        return brush->m_display_name;
+    }
+    case ROLE_IMAGE_URL:
+    {
+        return brush->m_image_url;
+    }
+    default: return QVariant();
+    }
+}
+
+Qt::ItemFlags BrushList::flags(const QModelIndex &index) const
+{
+    std::cout << "flags(" << index << ")" << std::endl;
+    if (!valid_brush_index(index)) {
+        return 0;
+    }
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+}
+
+bool BrushList::hasChildren(const QModelIndex &parent) const
+{
+    std::cout << "hasChildren(" << parent << ")" << std::endl;
+    if (!parent.isValid()) {
+        return true;
+    }
+    return false;
+}
+
+QModelIndex BrushList::index(int row, int column, const QModelIndex &parent) const
+{
+    std::cout << "index(" << row << ", " << column << ", " << parent << ")" << std::endl;
+    if (parent.isValid()) {
+        return QModelIndex();
+    }
+    if (row >= 0 && row < (int)m_brushes.size() && column == 0) {
+        return createIndex(row, column, nullptr);
+    }
+    return QModelIndex();
+}
+
+QModelIndex BrushList::parent(const QModelIndex &child) const
+{
+    std::cout << "parent(" << child << ")" << std::endl;
+    return QModelIndex();
+}
+
+QHash<int, QByteArray> BrushList::roleNames() const
+{
+    std::cout << "roleNames()" << std::endl;
+    QHash<int, QByteArray> result;
+    result[ROLE_DISPLAY_NAME] = "display_name";
+    result[ROLE_IMAGE_URL] = "image_url";
+    return result;
+}
+
+int BrushList::rowCount(const QModelIndex &parent) const
+{
+    std::cout << "rowCount(" << parent << ")";
+    if (parent.isValid()) {
+        std::cout << " = 0" << std::endl;
+        return 0;
+    }
+    int result = m_brushes.size();
+    std::cout << " = " << result << std::endl;
+    return result;
+}
+
+bool BrushList::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    std::cout << "setData(" << index << ", <QVariant>, " << role << ")" << std::endl;
+
+    BrushWrapper *brush = resolve_index(index);
+    if (!brush) {
+        return false;
+    }
+
+    switch (role)
+    {
+    case ROLE_DISPLAY_NAME:
+    {
+        if (value.canConvert<QString>()) {
+            brush->m_display_name = value.toString();
+
+            QVector<int> roles;
+            roles.append(role);
+            dataChanged(index, index, roles);
+            return true;
+        }
+        break;
+    }
+    }
+    return false;
+}
+
+QModelIndex BrushList::sibling(int row, int column, const QModelIndex &idx) const
+{
+    std::cout << "sibling(" << row << ", " << column << ", " << idx << ")" << std::endl;
+    if (!valid_brush_index(idx)) {
+        return QModelIndex();
+    }
+    return index(row, column, QModelIndex());
+}
+
+void BrushList::append(std::unique_ptr<Brush> &&brush, const QString &display_name)
+{
+    beginInsertRows(QModelIndex(), m_brushes.size(), m_brushes.size());
+    m_brushes.emplace_back(new BrushWrapper(std::move(brush), display_name));
+    endInsertRows();
+}
+
+BrushListImageProvider *BrushList::image_provider()
+{
+    return m_image_provider;
+}
+
+
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_terrain(1081),
@@ -62,7 +322,8 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_tool_backend(m_brush_frontend, m_terrain),
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
-    m_curr_tool(&m_tool_raise_lower)
+    m_curr_tool(&m_tool_raise_lower),
+    m_brush_objects(this)
 {
     setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -89,6 +350,9 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
 
     m_brush_frontend.set_brush(&m_test_brush);
     m_brush_frontend.set_brush_size(32);
+
+    m_brush_objects.append(std::unique_ptr<Brush>(new ParzenBrush()), "Parzen");
+    m_brush_objects.append(std::unique_ptr<Brush>(new CircleBrush()), "Circle");
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -120,15 +384,10 @@ void TerraformMode::before_gl_sync()
     ensure_mouse_world_pos();
     if (m_brush_changed) {
         if (curr_brush) {
-            std::vector<Brush::density_t> buf(65*65, 100);
-            const float scale = 1./32;
-            for (int y = -32; y <= 32; y++) {
-                for (int x = -32; x <= 32; x++) {
-                    buf[(y+32)*65 + (x+32)] = curr_brush->sample(x*scale, y*scale);
-                }
-            }
+            std::vector<Brush::density_t> buf(129*129);
+            curr_brush->preview_buffer(129, buf);
             m_scene->m_brush->bind();
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 65, 65, GL_RED, GL_FLOAT,
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 129, 129, GL_RED, GL_FLOAT,
                             buf.data());
         }
         m_brush_changed = false;
@@ -167,7 +426,6 @@ void TerraformMode::before_gl_sync()
                     ));
     }*/
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
-    const QSize size = window()->size() * window()->devicePixelRatio();
 }
 
 void TerraformMode::geometryChanged(const QRectF &oldSize,
@@ -419,7 +677,7 @@ void TerraformMode::prepare_scene()
     scene.m_terrain_node->configure_overlay(*scene.m_overlay, sim::TerrainRect(70, 70, 250, 250));
 
     scene.m_brush = &scene.m_resources.emplace<engine::Texture2D>(
-                "textures/brush", GL_R32F, 65, 65, GL_RED, GL_FLOAT);
+                "textures/brush", GL_R32F, 129, 129, GL_RED, GL_FLOAT);
     engine::raise_last_gl_error();
     scene.m_brush->bind();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -451,6 +709,12 @@ void TerraformMode::deactivate()
     ApplicationMode::deactivate();
 }
 
+BrushList *TerraformMode::brush_list_model()
+{
+    std::cout << "TerraformMode::brush_list_model()" << std::endl;
+    return &m_brush_objects;
+}
+
 std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 {
     if (!m_scene) {
@@ -471,6 +735,16 @@ void TerraformMode::switch_to_tool_raise_lower()
     m_curr_tool = &m_tool_raise_lower;
 }
 
+void TerraformMode::set_brush(int index)
+{
+    std::cout << index << std::endl;
+    if (index < 0 || index >= (int)m_brush_objects.vector().size()) {
+        return;
+    }
+    m_brush_frontend.set_brush(m_brush_objects.vector()[index]->m_brush.get());
+    m_brush_changed = true;
+}
+
 void TerraformMode::set_brush_strength(float strength)
 {
     m_brush_frontend.set_brush_strength(strength);
@@ -483,3 +757,8 @@ void TerraformMode::set_brush_size(float size)
     }
     m_brush_frontend.set_brush_size(std::round(size));
 }
+
+
+const QString BrushListImageProvider::provider_name = "brush_previews";
+// QQmlEngine will take ownership of the pointer
+BrushListImageProvider *BrushList::m_image_provider = new BrushListImageProvider();
