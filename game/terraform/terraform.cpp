@@ -77,7 +77,6 @@ QPixmap BrushListImageProvider::requestPixmap(
         QSize *size,
         const QSize &requestedSize)
 {
-    std::cout << "requestPixmap(" << id.toStdString() << ", <size>, <requestedSize>)" << std::endl;
     bool ok = false;
     ImageID image_id = id.toUInt(&ok);
     if (!ok) {
@@ -176,7 +175,6 @@ const BrushWrapper *BrushList::resolve_index(const QModelIndex &index) const
 
 int BrushList::columnCount(const QModelIndex &parent) const
 {
-    std::cout << "columnCount(" << parent << ")" << std::endl;
     if (!valid_brush_index(parent)) {
         return 0;
     }
@@ -185,7 +183,6 @@ int BrushList::columnCount(const QModelIndex &parent) const
 
 QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) const
 {
-    std::cout << "data(" << index << ", " << role << ")" << std::endl;
     const BrushWrapper *brush = resolve_index(index);
     if (!brush) {
         return QVariant();
@@ -206,7 +203,6 @@ QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) c
 
 Qt::ItemFlags BrushList::flags(const QModelIndex &index) const
 {
-    std::cout << "flags(" << index << ")" << std::endl;
     if (!valid_brush_index(index)) {
         return 0;
     }
@@ -215,7 +211,6 @@ Qt::ItemFlags BrushList::flags(const QModelIndex &index) const
 
 bool BrushList::hasChildren(const QModelIndex &parent) const
 {
-    std::cout << "hasChildren(" << parent << ")" << std::endl;
     if (!parent.isValid()) {
         return true;
     }
@@ -224,7 +219,6 @@ bool BrushList::hasChildren(const QModelIndex &parent) const
 
 QModelIndex BrushList::index(int row, int column, const QModelIndex &parent) const
 {
-    std::cout << "index(" << row << ", " << column << ", " << parent << ")" << std::endl;
     if (parent.isValid()) {
         return QModelIndex();
     }
@@ -236,13 +230,11 @@ QModelIndex BrushList::index(int row, int column, const QModelIndex &parent) con
 
 QModelIndex BrushList::parent(const QModelIndex &child) const
 {
-    std::cout << "parent(" << child << ")" << std::endl;
     return QModelIndex();
 }
 
 QHash<int, QByteArray> BrushList::roleNames() const
 {
-    std::cout << "roleNames()" << std::endl;
     QHash<int, QByteArray> result;
     result[ROLE_DISPLAY_NAME] = "display_name";
     result[ROLE_IMAGE_URL] = "image_url";
@@ -251,20 +243,15 @@ QHash<int, QByteArray> BrushList::roleNames() const
 
 int BrushList::rowCount(const QModelIndex &parent) const
 {
-    std::cout << "rowCount(" << parent << ")";
     if (parent.isValid()) {
-        std::cout << " = 0" << std::endl;
         return 0;
     }
     int result = m_brushes.size();
-    std::cout << " = " << result << std::endl;
     return result;
 }
 
 bool BrushList::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    std::cout << "setData(" << index << ", <QVariant>, " << role << ")" << std::endl;
-
     BrushWrapper *brush = resolve_index(index);
     if (!brush) {
         return false;
@@ -290,7 +277,6 @@ bool BrushList::setData(const QModelIndex &index, const QVariant &value, int rol
 
 QModelIndex BrushList::sibling(int row, int column, const QModelIndex &idx) const
 {
-    std::cout << "sibling(" << row << ", " << column << ", " << idx << ")" << std::endl;
     if (!valid_brush_index(idx)) {
         return QModelIndex();
     }
@@ -438,7 +424,6 @@ void TerraformMode::geometryChanged(const QRectF &oldSize,
                                     const QRectF &newSize)
 {
     QQuickItem::geometryChanged(oldSize, newSize);
-    std::cout << "viewport changed" << std::endl;
     const QSize size = window()->size() * window()->devicePixelRatio();
     m_viewport_size = engine::ViewportSize(size.width(), size.height());
     if (m_scene) {
@@ -717,7 +702,6 @@ void TerraformMode::deactivate()
 
 BrushList *TerraformMode::brush_list_model()
 {
-    std::cout << "TerraformMode::brush_list_model()" << std::endl;
     return &m_brush_objects;
 }
 
@@ -743,7 +727,6 @@ void TerraformMode::switch_to_tool_raise_lower()
 
 void TerraformMode::set_brush(int index)
 {
-    std::cout << index << std::endl;
     if (index < 0 || index >= (int)m_brush_objects.vector().size()) {
         return;
     }
