@@ -126,6 +126,7 @@ public:
 
 public:
     void append(std::unique_ptr<Brush> &&brush, const QString &display_name = "");
+    void append(const gamedata::PixelBrushDef &brush);
 
     inline const std::vector<std::unique_ptr<BrushWrapper> > &vector() const
     {

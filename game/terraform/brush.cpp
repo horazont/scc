@@ -6,6 +6,8 @@
 #include "engine/math/algo.hpp"
 
 
+static io::Logger &logger = io::logging().get_logger("app.terraform.brush");
+
 Brush::Brush()
 {
 
@@ -78,6 +80,84 @@ Brush::density_t CircleBrush::sample(float x, float y) const
     } else {
         return 1;
     }
+}
+
+
+ImageBrush::ImageBrush(const unsigned int size,
+                       const std::vector<Brush::density_t> &raw):
+    m_size(size),
+    m_raw(raw),
+    m_as_image(size, size, QImage::Format_ARGB32)
+{
+    update_image();
+}
+
+ImageBrush::ImageBrush(const unsigned int size,
+                       std::vector<Brush::density_t> &&raw):
+    m_size(size),
+    m_raw(std::move(raw)),
+    m_as_image(size, size, QImage::Format_ARGB32)
+{
+    update_image();
+}
+
+ImageBrush::ImageBrush(const gamedata::PixelBrushDef &brush):
+    m_size(brush.size()),
+    m_raw(m_size*m_size),
+    m_as_image()
+{
+    memcpy(&m_raw.front(), brush.data().data(), sizeof(float)*m_size*m_size);
+    update_image();
+}
+
+Brush::density_t ImageBrush::sample(float x, float y) const
+{
+    x = (x + 1.0)*(m_size-1) / 2.0;
+    y = (y + 1.0)*(m_size-1) / 2.0;
+
+    /* std::cout << x << " " << y << std::endl; */
+
+    int x0 = std::trunc(x);
+    int y0 = std::trunc(y);
+    float xfrac = frac(x);
+    float yfrac = frac(y);
+    assert(x0 >= 0 && x0 < (int)m_size && y0 >= 0 && y0 < (int)m_size);
+    assert(xfrac == 0 || x0 < (int)m_size-1);
+    assert(yfrac == 0 || y0 < (int)m_size-1);
+
+    density_t x0y0 = get(x0, y0);
+    density_t x1y0 = get(std::ceil(x0 + xfrac), y0);
+    density_t x0y1 = get(x0, std::ceil(y0 + yfrac));
+    density_t x1y1 = get(std::ceil(x0 + xfrac), std::ceil(y0 + yfrac));
+
+    density_t density_x0 = interp_cos(x0y0, x0y1, yfrac);
+    density_t density_x1 = interp_cos(x1y0, x1y1, yfrac);
+    return interp_cos(density_x0, density_x1, xfrac);
+}
+
+void ImageBrush::update_image()
+{
+    m_as_image = brush_preview_to_black_alpha(m_raw, m_size);
+}
+
+void ImageBrush::preview_buffer(const unsigned int size, std::vector<density_t> &dest) const
+{
+    dest.resize(size*size);
+    const float factor = 2./size;
+
+    Brush::density_t *dest_ptr = &dest.front();
+    for (unsigned int y = 0; y < size; y++) {
+        const float yf = y*factor - 1.0f;
+        for (unsigned int x = 0; x < size; x++) {
+            const float xf = x*factor - 1.0f;
+            *dest_ptr++ = sample(xf, yf);
+        }
+    }
+}
+
+QImage ImageBrush::preview_image(const unsigned int size) const
+{
+    return m_as_image.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 
 

@@ -304,6 +304,12 @@ void BrushList::append(std::unique_ptr<Brush> &&brush, const QString &display_na
     endInsertRows();
 }
 
+void BrushList::append(const gamedata::PixelBrushDef &brush)
+{
+    append(std::unique_ptr<Brush>(new ImageBrush(brush)),
+           QString::fromStdString(brush.display_name()));
+}
+
 BrushListImageProvider *BrushList::image_provider()
 {
     return m_image_provider;

@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     QResource::registerResource("qml.rcc");
     QResource::registerResource("textures.rcc");
     QResource::registerResource("shaders.rcc");
+    QResource::registerResource("brushes.rcc");
 
     QQmlEngine engine;
     engine.addImageProvider(BrushListImageProvider::provider_name, BrushList::image_provider());
