@@ -128,6 +128,8 @@ public:
 };
 
 
+bool load_gimp_brush(const uint8_t *data, const unsigned int size,
+                     gamedata::PixelBrushDef &dest);
 QImage brush_preview_to_black_alpha(const std::vector<Brush::density_t> &buffer,
                                     const unsigned int size);
 

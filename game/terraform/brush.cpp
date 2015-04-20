@@ -1,5 +1,8 @@
 #include "terraform/brush.hpp"
 
+#define _BSD_SOURCE
+#include <endian.h>
+
 #include <cmath>
 #include <limits>
 
@@ -204,6 +207,91 @@ void BrushFrontend::set_brush_size(unsigned int size)
 void BrushFrontend::set_brush_strength(float strength)
 {
     m_brush_strength = strength;
+}
+
+
+bool load_gimp_brush(const uint8_t *data, const unsigned int size,
+                     gamedata::PixelBrushDef &dest)
+{
+#define READ_BE_32_BIT(var, offs) memcpy(&var, &data[offs], sizeof(uint32_t)); var = be32toh(var)
+
+    static constexpr uint32_t magic_number_ref = (('G' << 24) | ('I' << 16) | ('M' << 8)) + 'P';
+
+    if (size < 28) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: file too short: %u",
+                    size);
+        return false;
+    }
+
+    uint32_t magic_number;
+    READ_BE_32_BIT(magic_number, 20);
+    if (magic_number != magic_number_ref) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: magic number mismatch (%u != %u)",
+                    magic_number, magic_number_ref);
+        return false;
+    }
+
+    uint32_t header_size;
+    READ_BE_32_BIT(header_size, 0);
+
+    if (header_size < 28 || header_size > 1024) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: header size out of bounds: %u",
+                    header_size);
+        return false;
+    }
+
+    uint32_t version;
+    READ_BE_32_BIT(version, 4);
+
+    if (version != 2) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: unknown version: %u",
+                    version);
+        return false;
+    }
+
+    uint32_t height, width;
+    READ_BE_32_BIT(height, 8);
+    READ_BE_32_BIT(width, 12);
+
+    if (width != height) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: not square (%u×%u)",
+                    width, height);
+        return false;
+    }
+
+    if (width > 1024 || width == 0) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: size out of bounds (%u)",
+                    width);
+        return false;
+    }
+
+    uint32_t bytes;
+    READ_BE_32_BIT(bytes, 16);
+    if (bytes != 1) {
+        logger.logf(io::LOG_ERROR, "failed to load gbr: not monochrome (bytes=%u)",
+                    bytes);
+        return false;
+    }
+
+    int name_size = header_size - 28;
+    std::string name(name_size, 'X');
+    memcpy(&name.front(), &data[28], name_size);
+
+    logger.logf(io::LOG_DEBUG, "brush name: %s", name.c_str());
+
+    dest.set_display_name(name);
+    dest.set_license("unknown");
+    dest.set_size(width);
+
+    dest.mutable_data()->Clear();
+    dest.mutable_data()->Reserve(width*width);
+    const uint8_t *src_ptr = &data[header_size];
+    for (unsigned int i = 0; i < width*width; i++) {
+        dest.mutable_data()->Add((*src_ptr++) / 255.);
+    }
+
+    return true;
+#undef READ_BE_32_BIT
 }
 
 
