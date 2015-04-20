@@ -16,6 +16,11 @@
 
 static io::Logger &logger = io::logging().get_logger("app.terraform");
 
+static const char *brush_search_paths[] = {
+    ":/brushes/",
+    "/usr/share/gimp/2.0/brushes/",
+    "/usr/share/kde4/apps/krita/brushes/"
+};
 
 void load_image_to_texture(const QString &url)
 {
@@ -345,6 +350,8 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
 
     m_brush_objects.append(std::unique_ptr<Brush>(new ParzenBrush()), "Parzen");
     m_brush_objects.append(std::unique_ptr<Brush>(new CircleBrush()), "Circle");
+
+    load_brushes();
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -603,6 +610,60 @@ void TerraformMode::ensure_mouse_world_pos()
         return;
     }
     std::tie(m_mouse_world_pos, m_mouse_world_pos_valid) = hittest(m_mouse_pos_win);
+}
+
+void TerraformMode::load_brushes()
+{
+    for (unsigned int i = 0;
+         i < sizeof(brush_search_paths)/sizeof(const char*);
+         i++)
+    {
+        logger.logf(io::LOG_DEBUG, "searching for brushes in: %s",
+                    brush_search_paths[i]);
+        load_brushes_from(QDir(brush_search_paths[i]));
+    }
+}
+
+void TerraformMode::load_brushes_from(QDir dir, bool recurse)
+{
+    for (QFileInfo &file: dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot))
+    {
+        if (file.isDir() && recurse) {
+            load_brushes_from(QDir(file.absoluteFilePath()));
+            continue;
+        }
+
+        if (!file.isFile()) {
+            continue;
+        }
+
+        QString filename = file.baseName();
+        gamedata::PixelBrushDef brush;
+        QByteArray data;
+        {
+            QFile f(file.absoluteFilePath());
+            if (!f.open(QIODevice::ReadOnly)) {
+                logger.logf(io::LOG_WARNING,
+                            "failed to open potential brush: %s",
+                            filename.constData());
+                continue;
+            }
+            data = f.readAll();
+        }
+
+        if (brush.ParseFromArray(data.constData(), data.size())) {
+            logger.logf(io::LOG_DEBUG, "loaded PixelBrush from %s",
+                        filename.toStdString().c_str());
+            m_brush_objects.append(brush);
+        } else if (load_gimp_brush((const uint8_t*)data.constData(), data.size(), brush)) {
+            logger.logf(io::LOG_DEBUG, "loaded gimp brush from %s",
+                        filename.toStdString().c_str());
+            m_brush_objects.append(brush);
+        } else {
+            logger.logf(io::LOG_WARNING, "failed to load any brush from %s",
+                        filename.toStdString().c_str());
+        }
+    }
 }
 
 void TerraformMode::prepare_scene()
