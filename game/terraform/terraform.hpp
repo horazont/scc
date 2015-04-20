@@ -70,6 +70,10 @@ enum MouseMode
 };
 
 
+/**
+ * A QQuickImageProvider which is used to provide brush previews to the QML
+ * interface.
+ */
 class BrushListImageProvider: public QQuickImageProvider
 {
 public:
@@ -86,24 +90,65 @@ private:
     std::unordered_map<ImageID, std::unique_ptr<QPixmap> > m_images;
 
 public:
+    /**
+     * Return a published Pixmap, if available.
+     *
+     * @param id The image ID as string (URLs created with image_id_to_url()
+     * produce this correctly).
+     * @param size Original size of the preview
+     * @param requestedSize Size requested by QML
+     * @return Pixmap
+     */
     QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override;
 
 public:
+    /**
+     * Publish a pixmap to the QML interface
+     *
+     * @param pixmap Pixmap to publish. The BrushListImageProvider takes
+     * ownership.
+     *
+     * @return An ID to refer to the published pixmap.
+     */
     ImageID publish_pixmap(std::unique_ptr<QPixmap> &&pixmap);
+
+    /**
+     * Remove a published pixmap.
+     *
+     * @param id The image ID as returned by publish_pixmap().
+     */
     void unpublish_pixmap(ImageID id);
 
+    /**
+     * Convert a image Id to the string which can be used from within QML
+     * to obtain the published image, if the BrushListImageProvider has been
+     * registered as \link provider_name.
+     *
+     * @param id ID to create an URL for
+     * @return URL
+     */
     static QString image_id_to_url(ImageID id);
 
 };
 
 
+/**
+ * Wrap a brush for usage for Qt / QML.
+ */
 class BrushWrapper
 {
 public:
     static constexpr unsigned int preview_size = 32;
 
 public:
-    BrushWrapper(std::unique_ptr<Brush> &&brush, const QString &display_name = "");
+    /**
+     * Wrap and hold a brush for QML.
+     *
+     * @param brush Brush to hold
+     * @param display_name Display name to show in the user interface
+     */
+    BrushWrapper(std::unique_ptr<Brush> &&brush,
+                 const QString &display_name = "");
     ~BrushWrapper();
 
 public:
@@ -115,6 +160,9 @@ public:
 };
 
 
+/**
+ * A Qt list model to show brushes in QML.
+ */
 class BrushList: public QAbstractItemModel
 {
     Q_OBJECT
@@ -149,7 +197,22 @@ public:
     QModelIndex sibling(int row, int column, const QModelIndex &idx) const override;
 
 public:
-    void append(std::unique_ptr<Brush> &&brush, const QString &display_name = "");
+    /**
+     * Create a new BrushWrapper and add it to the list.
+     *
+     * @see BrushWrapper::BrushWrapper
+     *
+     * @param brush
+     * @param display_name
+     */
+    void append(std::unique_ptr<Brush> &&brush,
+                const QString &display_name = "");
+
+    /**
+     * Create and add a new brush
+     *
+     * @param brush Protocol Buffer using a brush.
+     */
     void append(const gamedata::PixelBrushDef &brush);
 
     inline const std::vector<std::unique_ptr<BrushWrapper> > &vector() const

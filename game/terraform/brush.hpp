@@ -34,6 +34,12 @@ the AUTHORS file.
 #include "brush.pb.h"
 
 
+/**
+ * Base class for a brush for use in the map editor.
+ *
+ * Brushes essentially provide a field of density values (Brush::density_t) over
+ * a square area with arbitrary size.
+ */
 class Brush
 {
 public:
@@ -44,23 +50,57 @@ public:
     virtual ~Brush();
 
 public:
+    /**
+     * Render the brush into a square buffer of given size.
+     *
+     * @param size Size to use for rendering
+     * @param dest Buffer to render the values in (the method resizes it as
+     * needed)
+     */
     virtual void preview_buffer(const unsigned int size,
                                 std::vector<density_t> &dest) const = 0;
+
+    /**
+     * Render the brush into a square image of given size.
+     *
+     * @param size Size to use for rendering
+     * @return A QImage containing the rendered image. The images properties are
+     * the same as for brush_preview_to_black_alpha().
+     */
     virtual QImage preview_image(const unsigned int size) const;
 
 };
 
 
+/**
+ * Base class for a brush based on a function.
+ */
 class FunctionalBrush: public Brush
 {
 public:
     void preview_buffer(const unsigned int size,
                         std::vector<density_t> &dest) const override;
+
+    /**
+     * Sample the function at the given position.
+     *
+     * @param x Position inside the buffer, normalized to [-1.0, 1.0]
+     * @param y Position inside the buffer, normalized to [-1.0, 1.0]
+     * @return Density at the given position.
+     */
     virtual density_t sample(const float x, const float y) const = 0;
 
 };
 
 
+/**
+ * Gaussian functional brush.
+ *
+ * As the gaussian does not go to zero at the edges, artifacts will be
+ * introduced. It works okay-ish for small changes.
+ *
+ * @see ParzenBrush
+ */
 class GaussBrush: public FunctionalBrush
 {
 public:
@@ -69,6 +109,12 @@ public:
 };
 
 
+/**
+ * Brush based on the Parzen window function (de la Vallée Poussin).
+ *
+ * The shape is similar to GaussBrush, but as the Parzen window goes to zero at
+ * the edges, it looks much nicer.
+ */
 class ParzenBrush: public FunctionalBrush
 {
 public:
@@ -77,6 +123,9 @@ public:
 };
 
 
+/**
+ * Sharp circle brush.
+ */
 class CircleBrush: public FunctionalBrush
 {
 public:
@@ -85,11 +134,42 @@ public:
 };
 
 
+/**
+ * Brush based on a pixel image.
+ *
+ * An ImageBrush can be sourced from several sources, see the constructors
+ * for some options.
+ */
 class ImageBrush: public Brush
 {
 public:
-    ImageBrush(const unsigned int size, const std::vector<Brush::density_t> &raw);
+    /**
+     * Create a brush by copying the density values from a given buffer.
+     *
+     * @param size Size of the brush. The \a raw buffer must have size times
+     * size values.
+     * @param raw Buffer holding the densities of the brush.
+     */
+    ImageBrush(const unsigned int size,
+               const std::vector<Brush::density_t> &raw);
+
+    /**
+     * Create a brush by moving the density values from a given buffer.
+     *
+     * @param size Size of the brush. The \a raw buffer must have size times
+     * size values.
+     * @param raw Buffer holding the densities of the brush.
+     */
     ImageBrush(const unsigned int size, std::vector<Brush::density_t> &&raw);
+
+    /**
+     * Create a brush by copying the information from the Protocol Buffers
+     * object gamedata::PixelBrushDef.
+     *
+     * @param brush Stored brush to copy from.
+     *
+     * @see load_gimp_brush()
+     */
     explicit ImageBrush(const gamedata::PixelBrushDef &brush);
 
 private:
@@ -107,12 +187,17 @@ protected:
     void update_image();
 
 public:
-    void preview_buffer(const unsigned int size, std::vector<density_t> &dest) const override;
+    void preview_buffer(const unsigned int size,
+                        std::vector<density_t> &dest) const override;
     QImage preview_image(const unsigned int size) const override;
 
 };
 
 
+/**
+ * Frontend for brush usage, which tracks the currently active brush, its size
+ * and the strength.
+ */
 class BrushFrontend
 {
 public:
@@ -143,17 +228,67 @@ public:
     }
 
 public:
+    /**
+     * Return a buffer holding the current brush rendered at the current size.
+     *
+     * The BrushFrontend caches the sampled buffer until either the brush or
+     * the size changes. The strength is not included in the rendered image.
+     *
+     * @return Buffer holding the current brush rendered at the current size.
+     */
     const std::vector<Brush::density_t> &sampled();
+
+    /**
+     * Set the current brush
+     *
+     * @param brush Pointer to a Brush instance.
+     */
     void set_brush(Brush *brush);
+
+    /**
+     * Change the brush size
+     *
+     * @param size Brush size
+     */
     void set_brush_size(unsigned int size);
+
+    /**
+     * Change the brush strength
+     *
+     * @param strength Brush strength from the interval [0.0, 1.0]
+     */
     void set_brush_strength(float strength);
 
 };
 
 
+/**
+ * Try to load a GIMP GBR brush from a buffer.
+ *
+ * @param data Buffer holding the GBR brush
+ * @param size Size of the buffer
+ * @param dest Protocol Buffer into which the GBR brush will be stored. The
+ * license is set to `"unknown"`.
+ *
+ * @return true if the brush loaded successfully, false otherwise.
+ *
+ * @see ImageBrush::ImageBrush(const gamedata::PixelBrushDef&)
+ */
 bool load_gimp_brush(const uint8_t *data, const unsigned int size,
                      gamedata::PixelBrushDef &dest);
-QImage brush_preview_to_black_alpha(const std::vector<Brush::density_t> &buffer,
-                                    const unsigned int size);
+
+
+/**
+ * Convert a brush density into a black image with the alpha channel set to the
+ * density.
+ *
+ * @param buffer Brush buffer with correct size
+ * @param size Size of the brush
+ *
+ * @return New image with the rendered density.
+ */
+QImage brush_preview_to_black_alpha(
+        const std::vector<Brush::density_t> &buffer,
+        const unsigned int size);
 
 #endif
