@@ -1,0 +1,8 @@
+package gamedata;
+
+message PixelBrushDef {
+    optional string display_name = 16;
+    optional string license = 18;
+    optional uint32 size = 17;
+    repeated float data = 1 [packed=true];
+}
