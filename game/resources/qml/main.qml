@@ -7,8 +7,8 @@ import SCC 1.0
 
 Application {
     title: qsTr("Hello World")
-    width: 640
-    height: 480
+    width: 1067
+    height: 600
     visible: true
 
     GLScene {

@@ -375,6 +375,20 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_brush_objects.append(std::unique_ptr<Brush>(new CircleBrush()), "Circle");
 
     load_brushes();
+
+    m_brush_frontend.set_brush(m_brush_objects.vector()[0]->m_brush.get());
+    m_brush_frontend.set_brush_size(32);
+    m_curr_tool = &m_tool_raise_lower;
+
+    m_brush_frontend.set_brush_strength(10.0);
+    apply_tool(15, 20, false);
+    m_brush_frontend.set_brush_strength(1.0);
+
+    m_curr_tool = &m_tool_level;
+    apply_tool(15, 20, true);
+    apply_tool(30, 20, false);
+    apply_tool(30, 20, false);
+    apply_tool(30, 20, false);
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -712,9 +726,9 @@ void TerraformMode::prepare_scene()
 
     /* scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8); */
 
-    scene.m_camera.controller().set_distance(50.0);
-    scene.m_camera.controller().set_rot(Vector2f(-45, 0));
-    scene.m_camera.controller().set_pos(Vector3f(0, 0, 20));
+    scene.m_camera.controller().set_distance(40.0);
+    scene.m_camera.controller().set_rot(Vector2f(-60.f/180.f*M_PI, 0));
+    scene.m_camera.controller().set_pos(Vector3f(20, 30, 20));
     scene.m_camera.set_fovy(60. / 180. * M_PI);
     scene.m_camera.set_zfar(10000.0);
     scene.m_camera.set_znear(1.0);
