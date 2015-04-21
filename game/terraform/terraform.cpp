@@ -332,14 +332,14 @@ BrushListImageProvider *BrushList::image_provider()
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_terrain(1081),
-    m_terrain_interface(m_terrain, 136),
+    m_world(),
+    m_terrain_interface(m_world.terrain(), 136),
     m_mouse_mode(MOUSE_IDLE),
     m_paint_secondary(false),
     m_mouse_world_pos_updated(false),
     m_mouse_world_pos_valid(false),
     m_brush_changed(true),
-    m_tool_backend(m_brush_frontend, m_terrain),
+    m_tool_backend(m_brush_frontend, m_world),
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
@@ -353,7 +353,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
                                                12,
                                                128));*/
     /* m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2)); */
-    m_terrain.notify_heightmap_changed();
+    m_world.terrain().notify_heightmap_changed();
 
     /* // simple gaussian brush
     const float sigma = 9.0;

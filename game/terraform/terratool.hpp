@@ -29,6 +29,7 @@ the AUTHORS file.
 #include <sigc++/sigc++.h>
 
 #include "engine/sim/terrain.hpp"
+#include "engine/sim/world.hpp"
 
 #include "terraform/brush.hpp"
 
@@ -43,12 +44,12 @@ class ToolBackend
 {
 public:
     ToolBackend(BrushFrontend &brush_frontend,
-                sim::Terrain &terrain);
+                sim::TerraformWorld &world);
     virtual ~ToolBackend();
 
 private:
     BrushFrontend &m_brush_frontend;
-    sim::Terrain &m_terrain;
+    sim::TerraformWorld &m_world;
 
 public:
     inline BrushFrontend &brush_frontend()
@@ -56,14 +57,9 @@ public:
         return m_brush_frontend;
     }
 
-    unsigned int terrain_size() const
+    sim::TerraformWorld &world()
     {
-        return m_terrain.size();;
-    }
-
-    inline sim::Terrain &terrain()
-    {
-        return m_terrain;
+        return m_world;
     }
 
 };

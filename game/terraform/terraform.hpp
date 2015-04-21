@@ -237,7 +237,7 @@ public:
 
 private:
     std::unique_ptr<TerraformScene> m_scene;
-    sim::Terrain m_terrain;
+    sim::TerraformWorld m_world;
     engine::FancyTerrainInterface m_terrain_interface;
 
     QMetaObject::Connection m_advance_conn;
