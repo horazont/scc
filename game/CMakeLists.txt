@@ -39,6 +39,7 @@ set(GAME_QML_RESOURCES
 set(GAME_TEXTURE_RESOURCES
   resources/textures/grass00.png
   resources/textures/rock00.png
+  resources/textures/blend00.png
   )
 
 set(GAME_SHADER_RESOURCES
