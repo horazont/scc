@@ -114,7 +114,7 @@ void main()
 
     float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;
 
-    float steepness = blend_with_texture(terraindata.tc0/3.f, base_steepness);
+    float steepness = blend_with_texture(terraindata.tc0/2.f, base_steepness);
 
     vec3 base_colour = interp_colour(texture2D(grass, terraindata.tc0).rgb,
                                      texture2D(rock, terraindata.tc0).rgb,
