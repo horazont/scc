@@ -132,3 +132,18 @@ void TerraLevelTool::secondary(const float x0, const float y0)
     }
     set_value(new_height);
 }
+
+
+
+void TerraFluidRaiseTool::primary(const float x0, const float y0)
+{
+    m_backend.world().fluid_raise(x0+0.5, y0+0.5,
+                                  m_backend.brush_frontend().brush_size(),
+                                  m_backend.brush_frontend().sampled(),
+                                  m_backend.brush_frontend().brush_strength());
+}
+
+void TerraFluidRaiseTool::secondary(const float x0, const float y0)
+{
+
+}

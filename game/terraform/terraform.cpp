@@ -34,6 +34,7 @@ the AUTHORS file.
 
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
+#include "engine/render/plane.hpp"
 
 #include "application.hpp"
 
@@ -342,6 +343,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_tool_backend(m_brush_frontend, m_world),
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
+    m_tool_fluid_raise(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
 {
@@ -461,6 +463,10 @@ void TerraformMode::before_gl_sync()
                              (*field)[(unsigned int)(pos[eY])*m_terrain.size()+(unsigned int)(pos[eX])]
                     ));
     }*/
+
+    m_scene->m_fluiddata->bind();
+    m_world.fluidsim().to_gl_texture();
+
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
 
@@ -779,6 +785,41 @@ void TerraformMode::prepare_scene()
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
 
+
+    scene.m_fluiddata = &scene.m_resources.emplace<engine::Texture2D>(
+                "fluiddata", GL_RGBA32F,
+                m_world.terrain().size()-1,
+                m_world.terrain().size()-1,
+                GL_RGBA,
+                GL_FLOAT);
+    scene.m_fluiddata->bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    engine::ZUpPlaneNode &plane_node = scene.m_scenegraph.root().emplace<engine::ZUpPlaneNode>(
+                m_world.terrain().size(),
+                m_world.terrain().size());
+
+    {
+        bool success = plane_node.material().shader().attach_resource(
+                    GL_VERTEX_SHADER,
+                    ":/shaders/testing/fluid_plane.vert");
+        success = success && plane_node.material().shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/testing/fluid_plane.frag");
+        success = success && plane_node.material().shader().link();
+        if (!success) {
+            throw std::runtime_error("failed to link or compile shader");
+        }
+
+        plane_node.material().shader().bind();
+        glUniform1f(plane_node.material().shader().uniform_location("width"),
+                    m_world.terrain().size()-1);
+        glUniform1f(plane_node.material().shader().uniform_location("height"),
+                    m_world.terrain().size()-1);
+        plane_node.material().attach_texture("fluidmap", scene.m_fluiddata);
+        plane_node.setup_vao();
+    }
 }
 
 void TerraformMode::activate(Application &app, QQuickItem &parent)
@@ -821,6 +862,11 @@ void TerraformMode::switch_to_tool_flatten()
 void TerraformMode::switch_to_tool_raise_lower()
 {
     m_curr_tool = &m_tool_raise_lower;
+}
+
+void TerraformMode::switch_to_tool_fluid_raise()
+{
+    m_curr_tool = &m_tool_fluid_raise;
 }
 
 void TerraformMode::set_brush(int index)

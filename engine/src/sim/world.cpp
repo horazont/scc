@@ -87,6 +87,61 @@ void apply_brush_masked_tool(sim::Terrain::HeightField &field,
 }
 
 /**
+ * Apply a fluid tool using a brush mask.
+ *
+ * @param cells The cells to work at
+ * @param brush_size Diameter of the brush
+ * @param sampled Density map of the brush
+ * @param brush_strength Factor which is applied to the density map for each
+ * painted pixel.
+ * @param terrain_size Size of the terrain, for clipping
+ * @param x0 X center for painting
+ * @param y0 Y center for painting
+ * @param impl Tool implementation
+ *
+ * @see flatten_tool, raise_tool
+ */
+template <typename impl_t>
+void apply_brush_masked_fluid_tool(FluidCell *cells,
+                                   const unsigned int brush_size,
+                                   const std::vector<float> &sampled,
+                                   const float brush_strength,
+                                   const unsigned int cells_per_axis,
+                                   const float x0,
+                                   const float y0,
+                                   const impl_t &impl)
+{
+    const int size = brush_size;
+    const float radius = size / 2.f;
+    const int cell_xbase = std::round(x0 - radius);
+    const int cell_ybase = std::round(y0 - radius);
+
+    for (int y = 0; y < size; y++) {
+        const int ycell = y + cell_ybase;
+        if (ycell < 0) {
+            continue;
+        }
+        if (ycell >= (int)cells_per_axis) {
+            break;
+        }
+        for (int x = 0; x < size; x++) {
+            const int xcell = x + cell_xbase;
+            if (xcell < 0) {
+                continue;
+            }
+            if (xcell >= (int)cells_per_axis) {
+                break;
+            }
+
+            float &h = cells[ycell*cells_per_axis+xcell].fluid_height;
+
+            h = std::min(0.f,
+                         impl.paint(h, brush_strength*sampled[y*size+x]));
+        }
+    }
+}
+
+/**
  * Tool implementation for raising / lowering the terrain based on a brush.
  *
  * For use with apply_brush_masked_tool().
@@ -127,7 +182,8 @@ struct flatten_tool
 /* sim::TerraformWorld */
 
 TerraformWorld::TerraformWorld():
-    m_terrain(1081)
+    m_terrain(1081),
+    m_fluid(m_terrain)
 {
 
 }
@@ -163,6 +219,11 @@ const Terrain &TerraformWorld::terrain() const
     return m_terrain;
 }
 
+const Fluid &TerraformWorld::fluidsim() const
+{
+    return m_fluid;
+}
+
 void TerraformWorld::tf_raise(const float xc, const float yc,
                               const unsigned int brush_size,
                               const std::vector<float> &density_map,
@@ -196,6 +257,22 @@ void TerraformWorld::tf_level(const float xc, const float yc,
                                 flatten_tool(ref_height));
     }
     notify_update_terrain_rect(xc, yc, brush_size);
+}
+
+void TerraformWorld::fluid_raise(const float xc, const float yc,
+                                 const unsigned int brush_size,
+                                 const std::vector<float> &density_map,
+                                 const float brush_strength)
+{
+    {
+        std::unique_lock<std::mutex> front_lock(*m_fluid.blocks().m_frontbuffer_mutex);
+        std::unique_lock<std::mutex> back_lock(*m_fluid.blocks().m_backbuffer_mutex);
+        apply_brush_masked_fluid_tool(m_fluid.blocks().cell_front(0, 0),
+                                      brush_size, density_map, brush_strength,
+                                      m_fluid.blocks().m_cells_per_axis,
+                                      xc, yc,
+                                      raise_tool());
+    }
 }
 
 }

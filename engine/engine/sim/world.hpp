@@ -25,6 +25,7 @@ the AUTHORS file.
 #define SCC_SIM_WORLD_H
 
 #include "engine/sim/terrain.hpp"
+#include "engine/sim/fluid.hpp"
 
 
 namespace sim {
@@ -98,14 +99,19 @@ public:
                           const float brush_strength,
                           const float ref_height) = 0;
 
+
+    virtual void fluid_raise(const float xc, const float yc,
+                             const unsigned int brush_size,
+                             const std::vector<float> &density_map,
+                             const float brush_strength) = 0;
 };
 
 
-class IWorldTerraformAccessor: public IWorldTerrainAccessor
+class IWorldTerraformMutator: public IWorldTerraformingMutator
 {
 };
 
-class IWorldTerraformMutator: public IWorldTerraformingMutator
+class IWorldTerraformAccessor: public IWorldTerrainAccessor
 {
 };
 
@@ -117,6 +123,7 @@ public:
 
 private:
     Terrain m_terrain;
+    Fluid m_fluid;
 
 protected:
     void notify_update_terrain_rect(const float xc,
@@ -125,11 +132,7 @@ protected:
 
 public:
     const Terrain &terrain() const override;
-
-    inline Terrain &mutable_terrain()
-    {
-        return m_terrain;
-    }
+    const Fluid &fluidsim() const;
 
     void tf_raise(const float xc, const float yc,
                   const unsigned int brush_size,
@@ -140,7 +143,14 @@ public:
                   const std::vector<float> &density_map,
                   const float brush_strength,
                   const float ref_height) override;
+
+
+    void fluid_raise(const float xc, const float yc,
+                     const unsigned int brush_size,
+                     const std::vector<float> &density_map,
+                     const float brush_strength);
 };
+
 
 }
 

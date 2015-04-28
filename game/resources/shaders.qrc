@@ -9,5 +9,7 @@
         <file>shaders/terrain/test_overlay.frag</file>
         <file>shaders/terrain/pointer_overlay.frag</file>
         <file>shaders/terrain/brush_overlay.frag</file>
+        <file>shaders/testing/fluid_plane.frag</file>
+        <file>shaders/testing/fluid_plane.vert</file>
     </qresource>
 </RCC>

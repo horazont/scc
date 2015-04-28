@@ -52,6 +52,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/terrain/brush_overlay.frag
   resources/shaders/overlay/main.vert
   resources/shaders/overlay/main.frag
+  resources/shaders/testing/fluid_plane.frag
+  resources/shaders/testing/fluid_plane.vert
   )
 
 set(GAME_BRUSH_RESOURCES

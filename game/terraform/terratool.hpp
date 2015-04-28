@@ -131,4 +131,15 @@ public:
 
 };
 
+class TerraFluidRaiseTool: public TerraTool
+{
+public:
+    using TerraTool::TerraTool;
+
+public:
+    void primary(const float x0, const float y0) override;
+    void secondary(const float x0, const float y0) override;
+
+};
+
 #endif

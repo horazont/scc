@@ -42,9 +42,13 @@ set(ENGINE_HEADERS
   engine/render/fancyterraindata.hpp
   engine/render/grid.hpp
   engine/render/overlay.hpp
+  engine/render/plane.hpp
   engine/render/pointer.hpp
   engine/render/rendergraph.hpp
   engine/render/scenegraph.hpp
+  engine/sim/client.hpp
+  engine/sim/fluid.hpp
+  engine/sim/server.hpp
   engine/sim/terrain.hpp
   engine/sim/world.hpp
   )
@@ -86,9 +90,13 @@ set(ENGINE_SRC
   src/render/fancyterraindata.cpp
   src/render/grid.cpp
   src/render/overlay.cpp
+  src/render/plane.cpp
   src/render/pointer.cpp
   src/render/rendergraph.cpp
   src/render/scenegraph.cpp
+  src/sim/client.cpp
+  src/sim/fluid.cpp
+  src/sim/server.cpp
   src/sim/terrain.cpp
   src/sim/world.cpp
   )
