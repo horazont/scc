@@ -44,12 +44,12 @@ class ToolBackend
 {
 public:
     ToolBackend(BrushFrontend &brush_frontend,
-                sim::TerraformWorld &world);
+                const sim::WorldState &world);
     virtual ~ToolBackend();
 
 private:
     BrushFrontend &m_brush_frontend;
-    sim::TerraformWorld &m_world;
+    const sim::WorldState &m_world;
 
 public:
     inline BrushFrontend &brush_frontend()
@@ -57,7 +57,7 @@ public:
         return m_brush_frontend;
     }
 
-    sim::TerraformWorld &world()
+    inline const sim::WorldState &world() const
     {
         return m_world;
     }
@@ -101,10 +101,10 @@ public:
     virtual void set_value(float new_value);
 
 public:
-    virtual void primary(const float x0,
-                         const float y0);
-    virtual void secondary(const float x0,
-                           const float y0);
+    virtual sim::WorldOperationPtr primary(const float x0,
+                                           const float y0);
+    virtual sim::WorldOperationPtr secondary(const float x0,
+                                             const float y0);
 
 };
 
@@ -115,8 +115,8 @@ public:
     using TerraTool::TerraTool;
 
 public:
-    void primary(const float x0, const float y0) override;
-    void secondary(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
 
 };
 
@@ -126,8 +126,18 @@ public:
     TerraLevelTool(ToolBackend &backend);
 
 public:
-    void primary(const float x0, const float y0) override;
-    void secondary(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
+
+};
+
+class TerraFluidRaiseTool: public TerraTool
+{
+public:
+    using TerraTool::TerraTool;
+
+public:
+    sim::WorldOperationPtr primary(const float x0, const float y0) override;
 
 };
 

@@ -27,9 +27,11 @@ the AUTHORS file.
 
 #include "engine/math/algo.hpp"
 
+#include "engine/sim/world_ops.hpp"
+
 
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
-                         sim::TerraformWorld &world):
+                         const sim::WorldState &world):
     m_brush_frontend(brush_frontend),
     m_world(world)
 {
@@ -66,31 +68,33 @@ void TerraTool::set_value(float new_value)
     m_value_changed.emit(new_value);
 }
 
-void TerraTool::primary(const float, const float)
+sim::WorldOperationPtr TerraTool::primary(const float, const float)
 {
-
+    return nullptr;
 }
 
-void TerraTool::secondary(const float, const float)
+sim::WorldOperationPtr TerraTool::secondary(const float, const float)
 {
-
+    return nullptr;
 }
 
 
-void TerraRaiseLowerTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraRaiseLowerTool::primary(const float x0, const float y0)
 {
-    m_backend.world().tf_raise(x0, y0,
-                               m_backend.brush_frontend().brush_size(),
-                               m_backend.brush_frontend().sampled(),
-                               m_backend.brush_frontend().brush_strength());
+    return std::make_unique<sim::ops::TerraformRaise>(
+                x0, y0,
+                m_backend.brush_frontend().brush_size(),
+                m_backend.brush_frontend().sampled(),
+                m_backend.brush_frontend().brush_strength());
 }
 
-void TerraRaiseLowerTool::secondary(const float x0, const float y0)
+sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const float x0, const float y0)
 {
-    m_backend.world().tf_raise(x0, y0,
-                               m_backend.brush_frontend().brush_size(),
-                               m_backend.brush_frontend().sampled(),
-                               -m_backend.brush_frontend().brush_strength());
+    return std::make_unique<sim::ops::TerraformRaise>(
+                x0, y0,
+                m_backend.brush_frontend().brush_size(),
+                m_backend.brush_frontend().sampled(),
+                -m_backend.brush_frontend().brush_strength());
 }
 
 
@@ -102,16 +106,17 @@ TerraLevelTool::TerraLevelTool(ToolBackend &backend):
     m_value = 10.f;
 }
 
-void TerraLevelTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraLevelTool::primary(const float x0, const float y0)
 {
-    m_backend.world().tf_level(x0, y0,
-                               m_backend.brush_frontend().brush_size(),
-                               m_backend.brush_frontend().sampled(),
-                               m_backend.brush_frontend().brush_strength(),
-                               m_value);
+    return std::make_unique<sim::ops::TerraformLevel>(
+                x0, y0,
+                m_backend.brush_frontend().brush_size(),
+                m_backend.brush_frontend().sampled(),
+                m_backend.brush_frontend().brush_strength(),
+                m_value);
 }
 
-void TerraLevelTool::secondary(const float x0, const float y0)
+sim::WorldOperationPtr TerraLevelTool::secondary(const float x0, const float y0)
 {
     const unsigned int terrain_size = m_backend.world().terrain().size();
 
@@ -121,7 +126,7 @@ void TerraLevelTool::secondary(const float x0, const float y0)
     if (terrainx < 0 || terrainx >= (int)terrain_size ||
             terrainy < 0 || terrainy >= (int)terrain_size)
     {
-        return;
+        return nullptr;
     }
 
     float new_height;
@@ -131,4 +136,17 @@ void TerraLevelTool::secondary(const float x0, const float y0)
         new_height = (*field)[terrainy*m_backend.world().terrain().size()+terrainx];
     }
     set_value(new_height);
+
+    return nullptr;
+}
+
+
+
+sim::WorldOperationPtr TerraFluidRaiseTool::primary(const float x0, const float y0)
+{
+    /*m_backend.world().fluid_raise(x0+0.5, y0+0.5,
+                                  m_backend.brush_frontend().brush_size(),
+                                  m_backend.brush_frontend().sampled(),
+                                  m_backend.brush_frontend().brush_strength());*/
+    return nullptr;
 }

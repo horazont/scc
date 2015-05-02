@@ -34,6 +34,7 @@ the AUTHORS file.
 
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
+#include "engine/render/plane.hpp"
 
 #include "application.hpp"
 
@@ -332,16 +333,17 @@ BrushListImageProvider *BrushList::image_provider()
 
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
-    m_world(),
-    m_terrain_interface(m_world.terrain(), 136),
+    m_server(),
+    m_terrain_interface(m_server.state().terrain(), 136),
     m_mouse_mode(MOUSE_IDLE),
     m_paint_secondary(false),
     m_mouse_world_pos_updated(false),
     m_mouse_world_pos_valid(false),
     m_brush_changed(true),
-    m_tool_backend(m_brush_frontend, m_world),
+    m_tool_backend(m_brush_frontend, m_server.state()),
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
+    m_tool_fluid_raise(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
 {
@@ -353,7 +355,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
                                                12,
                                                128));*/
     /* m_terrain.from_sincos(Vector3f(0.4, 0.4, 1.2)); */
-    m_world.terrain().notify_heightmap_changed();
+    m_server.state().terrain().notify_heightmap_changed();
 
     /* // simple gaussian brush
     const float sigma = 9.0;
@@ -411,6 +413,11 @@ void TerraformMode::advance(engine::TimeInterval dt)
     }
 }
 
+void TerraformMode::after_gl_sync()
+{
+    m_sync_lock.unlock();
+}
+
 void TerraformMode::before_gl_sync()
 {
     prepare_scene();
@@ -461,6 +468,12 @@ void TerraformMode::before_gl_sync()
                              (*field)[(unsigned int)(pos[eY])*m_terrain.size()+(unsigned int)(pos[eX])]
                     ));
     }*/
+
+    m_sync_lock = m_server.sync_safe_point();
+
+    m_scene->m_fluiddata->bind();
+    m_server.state().fluid().to_gl_texture();
+
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
 
@@ -633,10 +646,15 @@ void TerraformMode::apply_tool(const float x0,
                                bool secondary)
 {
     if (m_curr_tool) {
+        auto lock = m_server.sync_safe_point();
+        sim::WorldOperationPtr op(nullptr);
         if (secondary) {
-            m_curr_tool->secondary(x0, y0);
+            op = m_curr_tool->secondary(x0, y0);
         } else {
-            m_curr_tool->primary(x0, y0);
+            op = m_curr_tool->primary(x0, y0);
+        }
+        if (op) {
+            m_server.enqueue_op(std::move(op));
         }
     }
 }
@@ -779,6 +797,41 @@ void TerraformMode::prepare_scene()
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
 
+
+    scene.m_fluiddata = &scene.m_resources.emplace<engine::Texture2D>(
+                "fluiddata", GL_RGBA32F,
+                m_server.state().terrain().size()-1,
+                m_server.state().terrain().size()-1,
+                GL_RGBA,
+                GL_FLOAT);
+    scene.m_fluiddata->bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    engine::ZUpPlaneNode &plane_node = scene.m_scenegraph.root().emplace<engine::ZUpPlaneNode>(
+                m_server.state().terrain().size(),
+                m_server.state().terrain().size());
+
+    {
+        bool success = plane_node.material().shader().attach_resource(
+                    GL_VERTEX_SHADER,
+                    ":/shaders/testing/fluid_plane.vert");
+        success = success && plane_node.material().shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/testing/fluid_plane.frag");
+        success = success && plane_node.material().shader().link();
+        if (!success) {
+            throw std::runtime_error("failed to link or compile shader");
+        }
+
+        plane_node.material().shader().bind();
+        glUniform1f(plane_node.material().shader().uniform_location("width"),
+                    m_server.state().terrain().size()-1);
+        glUniform1f(plane_node.material().shader().uniform_location("height"),
+                    m_server.state().terrain().size()-1);
+        plane_node.material().attach_texture("fluidmap", scene.m_fluiddata);
+        plane_node.setup_vao();
+    }
 }
 
 void TerraformMode::activate(Application &app, QQuickItem &parent)
@@ -790,10 +843,15 @@ void TerraformMode::activate(Application &app, QQuickItem &parent)
     m_before_gl_sync_conn = connect(m_gl_scene, &QuickGLScene::before_gl_sync,
                                     this, &TerraformMode::before_gl_sync,
                                     Qt::DirectConnection);
+    m_after_gl_sync_conn = connect(m_gl_scene, &QuickGLScene::after_gl_sync,
+                                   this, &TerraformMode::after_gl_sync,
+                                   Qt::DirectConnection);
 }
 
 void TerraformMode::deactivate()
 {
+    disconnect(m_after_gl_sync_conn);
+    disconnect(m_advance_conn);
     disconnect(m_before_gl_sync_conn);
     ApplicationMode::deactivate();
 }
@@ -821,6 +879,11 @@ void TerraformMode::switch_to_tool_flatten()
 void TerraformMode::switch_to_tool_raise_lower()
 {
     m_curr_tool = &m_tool_raise_lower;
+}
+
+void TerraformMode::switch_to_tool_fluid_raise()
+{
+    m_curr_tool = &m_tool_fluid_raise;
 }
 
 void TerraformMode::set_brush(int index)

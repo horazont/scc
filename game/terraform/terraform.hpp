@@ -54,6 +54,7 @@ struct TerraformScene
     engine::Texture2D *m_grass;
     engine::Texture2D *m_rock;
     engine::Texture2D *m_blend;
+    engine::Texture2D *m_fluiddata;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
     engine::Material *m_overlay;
@@ -237,10 +238,12 @@ public:
 
 private:
     std::unique_ptr<TerraformScene> m_scene;
-    sim::TerraformWorld m_world;
+    sim::Server m_server;
+    sim::Server::SyncSafeLock m_sync_lock;
     engine::FancyTerrainInterface m_terrain_interface;
 
     QMetaObject::Connection m_advance_conn;
+    QMetaObject::Connection m_after_gl_sync_conn;
     QMetaObject::Connection m_before_gl_sync_conn;
 
     engine::ViewportSize m_viewport_size;
@@ -264,6 +267,7 @@ private:
     ToolBackend m_tool_backend;
     TerraRaiseLowerTool m_tool_raise_lower;
     TerraLevelTool m_tool_level;
+    TerraFluidRaiseTool m_tool_fluid_raise;
     TerraTool *m_curr_tool;
 
     BrushList m_brush_objects;
@@ -286,6 +290,7 @@ protected:
 
 public slots:
     void advance(engine::TimeInterval dt);
+    void after_gl_sync();
     void before_gl_sync();
 
 public:
@@ -299,6 +304,7 @@ public:
 public:
     Q_INVOKABLE void switch_to_tool_flatten();
     Q_INVOKABLE void switch_to_tool_raise_lower();
+    Q_INVOKABLE void switch_to_tool_fluid_raise();
 
     Q_INVOKABLE void set_brush(int index);
     Q_INVOKABLE void set_brush_size(float size);

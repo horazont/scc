@@ -69,6 +69,19 @@ Item {
                 onClicked: Terraform.switch_to_tool_flatten()
             }
 
+            ToolButton {
+                id: tool_fluid_raise
+                objectName: "tool_fluid_raise"
+                implicitWidth: 48
+                implicitHeight: 48
+                text: "FR"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 0
+                style: myToolStyle
+                onClicked: Terraform.switch_to_tool_fluid_raise()
+            }
+
             Item {
                 Layout.fillWidth: true
             }
