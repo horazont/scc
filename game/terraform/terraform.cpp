@@ -48,7 +48,7 @@ static const char *brush_search_paths[] = {
 void load_image_to_texture(const QString &url)
 {
     QImage texture = QImage(url);
-    texture.convertToFormat(QImage::Format_ARGB32);
+    texture = texture.convertToFormat(QImage::Format_ARGB32);
 
     uint8_t *pixbase = texture.bits();
     for (int i = 0; i < texture.width()*texture.height(); i++)
