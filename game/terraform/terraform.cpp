@@ -387,9 +387,9 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_brush_frontend.set_brush_strength(1.0);
 
     m_curr_tool = &m_tool_level;
-    m_tool_level.set_value(10.);
-    apply_tool(30, 20, false);
-    apply_tool(30, 20, false);
+    m_tool_level.set_value(0.f);
+    m_brush_frontend.set_brush_strength(5.0);
+    m_brush_frontend.set_brush_size(64);
     apply_tool(30, 20, false);
 }
 
