@@ -10,5 +10,5 @@ void main()
 {
     vec4 fluiddata = texture2D(fluidmap, tc0);
 
-    colour = vec4(fluiddata.rgb, 1.f);
+    colour = vec4(fluiddata.rg, 0.f, 1.f);
 }
