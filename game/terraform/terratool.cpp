@@ -141,7 +141,6 @@ sim::WorldOperationPtr TerraLevelTool::secondary(const float x0, const float y0)
 }
 
 
-
 sim::WorldOperationPtr TerraFluidRaiseTool::primary(const float x0, const float y0)
 {
     return std::make_unique<sim::ops::FluidRaise>(
@@ -149,4 +148,13 @@ sim::WorldOperationPtr TerraFluidRaiseTool::primary(const float x0, const float 
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength());
+}
+
+sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const float x0, const float y0)
+{
+    return std::make_unique<sim::ops::FluidRaise>(
+                x0-0.5, y0-0.5,
+                m_backend.brush_frontend().brush_size(),
+                m_backend.brush_frontend().sampled(),
+                -m_backend.brush_frontend().brush_strength());
 }

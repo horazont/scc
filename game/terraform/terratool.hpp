@@ -138,6 +138,7 @@ public:
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
 
 };
 

@@ -74,7 +74,7 @@ Item {
                 objectName: "tool_fluid_raise"
                 implicitWidth: 48
                 implicitHeight: 48
-                text: "FR"
+                text: "FR/L"
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.leftMargin: 0
