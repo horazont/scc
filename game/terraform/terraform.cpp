@@ -473,7 +473,7 @@ void TerraformMode::before_gl_sync()
 
     Vector3f pos = m_scene->m_camera.controller().pos();
     m_scene->m_fluidplane_trafo_node->transformation() = translation4(
-                Vector3f(std::round(pos[eX]), std::round(pos[eY]), 0.f));
+                Vector3f(std::round(pos[eX])+0.5, std::round(pos[eY])+0.5, 0.f));
 
     m_scene->m_fluiddata->bind();
     m_server.state().fluid().to_gl_texture();
