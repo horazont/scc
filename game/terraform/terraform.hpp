@@ -57,6 +57,7 @@ struct TerraformScene
     engine::Texture2D *m_fluiddata;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
+    engine::scenegraph::Transformation *m_fluidplane_trafo_node;
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
 };

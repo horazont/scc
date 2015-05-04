@@ -471,6 +471,10 @@ void TerraformMode::before_gl_sync()
 
     m_sync_lock = m_server.sync_safe_point();
 
+    Vector3f pos = m_scene->m_camera.controller().pos();
+    m_scene->m_fluidplane_trafo_node->transformation() = translation4(
+                Vector3f(std::round(pos[eX]), std::round(pos[eY]), 0.f));
+
     m_scene->m_fluiddata->bind();
     m_server.state().fluid().to_gl_texture();
 
@@ -808,9 +812,13 @@ void TerraformMode::prepare_scene()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    engine::ZUpPlaneNode &plane_node = scene.m_scenegraph.root().emplace<engine::ZUpPlaneNode>(
-                m_server.state().terrain().size(),
-                m_server.state().terrain().size());
+    scene.m_fluidplane_trafo_node = &scene.m_scenegraph.root().emplace<
+            engine::scenegraph::Transformation>();
+
+    engine::ZUpPlaneNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::ZUpPlaneNode>(
+                sim::Fluid::block_size*2,
+                sim::Fluid::block_size*2,
+                sim::Fluid::block_size*2);
 
     {
         bool success = plane_node.material().shader().attach_resource(
