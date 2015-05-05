@@ -816,9 +816,9 @@ void TerraformMode::prepare_scene()
             engine::scenegraph::Transformation>();
 
     engine::ZUpPlaneNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::ZUpPlaneNode>(
-                sim::Fluid::block_size*2,
-                sim::Fluid::block_size*2,
-                sim::Fluid::block_size*2);
+                sim::IFluidSim::block_size*2,
+                sim::IFluidSim::block_size*2,
+                sim::IFluidSim::block_size*2);
 
     {
         bool success = plane_node.material().shader().attach_resource(
