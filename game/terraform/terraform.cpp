@@ -257,7 +257,7 @@ QModelIndex BrushList::index(int row, int column, const QModelIndex &parent) con
     return QModelIndex();
 }
 
-QModelIndex BrushList::parent(const QModelIndex &child) const
+QModelIndex BrushList::parent(const QModelIndex &) const
 {
     return QModelIndex();
 }
