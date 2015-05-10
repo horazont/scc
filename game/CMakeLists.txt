@@ -40,6 +40,7 @@ set(GAME_TEXTURE_RESOURCES
   resources/textures/grass00.png
   resources/textures/rock00.png
   resources/textures/blend00.png
+  resources/textures/waves00.png
   )
 
 set(GAME_SHADER_RESOURCES
@@ -54,6 +55,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/overlay/main.frag
   resources/shaders/testing/fluid_plane.frag
   resources/shaders/testing/fluid_plane.vert
+  resources/shaders/testing/fluid_plane.geom
   )
 
 set(GAME_BRUSH_RESOURCES

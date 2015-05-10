@@ -55,9 +55,11 @@ struct TerraformScene
     engine::Texture2D *m_rock;
     engine::Texture2D *m_blend;
     engine::Texture2D *m_fluiddata;
+    engine::Texture2D *m_waves;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;
     engine::scenegraph::Transformation *m_fluidplane_trafo_node;
+    engine::Material *m_fluid;
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
 };
@@ -246,6 +248,8 @@ private:
     QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_after_gl_sync_conn;
     QMetaObject::Connection m_before_gl_sync_conn;
+
+    float m_t;
 
     engine::ViewportSize m_viewport_size;
     Vector2f m_mouse_pos_win;

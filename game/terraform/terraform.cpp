@@ -335,6 +335,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_server(),
     m_terrain_interface(m_server.state().terrain(), 136),
+    m_t(100),
     m_mouse_mode(MOUSE_IDLE),
     m_paint_secondary(false),
     m_mouse_world_pos_updated(false),
@@ -411,6 +412,7 @@ void TerraformMode::advance(engine::TimeInterval dt)
     if (dt > 0.02) {
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
     }
+    m_t += dt;
 }
 
 void TerraformMode::after_gl_sync()
@@ -477,6 +479,10 @@ void TerraformMode::before_gl_sync()
 
     m_scene->m_fluiddata->bind();
     m_server.state().fluid().to_gl_texture();
+
+    m_scene->m_fluid->shader().bind();
+    glUniform1f(m_scene->m_fluid->shader().uniform_location("t"),
+                m_t);
 
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
@@ -769,6 +775,11 @@ void TerraformMode::prepare_scene()
                 "blend", GL_RED, 256, 256);
     scene.m_blend->bind();
     load_image_to_texture(":/textures/blend00.png");
+
+    scene.m_waves = &scene.m_resources.emplace<engine::Texture2D>(
+                "waves", GL_RGBA, 512, 512);
+    scene.m_waves->bind();
+    load_image_to_texture(":/textures/waves00.png");
     engine::raise_last_gl_error();
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
@@ -809,8 +820,8 @@ void TerraformMode::prepare_scene()
                 GL_RGBA,
                 GL_FLOAT);
     scene.m_fluiddata->bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     scene.m_fluidplane_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
@@ -819,11 +830,15 @@ void TerraformMode::prepare_scene()
                 sim::IFluidSim::block_size*2,
                 sim::IFluidSim::block_size*2,
                 sim::IFluidSim::block_size*2);
+    scene.m_fluid = &plane_node.material();
 
     {
         bool success = plane_node.material().shader().attach_resource(
                     GL_VERTEX_SHADER,
                     ":/shaders/testing/fluid_plane.vert");
+        success = success && plane_node.material().shader().attach_resource(
+                    GL_GEOMETRY_SHADER,
+                    ":/shaders/testing/fluid_plane.geom");
         success = success && plane_node.material().shader().attach_resource(
                     GL_FRAGMENT_SHADER,
                     ":/shaders/testing/fluid_plane.frag");
@@ -838,6 +853,7 @@ void TerraformMode::prepare_scene()
         glUniform1f(plane_node.material().shader().uniform_location("height"),
                     m_server.state().terrain().size()-1);
         plane_node.material().attach_texture("fluidmap", scene.m_fluiddata);
+        plane_node.material().attach_texture("waves", scene.m_waves);
         plane_node.setup_vao();
     }
 }
