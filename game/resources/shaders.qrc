@@ -12,5 +12,6 @@
         <file>shaders/testing/fluid_plane.frag</file>
         <file>shaders/testing/fluid_plane.vert</file>
         <file>shaders/testing/fluid_plane.geom</file>
+        <file>shaders/terrain/main.geom</file>
     </qresource>
 </RCC>
