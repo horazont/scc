@@ -41,7 +41,7 @@ const float flow_factor = 8.f;
 
 const float max_flow = 10.f;
 
-const float distortion_factor = 10.f;
+const float distortion_factor = 0.5f;
 const float depth_factor = 0.5f;
 const vec3 depth_attenuation = vec3(0.7, 0.8, 0.9);
 
@@ -245,12 +245,18 @@ void main()
 
     float fresnel = max(0.f, 1.f - nDotV * 1.3f);
 
-    vec2 offs = 10.f*fluid.fluiddata.g*normal.xy / viewport.xy;
-    vec2 scene_texcoord = gl_FragCoord.xy / viewport.xy + offs;
+    vec2 offs = distortion_factor*fluid.fluiddata.g*(mats.view * vec4(normal, 0.f)).xy;
+
+    vec4 eye = mats.view * vec4(fluid.world, 1.f);
+
+    float frag_depth = eye.z;
+
+    vec4 scene_lookup_ndc = mats.proj * (eye+vec4(offs, 0., 0.));
+    scene_lookup_ndc /= scene_lookup_ndc.w;
+
+    vec2 scene_texcoord = scene_lookup_ndc.xy * 0.5 + 0.5;
 
     float scene_depth = unproject(vec3(gl_FragCoord.xy, texture2D(scene_depth, scene_texcoord).r)).z;
-    float frag_depth = unproject(gl_FragCoord.xyz).z;
-
     /*scene_texcoord /= gl_FragCoord.z;*/
 
     vec3 refractive = texture2D(scene, scene_texcoord).rgb;
@@ -258,6 +264,6 @@ void main()
     refractive *= pow(depth_attenuation, vec3(depth));
 
     colour = vec4(mix(refractive, reflective, fresnel), 1.f);
-    /*colour = vec4(vec3(frag_depth), 1.f);*/
+    /*colour = vec4(scene_texcoord, 0.f, 1.f);*/
     /*colour = vec4(vec3(frag_depth - scene_depth), 1.f);*/
 }
