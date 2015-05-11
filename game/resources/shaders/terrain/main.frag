@@ -130,7 +130,7 @@ void main()
     const vec3 skydir = normalize(vec3(-1, -1, 4));
 
     vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
-    color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, skydir, skydiffuse, skypower);
+    color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, 1.f, skydir, skydiffuse, skypower);
 
     outcolor = vec4(color, 1.0f);
 }
