@@ -488,6 +488,8 @@ void TerraformMode::before_gl_sync()
     m_scene->m_fluid->shader().bind();
     glUniform1f(m_scene->m_fluid->shader().uniform_location("t"),
                 m_t);
+    glUniform2f(m_scene->m_fluid->shader().uniform_location("viewport"),
+                m_scene->m_window.width(), m_scene->m_window.height());
 
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
@@ -748,14 +750,57 @@ void TerraformMode::prepare_scene()
     const QSize size = window()->size() * window()->devicePixelRatio();
     scene.m_window.set_size(size.width(), size.height());
 
+    scene.m_prewater_pass = &scene.m_resources.emplace<engine::FBO>(
+                "fbo/prewater",
+                size.width(), size.height());
+    engine::raise_last_gl_error();
+    scene.m_prewater_colour_buffer = &scene.m_resources.emplace<engine::Texture2D>(
+                "fbo/prewater/colour0",
+                GL_RGBA,
+                size.width(), size.height());
+    scene.m_prewater_colour_buffer->bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    scene.m_prewater_depth_buffer = &scene.m_resources.emplace<engine::Texture2D>(
+                "fbo/prewater/depth",
+                GL_DEPTH_COMPONENT24,
+                size.width(), size.height(),
+                GL_DEPTH_COMPONENT, GL_FLOAT);
+    scene.m_prewater_depth_buffer->bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    engine::raise_last_gl_error();
+    scene.m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, scene.m_prewater_depth_buffer);
+    scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);
+
     engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
-                scene.m_window,
+                *scene.m_prewater_pass,
                 scene.m_scenegraph,
                 scene.m_camera);
     scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
 
-    scene.m_rendergraph.resort();
+    engine::BlitNode &blit_node = scene.m_rendergraph.new_node<engine::BlitNode>(
+                *scene.m_prewater_pass,
+                scene.m_window);
+    blit_node.dependencies().push_back(&scene_node);
+
+    engine::SceneRenderNode &water_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
+                scene.m_window,
+                scene.m_water_scenegraph,
+                scene.m_camera);
+    water_node.set_clear_mask(0);
+    water_node.dependencies().push_back(&blit_node);
+
+    if (!scene.m_rendergraph.resort()) {
+        throw std::runtime_error("rendergraph has cycles");
+    }
 
     /* scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8); */
 
@@ -828,7 +873,7 @@ void TerraformMode::prepare_scene()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    scene.m_fluidplane_trafo_node = &scene.m_scenegraph.root().emplace<
+    scene.m_fluidplane_trafo_node = &scene.m_water_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
 
     engine::ZUpPlaneNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::ZUpPlaneNode>(
@@ -859,6 +904,8 @@ void TerraformMode::prepare_scene()
                     m_server.state().terrain().size()-1);
         plane_node.material().attach_texture("fluidmap", scene.m_fluiddata);
         plane_node.material().attach_texture("waves", scene.m_waves);
+        plane_node.material().attach_texture("scene", scene.m_prewater_colour_buffer);
+        plane_node.material().attach_texture("scene_depth", scene.m_prewater_depth_buffer);
         plane_node.setup_vao();
     }
 }

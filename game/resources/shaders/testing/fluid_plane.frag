@@ -1,5 +1,17 @@
 #version 330 core
 
+layout(std140) uniform MatrixBlock {
+   layout(row_major) mat4 proj;
+   layout(row_major) mat4 view;
+   layout(row_major) mat4 model;
+   layout(row_major) mat3 normal;
+} mats;
+
+layout(std140) uniform InvMatrixBlock {
+   layout(row_major) mat4 proj;
+   layout(row_major) mat4 view;
+} inv_mats;
+
 uniform vec3 viewpoint;
 
 in FluidFData {
@@ -14,6 +26,10 @@ out vec4 colour;
 
 uniform sampler2D fluidmap;
 uniform sampler2D waves;
+uniform sampler2D scene;
+uniform sampler2D scene_depth;
+
+uniform vec2 viewport;
 
 uniform float t;
 
@@ -24,6 +40,10 @@ const float fluiddata_tc_factor = 1080.f/2.f;
 const float flow_factor = 8.f;
 
 const float max_flow = 10.f;
+
+const float distortion_factor = 10.f;
+const float depth_factor = 0.5f;
+const vec3 depth_attenuation = vec3(0.7, 0.8, 0.9);
 
 
 /*vec2 sample_normal(
@@ -103,6 +123,18 @@ vec3 sunlight(
     return (diffuse + specular) * (nDotL * light_diffuse * light_power);
 }
 
+vec4 unproject(vec3 window_space)
+{
+    vec3 ndc = vec3(2*window_space.xy / viewport.xy - 1, 0);
+    ndc.z = (2*window_space.z - gl_DepthRange.far - gl_DepthRange.near)
+            / (gl_DepthRange.far - gl_DepthRange.near);
+
+    float clip_w = mats.proj[3][2] / (ndc.z - mats.proj[2][2]/mats.proj[2][3]);
+    vec4 clip = vec4(ndc * clip_w, clip_w);
+
+    return inv_mats.proj * clip;
+}
+
 vec3 sample_normal(
         const vec2 wavecoord,
         const vec2 tilecoord,
@@ -180,7 +212,7 @@ void main()
 
 
     /*colour = vec4(floor(flow_tex_coord+vec2(-0.5f, -0.5f))/fluiddata_tc_factor*1080.f/10.f, 0.f, 1.f);*/
-    /*colour = vec4(normalize(fluid.normal) / 2. + 0.5, 1.f);*/
+    /*colour = vec4(normalize(fluid.normal) nDotV/ 2. + 0.5, 1.f);*/
 
     vec3 vert_tangent = normalize(fluid.tangent);
     vec3 vert_normal = normalize(fluid.normal);
@@ -191,7 +223,7 @@ void main()
     /*partial_normal = vec2(0, 0);*/
 
     vec3 eyedir = normalize(viewpoint - fluid.world);
-    vec3 normal = normal_matrix * vec3(partial_normal, sqrt(1-partial_normal.x*partial_normal.x-partial_normal.y*partial_normal.y));
+    vec3 normal = normalize(normal_matrix * vec3(partial_normal, sqrt(1-partial_normal.x*partial_normal.x-partial_normal.y*partial_normal.y)));
     float nDotV = max(1e-5, dot(normal, eyedir));
 
     const float metallic = 1.f;
@@ -211,7 +243,21 @@ void main()
     vec3 reflective = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
     reflective += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, 1.f, skydir, skydiffuse, skypower);
 
-    float fresnel = 1.f - nDotV * 1.3f;
+    float fresnel = max(0.f, 1.f - nDotV * 1.3f);
 
-    colour = vec4(reflective*fresnel, 1.f);
+    vec2 offs = 10.f*fluid.fluiddata.g*normal.xy / viewport.xy;
+    vec2 scene_texcoord = gl_FragCoord.xy / viewport.xy + offs;
+
+    float scene_depth = unproject(vec3(gl_FragCoord.xy, texture2D(scene_depth, scene_texcoord).r)).z;
+    float frag_depth = unproject(gl_FragCoord.xyz).z;
+
+    /*scene_texcoord /= gl_FragCoord.z;*/
+
+    vec3 refractive = texture2D(scene, scene_texcoord).rgb;
+    float depth = depth_factor*(frag_depth - scene_depth);
+    refractive *= pow(depth_attenuation, vec3(depth));
+
+    colour = vec4(mix(refractive, reflective, fresnel), 1.f);
+    /*colour = vec4(vec3(frag_depth), 1.f);*/
+    /*colour = vec4(vec3(frag_depth - scene_depth), 1.f);*/
 }

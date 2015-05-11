@@ -50,6 +50,7 @@ struct TerraformScene
     engine::WindowRenderTarget m_window;
     engine::RenderGraph m_rendergraph;
     engine::SceneGraph m_scenegraph;
+    engine::SceneGraph m_water_scenegraph;
     engine::PerspectivalCamera m_camera;
     engine::Texture2D *m_grass;
     engine::Texture2D *m_rock;
@@ -62,6 +63,10 @@ struct TerraformScene
     engine::Material *m_fluid;
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
+
+    engine::Texture2D *m_prewater_colour_buffer;
+    engine::Texture2D *m_prewater_depth_buffer;
+    engine::FBO *m_prewater_pass;
 };
 
 
