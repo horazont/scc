@@ -194,10 +194,10 @@ void main()
     vec3 normal = normal_matrix * vec3(partial_normal, sqrt(1-partial_normal.x*partial_normal.x-partial_normal.y*partial_normal.y));
     float nDotV = max(1e-5, dot(normal, eyedir));
 
-    const float metallic = 0.8f;
+    const float metallic = 1.f;
     const float roughness = 0.2f;
 
-    vec3 base_colour = vec3(0.1, 0.1, 1.0);
+    vec3 base_colour = vec3(1., 1., 1.);
     vec3 diffuse_colour = base_colour * (1.f - metallic);
     vec3 specular_colour = mix(vec3(0.04f), base_colour, metallic);
 
@@ -208,8 +208,10 @@ void main()
     const float skypower = 1.0f;
     const vec3 skydir = normalize(vec3(-1, -1, 4));
 
-    vec3 color = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
-    color += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, 1.f, skydir, skydiffuse, skypower);
+    vec3 reflective = sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, roughness, sundir, sundiffuse, sunpower);
+    reflective += sunlight(normal, eyedir, nDotV, diffuse_colour, specular_colour, 1.f, skydir, skydiffuse, skypower);
 
-    colour = vec4(color, 1.f);
+    float fresnel = 1.f - nDotV * 1.3f;
+
+    colour = vec4(reflective*fresnel, 1.f);
 }
