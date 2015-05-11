@@ -32,6 +32,8 @@ the AUTHORS file.
 #include "engine/math/perlin.hpp"
 #include "engine/math/algo.hpp"
 
+#include "engine/sim/world_ops.hpp"
+
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
 #include "engine/render/plane.hpp"
@@ -392,6 +394,9 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_brush_frontend.set_brush_strength(5.0);
     m_brush_frontend.set_brush_size(64);
     apply_tool(30, 20, false);
+
+    m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(10, 20, 5, 1, 0.3));
+    m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(80, 20, 5, 8, 0.3));
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
