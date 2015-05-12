@@ -462,6 +462,26 @@ void TerraformMode::before_gl_sync()
     if (m_mouse_world_pos_valid) {
         m_scene->m_pointer_trafo_node->transformation() = translation4(m_mouse_world_pos);
     }
+
+    const QSize size = window()->size() * window()->devicePixelRatio();
+    if (m_scene->m_prewater_pass->width() != size.width() ||
+            m_scene->m_prewater_pass->height() != size.height() )
+    {
+        // resize window
+        m_scene->m_window.set_size(size.width(), size.height());
+        // resize FBO
+        (*m_scene->m_prewater_pass) = engine::FBO(size.width(), size.height());
+        m_scene->m_prewater_colour_buffer->bind();
+        m_scene->m_prewater_colour_buffer->reinit(GL_RGBA, size.width(), size.height());
+        m_scene->m_prewater_depth_buffer->bind();
+        m_scene->m_prewater_depth_buffer->reinit(GL_DEPTH_COMPONENT24, size.width(), size.height());
+        m_scene->m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, m_scene->m_prewater_colour_buffer);
+        m_scene->m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, m_scene->m_prewater_depth_buffer);
+
+        std::cout << m_scene->m_prewater_colour_buffer->width() << std::endl;
+        std::cout << m_scene->m_prewater_colour_buffer->height() << std::endl;
+    }
+
     /*{
         Vector3f pos = m_scene->m_camera.controller().pos();
         pos[eX] = std::max(std::min(pos[eX], float(m_terrain.size())),
@@ -500,9 +520,6 @@ void TerraformMode::geometryChanged(const QRectF &oldSize,
     QQuickItem::geometryChanged(oldSize, newSize);
     const QSize size = window()->size() * window()->devicePixelRatio();
     m_viewport_size = engine::ViewportSize(size.width(), size.height());
-    if (m_scene) {
-        m_scene->m_window.set_size(size.width(), size.height());
-    }
 }
 
 void TerraformMode::hoverMoveEvent(QHoverEvent *event)
