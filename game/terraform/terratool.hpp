@@ -131,6 +131,16 @@ public:
 
 };
 
+class TerraSmoothTool: public TerraTool
+{
+public:
+    using TerraTool::TerraTool;
+
+public:
+    sim::WorldOperationPtr primary(const float x0, const float y0) override;
+
+};
+
 class TerraFluidRaiseTool: public TerraTool
 {
 public:

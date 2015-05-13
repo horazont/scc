@@ -346,6 +346,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_tool_backend(m_brush_frontend, m_server.state()),
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
+    m_tool_smooth(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
@@ -972,6 +973,11 @@ void TerraformMode::switch_to_tool_flatten()
 void TerraformMode::switch_to_tool_raise_lower()
 {
     m_curr_tool = &m_tool_raise_lower;
+}
+
+void TerraformMode::switch_to_tool_smooth()
+{
+    m_curr_tool = &m_tool_smooth;
 }
 
 void TerraformMode::switch_to_tool_fluid_raise()

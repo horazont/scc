@@ -70,6 +70,19 @@ Item {
             }
 
             ToolButton {
+                id: tool_smooth
+                objectName: "tool_smooth"
+                implicitWidth: 48
+                implicitHeight: 48
+                text: "Smth"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 0
+                style: myToolStyle
+                onClicked: Terraform.switch_to_tool_smooth()
+            }
+
+            ToolButton {
                 id: tool_fluid_raise
                 objectName: "tool_fluid_raise"
                 implicitWidth: 48
