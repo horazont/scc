@@ -87,13 +87,7 @@ Brush::density_t ParzenBrush::sample(float x, float y) const
 {
     const float r = std::sqrt(sqr(x)+sqr(y));
 
-    if (r > 1) {
-        return 0;
-    } else if (r >= 0.5) {
-        return 2.f*pow(1.f-r, 3.f);
-    } else {
-        return 1.f+6.f*(pow(r, 2.f)*(r-1.f));
-    }
+    return parzen(r);
 }
 
 
