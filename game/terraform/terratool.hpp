@@ -149,6 +149,25 @@ public:
 
 };
 
+class TerraRampTool: public TerraTool
+{
+public:
+    using TerraTool::TerraTool;
+
+private:
+    Vector3f m_destination_point;
+    Vector3f m_source_point;
+
+protected:
+    void reference_point(const float x0, const float y0, Vector3f &dest);
+
+public:
+    sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
+
+};
+
 class TerraFluidRaiseTool: public TerraTool
 {
 public:

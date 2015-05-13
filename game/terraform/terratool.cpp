@@ -171,6 +171,45 @@ sim::WorldOperationPtr TerraSmoothTool::primary(const float x0, const float y0)
 }
 
 
+void TerraRampTool::reference_point(const float x0, const float y0,
+                                    Vector3f &dest)
+{
+    bool success = false;
+    float height;
+    std::tie(success, height) = m_backend.lookup_height(x0, y0);
+    if (!success) {
+        return;
+    }
+
+    dest = Vector3f(x0, y0, height);
+}
+
+sim::WorldOperationPtr TerraRampTool::primary_start(const float x0, const float y0)
+{
+    reference_point(x0, y0, m_source_point);
+    return nullptr;
+}
+
+sim::WorldOperationPtr TerraRampTool::primary(const float x0, const float y0)
+{
+    return std::make_unique<sim::ops::TerraformRamp>(
+                x0, y0,
+                m_backend.brush_frontend().brush_size(),
+                m_backend.brush_frontend().sampled(),
+                m_backend.brush_frontend().brush_strength(),
+                Vector2f(m_source_point),
+                m_source_point[eZ],
+                Vector2f(m_destination_point),
+                m_destination_point[eZ]);
+}
+
+sim::WorldOperationPtr TerraRampTool::secondary_start(const float x0, const float y0)
+{
+    reference_point(x0, y0, m_destination_point);
+    return nullptr;
+}
+
+
 sim::WorldOperationPtr TerraFluidRaiseTool::primary(const float x0, const float y0)
 {
     return std::make_unique<sim::ops::FluidRaise>(

@@ -83,6 +83,19 @@ Item {
             }
 
             ToolButton {
+                id: tool_ramp
+                objectName: "tool_ramp"
+                implicitWidth: 48
+                implicitHeight: 48
+                text: "Rmp"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 0
+                style: myToolStyle
+                onClicked: Terraform.switch_to_tool_ramp()
+            }
+
+            ToolButton {
                 id: tool_fluid_raise
                 objectName: "tool_fluid_raise"
                 implicitWidth: 48

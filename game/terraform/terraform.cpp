@@ -347,6 +347,7 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_tool_raise_lower(m_tool_backend),
     m_tool_level(m_tool_backend),
     m_tool_smooth(m_tool_backend),
+    m_tool_ramp(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
@@ -398,6 +399,11 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
 
     m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(10, 20, 5, 1, 0.3));
     m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(80, 20, 5, 8, 0.3));
+
+    m_curr_tool = &m_tool_smooth;
+    m_brush_frontend.set_brush_strength(1.0);
+    m_brush_frontend.set_brush_size(4);
+    apply_tool(100, 100, false);
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -983,6 +989,11 @@ void TerraformMode::switch_to_tool_raise_lower()
 void TerraformMode::switch_to_tool_smooth()
 {
     m_curr_tool = &m_tool_smooth;
+}
+
+void TerraformMode::switch_to_tool_ramp()
+{
+    m_curr_tool = &m_tool_ramp;
 }
 
 void TerraformMode::switch_to_tool_fluid_raise()

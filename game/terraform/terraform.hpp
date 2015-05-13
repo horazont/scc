@@ -278,6 +278,7 @@ private:
     TerraRaiseLowerTool m_tool_raise_lower;
     TerraLevelTool m_tool_level;
     TerraSmoothTool m_tool_smooth;
+    TerraRampTool m_tool_ramp;
     TerraFluidRaiseTool m_tool_fluid_raise;
     TerraTool *m_curr_tool;
 
@@ -316,6 +317,7 @@ public:
     Q_INVOKABLE void switch_to_tool_flatten();
     Q_INVOKABLE void switch_to_tool_raise_lower();
     Q_INVOKABLE void switch_to_tool_smooth();
+    Q_INVOKABLE void switch_to_tool_ramp();
 
     Q_INVOKABLE void switch_to_tool_fluid_raise();
 
