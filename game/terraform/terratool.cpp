@@ -43,6 +43,29 @@ ToolBackend::~ToolBackend()
 
 }
 
+std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
+        const float x, const float y,
+        const sim::Terrain::HeightField *field)
+{
+    const unsigned int terrain_size = m_world.terrain().size();
+
+    const int terrainx = std::round(x);
+    const int terrainy = std::round(y);
+
+    if (terrainx < 0 || terrainx >= (int)terrain_size ||
+            terrainy < 0 || terrainy >= (int)terrain_size)
+    {
+        return std::make_pair(false, 0);
+    }
+
+    std::shared_lock<std::shared_timed_mutex> lock;
+    if (!field) {
+        lock = m_world.terrain().readonly_field(field);
+    }
+
+    return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx]);
+}
+
 
 TerraTool::TerraTool(ToolBackend &backend):
     m_backend(backend),
@@ -128,25 +151,12 @@ sim::WorldOperationPtr TerraLevelTool::primary(const float x0, const float y0)
 
 sim::WorldOperationPtr TerraLevelTool::secondary_start(const float x0, const float y0)
 {
-    const unsigned int terrain_size = m_backend.world().terrain().size();
-
-    const int terrainx = std::round(x0);
-    const int terrainy = std::round(y0);
-
-    if (terrainx < 0 || terrainx >= (int)terrain_size ||
-            terrainy < 0 || terrainy >= (int)terrain_size)
-    {
-        return nullptr;
-    }
-
     float new_height;
-    {
-        const sim::Terrain::HeightField *field = nullptr;
-        auto lock = m_backend.world().terrain().readonly_field(field);
-        new_height = (*field)[terrainy*m_backend.world().terrain().size()+terrainx];
+    bool success;
+    std::tie(success, new_height) = m_backend.lookup_height(x0, y0);
+    if (success) {
+        set_value(new_height);
     }
-    set_value(new_height);
-
     return nullptr;
 }
 

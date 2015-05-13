@@ -62,6 +62,10 @@ public:
         return m_world;
     }
 
+    std::pair<bool, sim::Terrain::height_t> lookup_height(
+            const float x, const float y,
+            const sim::Terrain::HeightField *field = nullptr);
+
 };
 
 
