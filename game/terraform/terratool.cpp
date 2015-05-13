@@ -68,7 +68,17 @@ void TerraTool::set_value(float new_value)
     m_value_changed.emit(new_value);
 }
 
+sim::WorldOperationPtr TerraTool::primary_start(const float, const float)
+{
+    return nullptr;
+}
+
 sim::WorldOperationPtr TerraTool::primary(const float, const float)
+{
+    return nullptr;
+}
+
+sim::WorldOperationPtr TerraTool::secondary_start(const float, const float)
 {
     return nullptr;
 }
@@ -116,7 +126,7 @@ sim::WorldOperationPtr TerraLevelTool::primary(const float x0, const float y0)
                 m_value);
 }
 
-sim::WorldOperationPtr TerraLevelTool::secondary(const float x0, const float y0)
+sim::WorldOperationPtr TerraLevelTool::secondary_start(const float x0, const float y0)
 {
     const unsigned int terrain_size = m_backend.world().terrain().size();
 

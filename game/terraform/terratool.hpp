@@ -101,8 +101,12 @@ public:
     virtual void set_value(float new_value);
 
 public:
+    virtual sim::WorldOperationPtr primary_start(const float x0,
+                                                 const float y0);
     virtual sim::WorldOperationPtr primary(const float x0,
                                            const float y0);
+    virtual sim::WorldOperationPtr secondary_start(const float x0,
+                                                   const float y0);
     virtual sim::WorldOperationPtr secondary(const float x0,
                                              const float y0);
 
@@ -127,7 +131,7 @@ public:
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
 
 };
 
