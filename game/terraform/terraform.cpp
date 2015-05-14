@@ -608,11 +608,11 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
         ensure_mouse_world_pos();
         if (m_mouse_world_pos_valid) {
             if (m_paint_secondary) {
-                m_curr_tool->primary_start(m_mouse_world_pos[eX],
-                                           m_mouse_world_pos[eY]);
-            } else {
                 m_curr_tool->secondary_start(m_mouse_world_pos[eX],
                                              m_mouse_world_pos[eY]);
+            } else {
+                m_curr_tool->primary_start(m_mouse_world_pos[eX],
+                                           m_mouse_world_pos[eY]);
             }
         }
         break;
