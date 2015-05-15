@@ -9,6 +9,9 @@ layout(std140) uniform MatrixBlock {
 
 in vec3 position;
 
+out vec3 world;
+
 void main() {
+    world = position;
     gl_Position = mats.proj * mats.view * vec4(position, 1.f);
 }

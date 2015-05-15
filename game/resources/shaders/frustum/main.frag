@@ -2,6 +2,8 @@
 
 out vec4 colour;
 
+in vec3 world;
+
 void main() {
-    colour = vec4(1, 1, 1, 1);
+    colour = vec4(world / 5.f + 0.5, 1);
 }
