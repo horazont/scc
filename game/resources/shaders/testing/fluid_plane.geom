@@ -12,7 +12,6 @@ layout(std140) uniform MatrixBlock {
 
 in FluidVData {
     vec3 world;
-    float eye_z;
     vec3 normal;
     vec3 tangent;
     vec2 tc0;
@@ -21,7 +20,6 @@ in FluidVData {
 
 out FluidFData {
     vec3 world;
-    float eye_z;
     vec3 normal;
     vec3 tangent;
     vec2 tc0;
