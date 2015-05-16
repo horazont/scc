@@ -37,7 +37,6 @@ the AUTHORS file.
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
 #include "engine/render/plane.hpp"
-#include "engine/render/frustum.hpp"
 
 #include "application.hpp"
 
@@ -833,7 +832,6 @@ void TerraformMode::prepare_scene()
     }
 
     /* scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8); */
-    scene.m_scenegraph.root().emplace<engine::FrustumNode>();
 
     scene.m_camera.controller().set_distance(40.0);
     scene.m_camera.controller().set_rot(Vector2f(-60.f/180.f*M_PI, 0));
