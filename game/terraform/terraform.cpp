@@ -422,9 +422,9 @@ void TerraformMode::advance(engine::TimeInterval dt)
         // terrain under mouse probably changed
         m_mouse_world_pos_updated = false;
     }
-    if (dt > 0.02) {
+    /*if (dt > 0.02) {
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
-    }
+    }*/
     m_t += dt;
 }
 
