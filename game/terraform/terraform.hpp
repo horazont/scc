@@ -55,7 +55,6 @@ struct TerraformScene
     engine::Texture2D *m_grass;
     engine::Texture2D *m_rock;
     engine::Texture2D *m_blend;
-    engine::Texture2D *m_fluiddata;
     engine::Texture2D *m_waves;
     engine::FancyTerrainNode *m_terrain_node;
     engine::scenegraph::Transformation *m_pointer_trafo_node;

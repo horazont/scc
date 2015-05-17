@@ -36,7 +36,7 @@ the AUTHORS file.
 
 #include "engine/render/grid.hpp"
 #include "engine/render/pointer.hpp"
-#include "engine/render/plane.hpp"
+#include "engine/render/fluid.hpp"
 
 #include "application.hpp"
 
@@ -411,6 +411,7 @@ void TerraformMode::advance(engine::TimeInterval dt)
     if (m_scene) {
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
+        m_scene->m_water_scenegraph.advance(dt);
     }
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
@@ -508,15 +509,6 @@ void TerraformMode::before_gl_sync()
     Vector3f pos = m_scene->m_camera.controller().pos();
     m_scene->m_fluidplane_trafo_node->transformation() = translation4(
                 Vector3f(std::round(pos[eX])+0.5, std::round(pos[eY])+0.5, 0.f));
-
-    m_scene->m_fluiddata->bind();
-    m_server.state().fluid().to_gl_texture();
-
-    m_scene->m_fluid->shader().bind();
-    glUniform1f(m_scene->m_fluid->shader().uniform_location("t"),
-                m_t);
-    glUniform2f(m_scene->m_fluid->shader().uniform_location("viewport"),
-                m_scene->m_window.width(), m_scene->m_window.height());
 
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
 }
@@ -891,52 +883,14 @@ void TerraformMode::prepare_scene()
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
 
-
-    scene.m_fluiddata = &scene.m_resources.emplace<engine::Texture2D>(
-                "fluiddata", GL_RGBA32F,
-                m_server.state().terrain().size()-1,
-                m_server.state().terrain().size()-1,
-                GL_RGBA,
-                GL_FLOAT);
-    scene.m_fluiddata->bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
     scene.m_fluidplane_trafo_node = &scene.m_water_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
 
-    engine::ZUpPlaneNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::ZUpPlaneNode>(
-                sim::IFluidSim::block_size*2,
-                sim::IFluidSim::block_size*2,
-                sim::IFluidSim::block_size*2);
-    scene.m_fluid = &plane_node.material();
-
-    {
-        bool success = plane_node.material().shader().attach_resource(
-                    GL_VERTEX_SHADER,
-                    ":/shaders/testing/fluid_plane.vert");
-        success = success && plane_node.material().shader().attach_resource(
-                    GL_GEOMETRY_SHADER,
-                    ":/shaders/testing/fluid_plane.geom");
-        success = success && plane_node.material().shader().attach_resource(
-                    GL_FRAGMENT_SHADER,
-                    ":/shaders/testing/fluid_plane.frag");
-        success = success && plane_node.material().shader().link();
-        if (!success) {
-            throw std::runtime_error("failed to link or compile shader");
-        }
-
-        plane_node.material().shader().bind();
-        glUniform1f(plane_node.material().shader().uniform_location("width"),
-                    m_server.state().terrain().size()-1);
-        glUniform1f(plane_node.material().shader().uniform_location("height"),
-                    m_server.state().terrain().size()-1);
-        plane_node.material().attach_texture("fluidmap", scene.m_fluiddata);
-        plane_node.material().attach_texture("waves", scene.m_waves);
-        plane_node.material().attach_texture("scene", scene.m_prewater_colour_buffer);
-        plane_node.material().attach_texture("scene_depth", scene.m_prewater_depth_buffer);
-        plane_node.setup_vao();
-    }
+    engine::FluidNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::FluidNode>(
+                m_server.state().fluid());
+    plane_node.attach_waves_texture(scene.m_waves);
+    plane_node.attach_scene_colour_texture(scene.m_prewater_colour_buffer);
+    plane_node.attach_scene_depth_texture(scene.m_prewater_depth_buffer);
 }
 
 void TerraformMode::activate(Application &app, QQuickItem &parent)
