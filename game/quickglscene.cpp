@@ -32,13 +32,24 @@ the AUTHORS file.
 
 #include "ffengine/io/log.hpp"
 
+// #define TIMELOG_QUICKGLSCENE
+
+#ifdef TIMELOG_QUICKGLSCENE
+
+typedef std::chrono::steady_clock timelog_clock;
+#define TIMELOG_ms(x) std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1000> > >(x).count()
+
+#endif
+
 static io::Logger &logger = io::logging().get_logger("app.qgl");
 
 
 QuickGLScene::QuickGLScene():
     m_t(monoclock::now()),
     m_rendergraph(nullptr),
-    m_render_rendergraph(nullptr)
+    m_render_rendergraph(nullptr),
+    m_previous_fps(m_t),
+    m_frames(0)
 {
     setFlags(QQuickItem::ItemHasContents);
     connect(this, SIGNAL(windowChanged(QQuickWindow*)),
@@ -89,6 +100,11 @@ void QuickGLScene::paint()
     glFrontFace(GL_CCW);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+#ifdef TIMELOG_QUICKGLSCENE
+    timelog_clock::time_point t0 = timelog_clock::now();
+    timelog_clock::time_point t_render;
+#endif
+
     if (m_render_rendergraph) {
         glGetError();
         m_render_rendergraph->render();
@@ -96,16 +112,44 @@ void QuickGLScene::paint()
     } else {
         logger.log(io::LOG_WARNING, "nothing to draw");
     }
+
+#ifdef TIMELOG_QUICKGLSCENE
+    t_render = timelog_clock::now();
+    logger.logf(io::LOG_DEBUG, "quickglscene: paint %.2f ms",
+                TIMELOG_ms(t_render - t0));
+#endif
+    m_frames += 1;
+    {
+        monoclock::time_point t_now = monoclock::now();
+        auto seconds_passed =
+                std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1> > >(t_now-m_previous_fps).count();
+        if (seconds_passed > 1.f) {
+            logger.logf(io::LOG_DEBUG, "%.0f FPS", m_frames / seconds_passed);
+            m_previous_fps = t_now;
+            m_frames = 0;
+        }
+    }
 }
 
 void QuickGLScene::sync()
 {
+#ifdef TIMELOG_QUICKGLSCENE
+    timelog_clock::time_point t0 = timelog_clock::now();
+    timelog_clock::time_point t_sync;
+#endif
+
     emit before_gl_sync();
     m_render_rendergraph = m_rendergraph;
     if (m_render_rendergraph) {
         m_render_rendergraph->sync();
     }
     emit after_gl_sync();
+
+#ifdef TIMELOG_QUICKGLSCENE
+    t_sync = timelog_clock::now();
+    logger.logf(io::LOG_DEBUG, "quickglscene: sync %.2f ms",
+                TIMELOG_ms(t_sync - t0));
+#endif
 }
 
 void QuickGLScene::window_changed(QQuickWindow *win)

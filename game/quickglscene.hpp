@@ -49,6 +49,9 @@ private:
     engine::RenderGraph *m_rendergraph;
     engine::RenderGraph *m_render_rendergraph;
 
+    monoclock::time_point m_previous_fps;
+    unsigned int m_frames;
+
 signals:
     void advance(engine::TimeInterval seconds);
     void after_gl_sync();
