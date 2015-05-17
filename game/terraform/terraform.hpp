@@ -31,11 +31,11 @@ the AUTHORS file.
 #include <QQmlEngine>
 #include <QQuickImageProvider>
 
-#include "engine/render/camera.hpp"
-#include "engine/render/scenegraph.hpp"
-#include "engine/render/fancyterrain.hpp"
+#include "ffengine/render/camera.hpp"
+#include "ffengine/render/scenegraph.hpp"
+#include "ffengine/render/fancyterrain.hpp"
 
-#include "engine/sim/terrain.hpp"
+#include "ffengine/sim/terrain.hpp"
 
 #include "mode.hpp"
 #include "quickglscene.hpp"

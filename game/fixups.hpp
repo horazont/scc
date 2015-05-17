@@ -25,4 +25,4 @@ the AUTHORS file.
 // it is required to avoid stupid conflicts with Qt
 #include <GL/glew.h>
 #include <sigc++/sigc++.h>
-#include "engine/sim/terrain.hpp"
+#include "ffengine/sim/terrain.hpp"

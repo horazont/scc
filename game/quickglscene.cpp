@@ -30,7 +30,7 @@ the AUTHORS file.
 
 #include <QSGOpacityNode>
 
-#include "engine/io/log.hpp"
+#include "ffengine/io/log.hpp"
 
 static io::Logger &logger = io::logging().get_logger("app.qgl");
 

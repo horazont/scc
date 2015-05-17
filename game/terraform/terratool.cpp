@@ -25,9 +25,9 @@ the AUTHORS file.
 
 #include "terraform/terratool.hpp"
 
-#include "engine/math/algo.hpp"
+#include "ffengine/math/algo.hpp"
 
-#include "engine/sim/world_ops.hpp"
+#include "ffengine/sim/world_ops.hpp"
 
 
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,

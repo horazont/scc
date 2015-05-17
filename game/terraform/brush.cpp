@@ -29,7 +29,7 @@ the AUTHORS file.
 #include <cmath>
 #include <limits>
 
-#include "engine/math/algo.hpp"
+#include "ffengine/math/algo.hpp"
 
 
 static io::Logger &logger = io::logging().get_logger("app.terraform.brush");

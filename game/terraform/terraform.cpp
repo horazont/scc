@@ -26,17 +26,17 @@ the AUTHORS file.
 #include <QQmlContext>
 #include <QQuickWindow>
 
-#include "engine/io/filesystem.hpp"
+#include "ffengine/io/filesystem.hpp"
 
-#include "engine/math/intersect.hpp"
-#include "engine/math/perlin.hpp"
-#include "engine/math/algo.hpp"
+#include "ffengine/math/intersect.hpp"
+#include "ffengine/math/perlin.hpp"
+#include "ffengine/math/algo.hpp"
 
-#include "engine/sim/world_ops.hpp"
+#include "ffengine/sim/world_ops.hpp"
 
-#include "engine/render/grid.hpp"
-#include "engine/render/pointer.hpp"
-#include "engine/render/fluid.hpp"
+#include "ffengine/render/grid.hpp"
+#include "ffengine/render/pointer.hpp"
+#include "ffengine/render/fluid.hpp"
 
 #include "application.hpp"
 

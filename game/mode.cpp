@@ -27,7 +27,7 @@ the AUTHORS file.
 #include <QQmlProperty>
 #include <QQmlExpression>
 
-#include "engine/io/log.hpp"
+#include "ffengine/io/log.hpp"
 static io::Logger &app_logger = io::logging().get_logger("app");
 
 #include "application.hpp"

@@ -32,7 +32,7 @@ the AUTHORS file.
 #include <QQuickItem>
 #include <QQuickWindow>
 
-#include "engine/io/filesystem.hpp"
+#include "ffengine/io/filesystem.hpp"
 
 #include "quickglscene.hpp"
 #include "mode.hpp"

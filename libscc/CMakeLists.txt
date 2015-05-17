@@ -1,0 +1,24 @@
+set(INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/")
+
+set(LIBSCC_HEADERS
+  )
+
+set(LIBSCC_SRC
+  )
+
+
+add_library(scc STATIC ${ENGINE_SRC} ${PROTO_SRCS})
+
+set_property(
+  TARGET scc
+  PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+  ${INCLUDE_DIRS}
+  )
+set_property(
+  TARGET scc
+  PROPERTY INTERFACE_COMPILE_DEFINITIONS)
+
+
+add_custom_target(
+  dummy_scc_files
+  SOURCES ${ENGINE_HEADERS} ${ENGINE_PROTOS})

@@ -23,7 +23,7 @@ the AUTHORS file.
 **********************************************************************/
 #include "mainmenu.hpp"
 
-#include "engine/io/log.hpp"
+#include "ffengine/io/log.hpp"
 static io::Logger &app_logger = io::logging().get_logger("app");
 
 

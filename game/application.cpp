@@ -25,8 +25,8 @@ the AUTHORS file.
 
 #include <QQmlContext>
 
-#include "engine/io/mount.hpp"
-#include "engine/io/log.hpp"
+#include "ffengine/io/mount.hpp"
+#include "ffengine/io/log.hpp"
 
 #include "mainmenu.hpp"
 #include "terraform/terraform.hpp"

@@ -26,8 +26,8 @@ the AUTHORS file.
 
 #include "fixups.hpp"
 
-#include "engine/common/resource.hpp"
-#include "engine/render/scenegraph.hpp"
+#include "ffengine/common/resource.hpp"
+#include "ffengine/render/scenegraph.hpp"
 
 #include "mode.hpp"
 

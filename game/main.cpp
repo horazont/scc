@@ -36,7 +36,7 @@ the AUTHORS file.
 
 #include "terraform/terraform.hpp"
 
-#include "engine/io/log.hpp"
+#include "ffengine/io/log.hpp"
 
 int main(int argc, char *argv[])
 {

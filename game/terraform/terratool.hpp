@@ -28,8 +28,8 @@ the AUTHORS file.
 
 #include <sigc++/sigc++.h>
 
-#include "engine/sim/terrain.hpp"
-#include "engine/sim/world.hpp"
+#include "ffengine/sim/terrain.hpp"
+#include "ffengine/sim/world.hpp"
 
 #include "terraform/brush.hpp"
 

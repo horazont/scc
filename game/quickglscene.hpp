@@ -30,8 +30,8 @@ the AUTHORS file.
 
 #include <QQuickItem>
 
-#include "engine/render/scenegraph.hpp"
-#include "engine/render/camera.hpp"
+#include "ffengine/render/scenegraph.hpp"
+#include "ffengine/render/camera.hpp"
 
 typedef std::chrono::steady_clock monoclock;
 
