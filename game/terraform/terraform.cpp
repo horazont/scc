@@ -336,7 +336,7 @@ BrushListImageProvider *BrushList::image_provider()
 TerraformMode::TerraformMode(QQmlEngine *engine):
     ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
     m_server(),
-    m_terrain_interface(m_server.state().terrain(), 136),
+    m_terrain_interface(m_server.state().terrain(), 61),
     m_t(100),
     m_mouse_mode(MOUSE_IDLE),
     m_paint_secondary(false),

@@ -15,7 +15,7 @@ uniform vec3 lod_viewpoint;
 uniform float zoffset;
 uniform float heightmap_factor/*  = 0.03076923076923077; */;
 
-const float grid_size = 135;
+const float grid_size = 60;
 uniform float scale_to_radius/* = 1.984375; */;
 
 in vec2 position;
@@ -29,8 +29,8 @@ out TerrainData {
 vec2 morph_vertex(vec2 grid_pos, vec2 vertex, float morph_k)
 {
     vec2 frac_part = fract(grid_pos.xy * grid_size * 0.5) * 2.0 / grid_size;
-    if (grid_pos.x == 1.0) { frac_part.x = 0; }
-    if (grid_pos.y == 1.0) { frac_part.y = 0; }
+    /*if (grid_pos.x == 1.0) { frac_part.x = 0; }
+    if (grid_pos.y == 1.0) { frac_part.y = 0; }*/
     return vertex.xy - frac_part * chunk_size * morph_k;
 }
 
