@@ -22,96 +22,51 @@ For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
 #include "application.hpp"
+#include "ui_application.h"
 
-#include <QQmlContext>
+#include <QResizeEvent>
 
-#include "ffengine/io/mount.hpp"
-#include "ffengine/io/log.hpp"
+static io::Logger &logger = io::logging().get_logger("app");
 
-#include "mainmenu.hpp"
-#include "terraform/terraform.hpp"
-
-static io::Logger &app_logger = io::logging().get_logger("app");
-
-
-Application::Application():
-    QQuickWindow(),
-    m_curr_mode(nullptr),
-    m_gl_scene(nullptr)
+Application::Application(QWidget *parent) :
+    QMainWindow(parent),
+    m_ui(new Ui::Application)
 {
-
+    m_ui->setupUi(this);
 }
 
 Application::~Application()
 {
-
+    if (m_curr_mode) {
+        m_curr_mode->deactivate();
+    }
+    delete m_ui;
 }
 
-QQmlEngine &Application::engine()
+void Application::resizeEvent(QResizeEvent *event)
 {
-    QQmlEngine *result = QQmlEngine::contextForObject(this)->engine();
-    if (!result) {
-        app_logger.log(io::LOG_EXCEPTION,
-                       "no engine associated with "
-                       "application");
-        throw std::runtime_error("no engine for application");
+    QMainWindow::resizeEvent(event);
+    QRect geometry = m_ui->centralwidget->geometry();
+    m_ui->sceneWidget->setGeometry(geometry);
+    if (m_curr_mode) {
+        m_curr_mode->setGeometry(geometry);
     }
-
-    return *result;
-}
-
-ApplicationMode &Application::ensure_mode()
-{
-    if (!m_curr_mode) {
-        m_curr_mode = std::unique_ptr<ApplicationMode>(
-                    new TerraformMode(&engine())
-                    );
-        app_logger.log(io::LOG_DEBUG, "activating mode");
-        m_curr_mode->activate(*this, *contentItem());
-        app_logger.log(io::LOG_DEBUG, "mode activated");
-    }
-    return *m_curr_mode;
-}
-
-QuickGLScene &Application::ensure_scene()
-{
-    if (!m_gl_scene) {
-        m_gl_scene = findChild<QuickGLScene*>("glscene");
-        if (!m_gl_scene) {
-            app_logger.log(io::LOG_EXCEPTION,
-                           "no glscene object in application");
-            throw std::runtime_error("no glscene object in application");
-        }
-    }
-
-    return *m_gl_scene;
 }
 
 void Application::enter_mode(std::unique_ptr<ApplicationMode> &&mode)
 {
     if (m_curr_mode) {
+        logger.log(io::LOG_DEBUG, "deactivating previous mode");
         m_curr_mode->deactivate();
     }
     m_curr_mode = std::move(mode);
-    if (!m_curr_mode) {
-        ensure_mode();
-    } else {
-        m_curr_mode->activate(*this, *contentItem());
+    if (m_curr_mode) {
+        logger.log(io::LOG_DEBUG, "activating new mode");
+        m_curr_mode->activate(*this, *m_ui->centralwidget);
     }
 }
 
-void Application::enter_mode(Mode mode)
+OpenGLScene &Application::scene()
 {
-    switch (mode) {
-    case TERRAFORM:
-    {
-        enter_mode(std::unique_ptr<ApplicationMode>(new TerraformMode(&engine())));
-        return;
-    }
-    case MAIN_MENU:
-    {
-        enter_mode(std::unique_ptr<ApplicationMode>(new MainMenu(&engine())));
-        return;
-    }
-    }
+    return *m_ui->sceneWidget;
 }

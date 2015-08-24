@@ -23,8 +23,7 @@ the AUTHORS file.
 **********************************************************************/
 #include "terraform.hpp"
 
-#include <QQmlContext>
-#include <QQuickWindow>
+#include <QMouseEvent>
 
 #include "ffengine/io/filesystem.hpp"
 
@@ -90,87 +89,17 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
 }
 
 
-BrushListImageProvider::BrushListImageProvider():
-    QQuickImageProvider(QQmlImageProviderBase::Pixmap),
-    m_image_id_ctr(0)
-{
-
-}
-
-BrushListImageProvider::~BrushListImageProvider()
-{
-    std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
-    m_images.clear();
-}
-
-QPixmap BrushListImageProvider::requestPixmap(
-        const QString &id,
-        QSize *size,
-        const QSize &requestedSize)
-{
-    bool ok = false;
-    ImageID image_id = id.toUInt(&ok);
-    if (!ok) {
-        return QPixmap();
-    }
-
-    std::shared_lock<std::shared_timed_mutex> lock(m_images_mutex);
-    auto iter = m_images.find(image_id);
-    if (iter == m_images.end()) {
-        return QPixmap();
-    }
-
-    QPixmap *pixmap = iter->second.get();
-    *size = pixmap->size();
-    if (requestedSize.isValid()) {
-        QPixmap result = pixmap->scaled(requestedSize);
-        return result;
-    }
-    return *pixmap;
-}
-
-BrushListImageProvider::ImageID BrushListImageProvider::publish_pixmap(
-        std::unique_ptr<QPixmap> &&pixmap)
-{
-    ImageID id;
-    {
-        std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
-        id = m_image_id_ctr++;
-        m_images.emplace(id, std::move(pixmap));
-    }
-    return id;
-}
-
-void BrushListImageProvider::unpublish_pixmap(ImageID id)
-{
-    std::unique_lock<std::shared_timed_mutex> lock(m_images_mutex);
-    auto iter = m_images.find(id);
-    if (iter == m_images.end()) {
-        return;
-    }
-    m_images.erase(iter);
-}
-
-QString BrushListImageProvider::image_id_to_url(ImageID id)
-{
-    return "image://" + provider_name + "/" + QString::number(id);
-}
-
-
 BrushWrapper::BrushWrapper(std::unique_ptr<Brush> &&brush,
                            const QString &display_name):
     m_brush(std::move(brush)),
-    m_display_name(display_name),
-    m_image_id(BrushList::image_provider()->publish_pixmap(
-                   std::unique_ptr<QPixmap>(new QPixmap(QPixmap::fromImage(m_brush->preview_image(preview_size)))))),
-    m_image_url(BrushListImageProvider::image_id_to_url(m_image_id))
+    m_display_name(display_name)
 {
 
 }
 
 BrushWrapper::~BrushWrapper()
 {
-    BrushList::image_provider()->unpublish_pixmap(m_image_id);
+
 }
 
 
@@ -327,14 +256,9 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
            QString::fromStdString(brush.display_name()));
 }
 
-BrushListImageProvider *BrushList::image_provider()
-{
-    return m_image_provider;
-}
 
-
-TerraformMode::TerraformMode(QQmlEngine *engine):
-    ApplicationMode("Terraform", engine, QUrl("qrc:/qml/Terra.qml")),
+TerraformMode::TerraformMode(QWidget *parent):
+    ApplicationMode(parent),
     m_server(),
     m_terrain_interface(m_server.state().terrain(), 61),
     m_t(100),
@@ -352,8 +276,6 @@ TerraformMode::TerraformMode(QQmlEngine *engine):
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
 {
-    setAcceptHoverEvents(true);
-    setAcceptedMouseButtons(Qt::AllButtons);
     /* m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
                                                Vector3(13, 13, 3),
                                                0.45,
@@ -435,8 +357,13 @@ void TerraformMode::after_gl_sync()
 
 void TerraformMode::before_gl_sync()
 {
+    engine::raise_last_gl_error();
     prepare_scene();
+    engine::raise_last_gl_error();
     m_scene->m_camera.sync();
+    engine::raise_last_gl_error();
+
+    m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
     Brush *const curr_brush = m_brush_frontend.curr_brush();
     ensure_mouse_world_pos();
@@ -511,26 +438,14 @@ void TerraformMode::before_gl_sync()
                 Vector3f(std::round(pos[eX])+0.5, std::round(pos[eY])+0.5, 0.f));
 
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
+    engine::raise_last_gl_error();
 }
 
-void TerraformMode::geometryChanged(const QRectF &oldSize,
-                                    const QRectF &newSize)
+void TerraformMode::resizeEvent(QResizeEvent *event)
 {
-    QQuickItem::geometryChanged(oldSize, newSize);
-    const QSize size = window()->size() * window()->devicePixelRatio();
+    ApplicationMode::resizeEvent(event);
+    const QSize size = m_gl_scene->size() * window()->devicePixelRatio();
     m_viewport_size = engine::ViewportSize(size.width(), size.height());
-}
-
-void TerraformMode::hoverMoveEvent(QHoverEvent *event)
-{
-    if (!m_scene) {
-        return;
-    }
-
-    const Vector2f new_pos = Vector2f(event->pos().x(),
-                                      event->pos().y());
-    m_mouse_pos_win = new_pos;
-    m_mouse_world_pos_updated = false;
 }
 
 void TerraformMode::mouseMoveEvent(QMouseEvent *event)
@@ -801,13 +716,13 @@ void TerraformMode::prepare_scene()
     scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);
 
     engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
-                *scene.m_prewater_pass,
+                scene.m_window,
                 scene.m_scenegraph,
                 scene.m_camera);
     scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
 
-    engine::BlitNode &blit_node = scene.m_rendergraph.new_node<engine::BlitNode>(
+    /*engine::BlitNode &blit_node = scene.m_rendergraph.new_node<engine::BlitNode>(
                 *scene.m_prewater_pass,
                 scene.m_window);
     blit_node.dependencies().push_back(&scene_node);
@@ -817,13 +732,13 @@ void TerraformMode::prepare_scene()
                 scene.m_water_scenegraph,
                 scene.m_camera);
     water_node.set_clear_mask(0);
-    water_node.dependencies().push_back(&blit_node);
+    water_node.dependencies().push_back(&blit_node);*/
 
     if (!scene.m_rendergraph.resort()) {
         throw std::runtime_error("rendergraph has cycles");
     }
 
-    /* scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8); */
+    scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8);
 
     scene.m_camera.controller().set_distance(40.0);
     scene.m_camera.controller().set_rot(Vector2f(-60.f/180.f*M_PI, 0));
@@ -858,16 +773,19 @@ void TerraformMode::prepare_scene()
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
+    engine::raise_last_gl_error();
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
     scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
+    engine::raise_last_gl_error();
 
     scene.m_overlay = &scene.m_resources.emplace<engine::Material>("materials/overlay");
     scene.m_overlay->shader().attach_resource(GL_FRAGMENT_SHADER,
                                               ":/shaders/terrain/brush_overlay.frag");
     scene.m_terrain_node->configure_overlay_material(*scene.m_overlay);
     scene.m_terrain_node->configure_overlay(*scene.m_overlay, sim::TerrainRect(70, 70, 250, 250));
+    engine::raise_last_gl_error();
 
     scene.m_brush = &scene.m_resources.emplace<engine::Texture2D>(
                 "textures/brush", GL_R32F, 129, 129, GL_RED, GL_FLOAT);
@@ -877,32 +795,39 @@ void TerraformMode::prepare_scene()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    engine::raise_last_gl_error();
 
     scene.m_overlay->shader().bind();
     glUniform2f(scene.m_overlay->shader().uniform_location("center"),
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
+    engine::raise_last_gl_error();
 
     scene.m_fluidplane_trafo_node = &scene.m_water_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
+    engine::raise_last_gl_error();
 
-    engine::FluidNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::FluidNode>(
+    /*engine::FluidNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::FluidNode>(
                 m_server.state().fluid());
+    engine::raise_last_gl_error();
     plane_node.attach_waves_texture(scene.m_waves);
+    engine::raise_last_gl_error();
     plane_node.attach_scene_colour_texture(scene.m_prewater_colour_buffer);
+    engine::raise_last_gl_error();
     plane_node.attach_scene_depth_texture(scene.m_prewater_depth_buffer);
+    engine::raise_last_gl_error();*/
 }
 
-void TerraformMode::activate(Application &app, QQuickItem &parent)
+void TerraformMode::activate(Application &app, QWidget &parent)
 {
     ApplicationMode::activate(app, parent);
-    m_advance_conn = connect(m_gl_scene, &QuickGLScene::advance,
+    m_advance_conn = connect(m_gl_scene, &OpenGLScene::advance,
                              this, &TerraformMode::advance,
-                             Qt::QueuedConnection);
-    m_before_gl_sync_conn = connect(m_gl_scene, &QuickGLScene::before_gl_sync,
+                             Qt::DirectConnection);
+    m_before_gl_sync_conn = connect(m_gl_scene, &OpenGLScene::before_gl_sync,
                                     this, &TerraformMode::before_gl_sync,
                                     Qt::DirectConnection);
-    m_after_gl_sync_conn = connect(m_gl_scene, &QuickGLScene::after_gl_sync,
+    m_after_gl_sync_conn = connect(m_gl_scene, &OpenGLScene::after_gl_sync,
                                    this, &TerraformMode::after_gl_sync,
                                    Qt::DirectConnection);
 }
@@ -976,8 +901,3 @@ void TerraformMode::set_brush_size(float size)
     }
     m_brush_frontend.set_brush_size(std::round(size));
 }
-
-
-const QString BrushListImageProvider::provider_name = "brush_previews";
-// QQmlEngine will take ownership of the pointer
-BrushListImageProvider *BrushList::m_image_provider = new BrushListImageProvider();

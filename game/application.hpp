@@ -21,24 +21,25 @@ FEEDBACK & QUESTIONS
 For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
-#ifndef APPLICATION_HPP
-#define APPLICATION_HPP
+#ifndef APPLICATION_H
+#define APPLICATION_H
 
 #include "fixups.hpp"
 
 #include <memory>
-
-#include <QQmlEngine>
-#include <QQuickItem>
-#include <QQuickWindow>
+#include <QMainWindow>
 
 #include "ffengine/io/filesystem.hpp"
 
-#include "quickglscene.hpp"
 #include "mode.hpp"
+#include "openglscene.hpp"
 
 
-class Application: public QQuickWindow
+namespace Ui {
+class Application;
+}
+
+class Application : public QMainWindow
 {
     Q_OBJECT
 public:
@@ -48,30 +49,20 @@ public:
     };
 
 public:
-    Application();
+    explicit Application(QWidget *parent = 0);
     ~Application();
 
 private:
+    Ui::Application *m_ui;
+
     std::unique_ptr<ApplicationMode> m_curr_mode;
-    QuickGLScene *m_gl_scene;
 
 protected:
-    QQmlEngine &engine();
-    ApplicationMode &ensure_mode();
-    QuickGLScene &ensure_scene();
-    void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
-
-signals:
-
-public slots:
+    void resizeEvent(QResizeEvent *event) override;
 
 public:
-    inline QuickGLScene &scene()
-    {
-        return ensure_scene();
-    }
-
-    void enter_mode(Mode mode);
+    void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
+    OpenGLScene &scene();
 
 };
 

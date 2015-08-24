@@ -22,52 +22,25 @@ For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
 #include "mainmenu.hpp"
-
-#include "ffengine/io/log.hpp"
-static io::Logger &app_logger = io::logging().get_logger("app");
-
+#include "ui_mainmenu.h"
 
 #include "application.hpp"
-#include "quickglscene.hpp"
+#include "terraform/terraform.hpp"
 
-
-MainMenu::MainMenu(QQmlEngine *engine):
-    ApplicationMode("MainMenu", engine, QUrl("qrc:/qml/MainMenu.qml"))
+MainMenu::MainMenu(QWidget *parent) :
+    ApplicationMode(parent),
+    m_ui(new Ui::MainMenu)
 {
-
+    m_ui->setupUi(this);
 }
 
 MainMenu::~MainMenu()
 {
-
+    delete m_ui;
 }
 
-void MainMenu::prepare_scene()
+void MainMenu::on_pushButton_clicked()
 {
-    if (m_scene) {
-        return;
-    }
-
-    m_scene = std::unique_ptr<MainMenuScene>(new MainMenuScene());
-}
-
-void MainMenu::before_gl_sync()
-{
-    prepare_scene();
-    m_gl_scene->setup_scene(&m_scene->m_rendergraph);
-}
-
-void MainMenu::activate(Application &app, QQuickItem &parent)
-{
-    ApplicationMode::activate(app, parent);
-    m_gl_sync_conn = connect(
-                m_gl_scene, &QuickGLScene::before_gl_sync,
-                this, &MainMenu::before_gl_sync,
-                Qt::DirectConnection);
-}
-
-void MainMenu::deactivate()
-{
-    disconnect(m_gl_sync_conn);
-    ApplicationMode::deactivate();
+    m_app->enter_mode(std::make_unique<TerraformMode>());
+    // MainMenu is deleted here!
 }

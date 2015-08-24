@@ -1,5 +1,5 @@
 /**********************************************************************
-File name: quickglscene.hpp
+File name: openglscene.hpp
 This file is part of: SCC (working title)
 
 LICENSE
@@ -21,33 +21,38 @@ FEEDBACK & QUESTIONS
 For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
-#ifndef QUICKGLSCENE_HPP
-#define QUICKGLSCENE_HPP
+#ifndef OPENGLSCENE_HPP
+#define OPENGLSCENE_HPP
 
 #include "fixups.hpp"
 
 #include <chrono>
 
-#include <QQuickItem>
+#include <QOpenGLWidget>
 
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/camera.hpp"
 
 typedef std::chrono::steady_clock monoclock;
 
+namespace Ui {
+class OpenGLScene;
+}
 
-class QuickGLScene: public QQuickItem
+class OpenGLScene : public QOpenGLWidget
 {
     Q_OBJECT
+
 public:
-    QuickGLScene();
-    ~QuickGLScene();
+    explicit OpenGLScene(QWidget *parent = 0);
+    ~OpenGLScene();
 
 private:
+    Ui::OpenGLScene *m_ui;
+
     monoclock::time_point m_t;
 
     engine::RenderGraph *m_rendergraph;
-    engine::RenderGraph *m_render_rendergraph;
 
     monoclock::time_point m_previous_fps;
     unsigned int m_frames;
@@ -58,22 +63,13 @@ signals:
     void before_gl_sync();
 
 protected:
-    QSGNode *updatePaintNode(
-            QSGNode *oldNode,
-            UpdatePaintNodeData *data);
-
-public slots:
-    void before_rendering();
-    void cleanup();
-    void paint();
-    void sync();
-
-private slots:
-    void window_changed(QQuickWindow *win);
+    void initializeGL() override;
+    void resizeGL(int w, int h) override;
+    void paintGL() override;
 
 public:
     void setup_scene(engine::RenderGraph *rendergraph);
 
 };
 
-#endif // QUICKGLSCENE_HPP
+#endif // OPENGLSCENE_H

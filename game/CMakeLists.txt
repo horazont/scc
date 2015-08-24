@@ -4,8 +4,6 @@ set(CMAKE_INCLUDE_CURRENT_DIRS ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Qml REQUIRED)
-find_package(Qt5Quick REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(SIGC++ REQUIRED)
@@ -16,7 +14,7 @@ set(GAME_SRC
   main.cpp
   mainmenu.cpp
   mode.cpp
-  quickglscene.cpp
+  openglscene.cpp
   terraform/brush.cpp
   terraform/terraform.cpp
   terraform/terratool.cpp
@@ -27,14 +25,12 @@ set(GAME_HEADERS
   brush.proto
   )
 
-set(GAME_QML_RESOURCES
-  resources/qml/main.qml
-  resources/qml/MainForm.ui.qml
-  resources/qml/Terra.qml
-  resources/qml/TerraForm.ui.qml
-  resources/qml/MainMenu.qml
-  resources/qml/MainMenuForm.ui.qml
-  )
+set(GAME_UIS
+    ui/application.ui
+    ui/openglscene.ui
+    ui/mainmenu.ui)
+
+QT5_WRAP_UI(GAME_UI_HDRS ${GAME_UIS})
 
 set(GAME_TEXTURE_RESOURCES
   resources/textures/grass00.png
@@ -70,7 +66,6 @@ add_custom_target(
     DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/shaders.rcc
     ${CMAKE_CURRENT_BINARY_DIR}/textures.rcc
-    ${CMAKE_CURRENT_BINARY_DIR}/qml.rcc
     ${CMAKE_CURRENT_BINARY_DIR}/brushes.rcc
     SOURCES
     resources/shaders.qrc
@@ -79,8 +74,7 @@ add_custom_target(
     ${GAME_TEXTURE_RESOURCES}
     resources/brushes.qrc
     ${GAME_BRUSH_RESOURCES}
-    resources/qml.qrc
-    ${GAME_QML_RESOURCES})
+    ${GAME_UIS})
 
 function(add_resource_pack PACKNAME QRC SOURCES)
   add_custom_command(
@@ -91,7 +85,6 @@ function(add_resource_pack PACKNAME QRC SOURCES)
   )
 endfunction(add_resource_pack)
 
-add_resource_pack("qml" "resources/qml.qrc" "${GAME_QML_RESOURCES}")
 add_resource_pack("textures" "resources/textures.qrc" "${GAME_TEXTURE_RESOURCES}")
 add_resource_pack("shaders" "resources/shaders.qrc" "${GAME_SHADER_RESOURCES}")
 add_resource_pack("brushes" "resources/brushes.qrc" "${GAME_BRUSH_RESOURCES}")
@@ -104,10 +97,8 @@ include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS brush.proto)
 
-add_executable(game ${GAME_SRC} ${GAME_HEADERS} ${PROTO_SRCS} ${PROTO_HDRS})
+add_executable(game ${GAME_SRC} ${GAME_HEADERS} ${PROTO_SRCS} ${PROTO_HDRS} ${GAME_UI_HDRS})
 target_link_libraries(game Qt5::Widgets)
-target_link_libraries(game Qt5::Quick)
-target_link_libraries(game Qt5::Qml)
 target_link_libraries(game ffengine-core)
 target_link_libraries(game ffengine-render)
 target_link_libraries(game ffengine-sim)

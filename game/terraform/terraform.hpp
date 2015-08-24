@@ -28,8 +28,6 @@ the AUTHORS file.
 
 #include <QAbstractItemModel>
 #include <QDir>
-#include <QQmlEngine>
-#include <QQuickImageProvider>
 
 #include "ffengine/render/camera.hpp"
 #include "ffengine/render/scenegraph.hpp"
@@ -38,7 +36,6 @@ the AUTHORS file.
 #include "ffengine/sim/terrain.hpp"
 
 #include "mode.hpp"
-#include "quickglscene.hpp"
 
 #include "terraform/brush.hpp"
 #include "terraform/terratool.hpp"
@@ -79,68 +76,6 @@ enum MouseMode
 
 
 /**
- * A QQuickImageProvider which is used to provide brush previews to the QML
- * interface.
- */
-class BrushListImageProvider: public QQuickImageProvider
-{
-public:
-    typedef unsigned int ImageID;
-    static const QString provider_name;
-
-public:
-    BrushListImageProvider();
-    ~BrushListImageProvider() override;
-
-private:
-    std::shared_timed_mutex m_images_mutex;
-    ImageID m_image_id_ctr;
-    std::unordered_map<ImageID, std::unique_ptr<QPixmap> > m_images;
-
-public:
-    /**
-     * Return a published Pixmap, if available.
-     *
-     * @param id The image ID as string (URLs created with image_id_to_url()
-     * produce this correctly).
-     * @param size Original size of the preview
-     * @param requestedSize Size requested by QML
-     * @return Pixmap
-     */
-    QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override;
-
-public:
-    /**
-     * Publish a pixmap to the QML interface
-     *
-     * @param pixmap Pixmap to publish. The BrushListImageProvider takes
-     * ownership.
-     *
-     * @return An ID to refer to the published pixmap.
-     */
-    ImageID publish_pixmap(std::unique_ptr<QPixmap> &&pixmap);
-
-    /**
-     * Remove a published pixmap.
-     *
-     * @param id The image ID as returned by publish_pixmap().
-     */
-    void unpublish_pixmap(ImageID id);
-
-    /**
-     * Convert a image Id to the string which can be used from within QML
-     * to obtain the published image, if the BrushListImageProvider has been
-     * registered as \link provider_name.
-     *
-     * @param id ID to create an URL for
-     * @return URL
-     */
-    static QString image_id_to_url(ImageID id);
-
-};
-
-
-/**
  * Wrap a brush for usage for Qt / QML.
  */
 class BrushWrapper
@@ -162,7 +97,6 @@ public:
 public:
     std::unique_ptr<Brush> m_brush;
     QString m_display_name;
-    BrushListImageProvider::ImageID m_image_id;
     QString m_image_url;
 
 };
@@ -184,7 +118,6 @@ public:
     BrushList(QObject *parent = nullptr);
 
 private:
-    static BrushListImageProvider *m_image_provider;
     std::vector<std::unique_ptr<BrushWrapper> > m_brushes;
 
 protected:
@@ -228,9 +161,6 @@ public:
         return m_brushes;
     }
 
-public:
-    static BrushListImageProvider *image_provider();
-
 };
 
 
@@ -241,7 +171,7 @@ class TerraformMode: public ApplicationMode
     Q_PROPERTY(BrushList* brush_list_model READ brush_list_model NOTIFY brush_list_model_changed())
 
 public:
-    TerraformMode(QQmlEngine *engine);
+    TerraformMode(QWidget *parent = nullptr);
 
 private:
     std::unique_ptr<TerraformScene> m_scene;
@@ -284,9 +214,7 @@ private:
     BrushList m_brush_objects;
 
 protected:
-    void geometryChanged(const QRectF &newGeometry,
-                         const QRectF &oldGeometry) override;
-    void hoverMoveEvent(QHoverEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
@@ -305,7 +233,7 @@ public slots:
     void before_gl_sync();
 
 public:
-    void activate(Application &app, QQuickItem &parent) override;
+    void activate(Application &app, QWidget &parent) override;
     void deactivate() override;
 
 public:

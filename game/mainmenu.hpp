@@ -21,53 +21,29 @@ FEEDBACK & QUESTIONS
 For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
-#ifndef SCC_MAINMENU_H
-#define SCC_MAINMENU_H
-
-#include "fixups.hpp"
-
-#include "ffengine/common/resource.hpp"
-#include "ffengine/render/scenegraph.hpp"
+#ifndef MAINMENU_HPP
+#define MAINMENU_HPP
 
 #include "mode.hpp"
 
-class QuickGLScene;
-
-
-struct MainMenuScene
-{
-    engine::RenderGraph m_rendergraph;
-    engine::ResourceManager m_resources;
-    engine::SceneGraph m_scenegraph;
-    engine::PerspectivalCamera m_camera;
-};
-
+namespace Ui {
+class MainMenu;
+}
 
 class MainMenu: public ApplicationMode
 {
     Q_OBJECT
+
 public:
-    MainMenu(QQmlEngine *engine);
-    ~MainMenu() override;
+    explicit MainMenu(QWidget *parent = 0);
+    ~MainMenu();
+
+private slots:
+    void on_pushButton_clicked();
 
 private:
-    std::unique_ptr<MainMenuScene> m_scene;
-
-    QMetaObject::Connection m_gl_sync_conn;
-
-protected:
-    void prepare_scene();
-
-signals:
-
-public slots:
-    void before_gl_sync();
-
-public:
-    void activate(Application &app, QQuickItem &parent) override;
-    void deactivate() override;
-
+    Ui::MainMenu *m_ui;
 
 };
 
-#endif
+#endif // MAINMENU_HPP

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Application</class>
+ <widget class="QMainWindow" name="Application">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>SCC (working title)</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="OpenGLScene" name="sceneWidget">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>180</y>
+      <width>300</width>
+      <height>200</height>
+     </rect>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OpenGLScene</class>
+   <extends>QOpenGLWidget</extends>
+   <header>openglscene.hpp</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

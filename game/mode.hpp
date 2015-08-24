@@ -26,45 +26,27 @@ the AUTHORS file.
 
 #include "fixups.hpp"
 
-#include <QQuickItem>
-
-#include "quickglscene.hpp"
+#include <QWidget>
 
 
 class Application;
+class OpenGLScene;
 
-class ApplicationMode: public QQuickItem
+class ApplicationMode: public QWidget
 {
     Q_OBJECT
 public:
-    ApplicationMode(const std::string &qmlname,
-                    QQmlEngine *engine,
-                    const QUrl &url);
-
-public:
+    ApplicationMode(QWidget *parent = nullptr);
     virtual ~ApplicationMode();
-
-private:
-    const std::string m_qmlname;
-    QQmlEngine *m_engine;
-    QQmlComponent m_loader;
-    bool m_loaded;
 
 protected:
     Application *m_app;
-    QuickGLScene *m_gl_scene;
-
-protected:
-    void load();
+    OpenGLScene *m_gl_scene;
 
 public:
     virtual void activate(Application &app,
-                          QQuickItem &parent);
+                          QWidget &parent);
     virtual void deactivate();
 };
-
-void component_error(QQmlComponent *comp);
-
-void component_ready(QQmlComponent *comp);
 
 #endif
