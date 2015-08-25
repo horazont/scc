@@ -23,7 +23,7 @@ QLabel {
 }
 
 QTabWidget &gt; QTabBar {
-    background-color: rgba(0, 0, 0, 0.75);
+	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 192), stop:1 rgba(64, 64, 64, 192));
 	alignment: center;
 }
 
@@ -50,12 +50,17 @@ QTabWidget &gt; QStackedWidget &gt; QWidget {
     background: transparent;
 }
 
-QListView::item::selected {
+QListView::item:selected {
 	background: white;
     color: black;
 }
 
-QListView::text::selected {
+QListView::item:selected:active {
+	background: white;
+    color: black;
+}
+
+QListView::text:selected {
 	background: white;
     color: black;
 }
