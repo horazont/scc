@@ -46,6 +46,7 @@ void ApplicationMode::activate(Application &app, QWidget &parent)
     m_app = &app;
     m_gl_scene = &app.scene();
     setParent(&parent);
+    setGeometry(0, 0, parent.width(), parent.height());
     setVisible(true);
 }
 
