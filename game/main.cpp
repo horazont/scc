@@ -27,6 +27,7 @@ the AUTHORS file.
 
 #include <QApplication>
 #include <QResource>
+#include <QStyleFactory>
 
 #include "application.hpp"
 #include "terraform/terraform.hpp"
@@ -61,6 +62,7 @@ int main(int argc, char *argv[])
     io::logging().get_logger("render.camera").set_level(io::LOG_WARNING);
 
     QApplication qapp(argc, argv);
+    qapp.setStyle(QStyleFactory::create("fusion"));
     io::logging().log(io::LOG_INFO) << "QApplication initialized" << io::submit;
 
     QResource::registerResource("textures.rcc");

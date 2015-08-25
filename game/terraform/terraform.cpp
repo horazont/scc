@@ -22,6 +22,7 @@ For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
 #include "terraform.hpp"
+#include "ui_terraform.h"
 
 #include <QMouseEvent>
 
@@ -92,7 +93,8 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
 BrushWrapper::BrushWrapper(std::unique_ptr<Brush> &&brush,
                            const QString &display_name):
     m_brush(std::move(brush)),
-    m_display_name(display_name)
+    m_display_name(display_name),
+    m_preview_icon(m_brush->preview_image(preview_size))
 {
 
 }
@@ -104,22 +106,14 @@ BrushWrapper::~BrushWrapper()
 
 
 BrushList::BrushList(QObject *parent):
-    QAbstractItemModel(parent)
+    QAbstractListModel(parent)
 {
 
-}
-
-bool BrushList::valid_brush_index(const QModelIndex &index) const
-{
-    return (index.isValid()
-            && index.row() < (int)m_brushes.size()
-            && index.row() >= 0
-            && index.column() == 0);
 }
 
 BrushWrapper *BrushList::resolve_index(const QModelIndex &index)
 {
-    if (!valid_brush_index(index)) {
+    if (!index.isValid()) {
         return nullptr;
     }
     return m_brushes[index.row()].get();
@@ -127,18 +121,10 @@ BrushWrapper *BrushList::resolve_index(const QModelIndex &index)
 
 const BrushWrapper *BrushList::resolve_index(const QModelIndex &index) const
 {
-    if (!valid_brush_index(index)) {
+    if (!index.isValid()) {
         return nullptr;
     }
     return m_brushes[index.row()].get();
-}
-
-int BrushList::columnCount(const QModelIndex &parent) const
-{
-    if (!valid_brush_index(parent)) {
-        return 0;
-    }
-    return 1;
 }
 
 QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) const
@@ -149,13 +135,14 @@ QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) c
     }
 
     switch (role) {
-    case ROLE_DISPLAY_NAME:
+    case Qt::DisplayRole:
+    case Qt::ToolTipRole:
     {
         return brush->m_display_name;
     }
-    case ROLE_IMAGE_URL:
+    case Qt::DecorationRole:
     {
-        return brush->m_image_url;
+        return brush->m_preview_icon;
     }
     default: return QVariant();
     }
@@ -163,42 +150,10 @@ QVariant BrushList::data(const QModelIndex &index, int role = Qt::DisplayRole) c
 
 Qt::ItemFlags BrushList::flags(const QModelIndex &index) const
 {
-    if (!valid_brush_index(index)) {
+    if (!index.isValid()) {
         return 0;
     }
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-}
-
-bool BrushList::hasChildren(const QModelIndex &parent) const
-{
-    if (!parent.isValid()) {
-        return true;
-    }
-    return false;
-}
-
-QModelIndex BrushList::index(int row, int column, const QModelIndex &parent) const
-{
-    if (parent.isValid()) {
-        return QModelIndex();
-    }
-    if (row >= 0 && row < (int)m_brushes.size() && column == 0) {
-        return createIndex(row, column, nullptr);
-    }
-    return QModelIndex();
-}
-
-QModelIndex BrushList::parent(const QModelIndex &) const
-{
-    return QModelIndex();
-}
-
-QHash<int, QByteArray> BrushList::roleNames() const
-{
-    QHash<int, QByteArray> result;
-    result[ROLE_DISPLAY_NAME] = "display_name";
-    result[ROLE_IMAGE_URL] = "image_url";
-    return result;
 }
 
 int BrushList::rowCount(const QModelIndex &parent) const
@@ -219,7 +174,7 @@ bool BrushList::setData(const QModelIndex &index, const QVariant &value, int rol
 
     switch (role)
     {
-    case ROLE_DISPLAY_NAME:
+    case Qt::DisplayRole:
     {
         if (value.canConvert<QString>()) {
             brush->m_display_name = value.toString();
@@ -233,14 +188,6 @@ bool BrushList::setData(const QModelIndex &index, const QVariant &value, int rol
     }
     }
     return false;
-}
-
-QModelIndex BrushList::sibling(int row, int column, const QModelIndex &idx) const
-{
-    if (!valid_brush_index(idx)) {
-        return QModelIndex();
-    }
-    return index(row, column, QModelIndex());
 }
 
 void BrushList::append(std::unique_ptr<Brush> &&brush, const QString &display_name)
@@ -259,6 +206,7 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
 
 TerraformMode::TerraformMode(QWidget *parent):
     ApplicationMode(parent),
+    m_ui(new Ui::TerraformMode),
     m_server(),
     m_terrain_interface(m_server.state().terrain(), 61),
     m_t(100),
@@ -276,6 +224,18 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this)
 {
+    m_ui->setupUi(this);
+    setMouseTracking(true);
+    m_ui->toolbtn_terrain_raise_lower->setDefaultAction(m_ui->tool_terrain_raise_lower);
+    m_ui->toolbtn_terrain_flatten->setDefaultAction(m_ui->tool_terrain_flatten);
+    m_ui->toolbtn_terrain_smooth->setDefaultAction(m_ui->tool_terrain_smooth);
+    m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->tool_terrain_ramp);
+    m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->tool_fluid_raise_lower);
+
+    m_ui->tabWidget->tabBar()->setDrawBase(false);
+
+    m_ui->brush_list->setModel(&m_brush_objects);
+
     /* m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
                                                Vector3(13, 13, 3),
                                                0.45,
@@ -326,6 +286,14 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_brush_frontend.set_brush_strength(1.0);
     m_brush_frontend.set_brush_size(4);
     apply_tool(100, 100, false);
+
+    m_ui->slider_brush_size->setValue(64);
+    m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
+}
+
+TerraformMode::~TerraformMode()
+{
+    delete m_ui;
 }
 
 void TerraformMode::advance(engine::TimeInterval dt)
@@ -399,22 +367,19 @@ void TerraformMode::before_gl_sync()
     }
 
     const QSize size = window()->size() * window()->devicePixelRatio();
-    if (m_scene->m_prewater_pass->width() != size.width() ||
-            m_scene->m_prewater_pass->height() != size.height() )
+    if (m_scene->m_window.width() != size.width() ||
+            m_scene->m_window.height() != size.height() )
     {
         // resize window
         m_scene->m_window.set_size(size.width(), size.height());
         // resize FBO
-        (*m_scene->m_prewater_pass) = engine::FBO(size.width(), size.height());
+        /*(*m_scene->m_prewater_pass) = engine::FBO(size.width(), size.height());
         m_scene->m_prewater_colour_buffer->bind();
         m_scene->m_prewater_colour_buffer->reinit(GL_RGBA, size.width(), size.height());
         m_scene->m_prewater_depth_buffer->bind();
         m_scene->m_prewater_depth_buffer->reinit(GL_DEPTH_COMPONENT24, size.width(), size.height());
         m_scene->m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, m_scene->m_prewater_colour_buffer);
-        m_scene->m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, m_scene->m_prewater_depth_buffer);
-
-        std::cout << m_scene->m_prewater_colour_buffer->width() << std::endl;
-        std::cout << m_scene->m_prewater_colour_buffer->height() << std::endl;
+        m_scene->m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, m_scene->m_prewater_depth_buffer);*/
     }
 
     /*{
@@ -686,7 +651,7 @@ void TerraformMode::prepare_scene()
     const QSize size = window()->size() * window()->devicePixelRatio();
     scene.m_window.set_size(size.width(), size.height());
 
-    scene.m_prewater_pass = &scene.m_resources.emplace<engine::FBO>(
+    /*scene.m_prewater_pass = &scene.m_resources.emplace<engine::FBO>(
                 "fbo/prewater",
                 size.width(), size.height());
     engine::raise_last_gl_error();
@@ -713,7 +678,7 @@ void TerraformMode::prepare_scene()
 
     engine::raise_last_gl_error();
     scene.m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, scene.m_prewater_depth_buffer);
-    scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);
+    scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);*/
 
     engine::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<engine::SceneRenderNode>(
                 scene.m_window,
@@ -738,7 +703,7 @@ void TerraformMode::prepare_scene()
         throw std::runtime_error("rendergraph has cycles");
     }
 
-    scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8);
+    /*scene.m_scenegraph.root().emplace<engine::GridNode>(1024, 1024, 8);*/
 
     scene.m_camera.controller().set_distance(40.0);
     scene.m_camera.controller().set_rot(Vector2f(-60.f/180.f*M_PI, 0));
@@ -855,49 +820,50 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
     return m_terrain_interface.hittest(ray);
 }
 
-void TerraformMode::switch_to_tool_flatten()
-{
-    m_curr_tool = &m_tool_level;
-}
-
-void TerraformMode::switch_to_tool_raise_lower()
+void TerraformMode::on_tool_terrain_raise_lower_triggered()
 {
     m_curr_tool = &m_tool_raise_lower;
 }
 
-void TerraformMode::switch_to_tool_smooth()
+void TerraformMode::on_tool_terrain_flatten_triggered()
+{
+    m_curr_tool = &m_tool_level;
+}
+
+void TerraformMode::on_tool_terrain_smooth_triggered()
 {
     m_curr_tool = &m_tool_smooth;
 }
 
-void TerraformMode::switch_to_tool_ramp()
+void TerraformMode::on_tool_terrain_ramp_triggered()
 {
     m_curr_tool = &m_tool_ramp;
 }
 
-void TerraformMode::switch_to_tool_fluid_raise()
+void TerraformMode::on_tool_fluid_raise_lower_triggered()
 {
     m_curr_tool = &m_tool_fluid_raise;
 }
 
-void TerraformMode::set_brush(int index)
+void TerraformMode::on_slider_brush_size_valueChanged(int value)
 {
-    if (index < 0 || index >= (int)m_brush_objects.vector().size()) {
+    if (value < 0 || value > 1024) {
         return;
     }
-    m_brush_frontend.set_brush(m_brush_objects.vector()[index]->m_brush.get());
+    m_brush_frontend.set_brush_size(value);
+}
+
+void TerraformMode::on_slider_brush_strength_valueChanged(int value)
+{
+    m_brush_frontend.set_brush_strength(
+                (float)value / (float)m_ui->slider_brush_strength->maximum()
+                );
+}
+
+void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
+{
+    m_brush_frontend.set_brush(
+                m_brush_objects.vector()[index.row()]->m_brush.get()
+            );
     m_brush_changed = true;
-}
-
-void TerraformMode::set_brush_strength(float strength)
-{
-    m_brush_frontend.set_brush_strength(strength);
-}
-
-void TerraformMode::set_brush_size(float size)
-{
-    if (size < 0 || size > 1024) {
-        return;
-    }
-    m_brush_frontend.set_brush_size(std::round(size));
 }

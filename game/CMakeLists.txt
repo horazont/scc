@@ -28,7 +28,8 @@ set(GAME_HEADERS
 set(GAME_UIS
     ui/application.ui
     ui/openglscene.ui
-    ui/mainmenu.ui)
+    ui/mainmenu.ui
+    ui/terraform.ui)
 
 QT5_WRAP_UI(GAME_UI_HDRS ${GAME_UIS})
 

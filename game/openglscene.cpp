@@ -141,6 +141,7 @@ void OpenGLScene::paintGL()
     glFrontFace(GL_CCW);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
 
 #ifdef TIMELOG_QUICKGLSCENE
     timelog_clock::time_point t0 = timelog_clock::now();
@@ -175,6 +176,9 @@ void OpenGLScene::paintGL()
     if (m_rendergraph) {
         update();
     }
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 }
 
 void OpenGLScene::setup_scene(engine::RenderGraph *rendergraph)

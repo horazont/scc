@@ -26,7 +26,7 @@ the AUTHORS file.
 
 #include "fixups.hpp"
 
-#include <QAbstractItemModel>
+#include <QAbstractListModel>
 #include <QDir>
 
 #include "ffengine/render/camera.hpp"
@@ -60,9 +60,9 @@ struct TerraformScene
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
 
-    engine::Texture2D *m_prewater_colour_buffer;
+    /*engine::Texture2D *m_prewater_colour_buffer;
     engine::Texture2D *m_prewater_depth_buffer;
-    engine::FBO *m_prewater_pass;
+    engine::FBO *m_prewater_pass;*/
 };
 
 
@@ -97,7 +97,7 @@ public:
 public:
     std::unique_ptr<Brush> m_brush;
     QString m_display_name;
-    QString m_image_url;
+    QImage m_preview_icon;
 
 };
 
@@ -105,15 +105,9 @@ public:
 /**
  * A Qt list model to show brushes in QML.
  */
-class BrushList: public QAbstractItemModel
+class BrushList: public QAbstractListModel
 {
     Q_OBJECT
-public:
-    enum BrushListRole {
-        ROLE_DISPLAY_NAME = Qt::UserRole+1,
-        ROLE_IMAGE_URL
-    };
-
 public:
     BrushList(QObject *parent = nullptr);
 
@@ -121,21 +115,14 @@ private:
     std::vector<std::unique_ptr<BrushWrapper> > m_brushes;
 
 protected:
-    bool valid_brush_index(const QModelIndex &index) const;
     BrushWrapper *resolve_index(const QModelIndex &index);
     const BrushWrapper *resolve_index(const QModelIndex &index) const;
 
 public:
-    int columnCount(const QModelIndex &parent) const override;
     QVariant data(const QModelIndex &index, int role) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
-    bool hasChildren(const QModelIndex &parent) const override;
-    QModelIndex index(int row, int column, const QModelIndex &parent) const override;
-    QModelIndex parent(const QModelIndex &child) const override;
-    QHash<int, QByteArray> roleNames() const override;
     int rowCount(const QModelIndex &parent) const override;
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
-    QModelIndex sibling(int row, int column, const QModelIndex &idx) const override;
 
 public:
     /**
@@ -164,6 +151,11 @@ public:
 };
 
 
+namespace Ui {
+class TerraformMode;
+}
+
+
 class TerraformMode: public ApplicationMode
 {
     Q_OBJECT
@@ -172,8 +164,11 @@ class TerraformMode: public ApplicationMode
 
 public:
     TerraformMode(QWidget *parent = nullptr);
+    ~TerraformMode() override;
 
 private:
+    Ui::TerraformMode *m_ui;
+
     std::unique_ptr<TerraformScene> m_scene;
     sim::Server m_server;
     sim::Server::SyncSafeLock m_sync_lock;
@@ -240,21 +235,18 @@ public:
     BrushList *brush_list_model();
     std::tuple<Vector3f, bool> hittest(const Vector2f viewport);
 
-public:
-    Q_INVOKABLE void switch_to_tool_flatten();
-    Q_INVOKABLE void switch_to_tool_raise_lower();
-    Q_INVOKABLE void switch_to_tool_smooth();
-    Q_INVOKABLE void switch_to_tool_ramp();
-
-    Q_INVOKABLE void switch_to_tool_fluid_raise();
-
-    Q_INVOKABLE void set_brush(int index);
-    Q_INVOKABLE void set_brush_size(float size);
-    Q_INVOKABLE void set_brush_strength(float strength);
-
 signals:
     void brush_list_model_changed();
 
+private slots:
+    void on_tool_terrain_raise_lower_triggered();
+    void on_tool_terrain_flatten_triggered();
+    void on_tool_terrain_smooth_triggered();
+    void on_tool_terrain_ramp_triggered();
+    void on_tool_fluid_raise_lower_triggered();
+    void on_slider_brush_size_valueChanged(int value);
+    void on_slider_brush_strength_valueChanged(int value);
+    void on_brush_list_clicked(const QModelIndex &index);
 };
 
 #endif
