@@ -56,6 +56,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/fluid/main.geom
   resources/shaders/frustum/main.vert
   resources/shaders/frustum/main.frag
+  resources/shaders/aabb/main.frag
+  resources/shaders/aabb/main.vert
   )
 
 set(GAME_BRUSH_RESOURCES
