@@ -46,6 +46,15 @@ OpenGLScene::~OpenGLScene()
     delete m_ui;
 }
 
+void OpenGLScene::advance_frame()
+{
+    monoclock::time_point t_now = monoclock::now();
+    auto seconds_passed =
+            std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1> > >(t_now-m_t).count();
+    emit advance(seconds_passed);
+    m_t = t_now;
+}
+
 void OpenGLScene::initializeGL()
 {
     QSurfaceFormat format = this->format();
@@ -127,8 +136,6 @@ void OpenGLScene::resizeGL(int, int)
 
 void OpenGLScene::paintGL()
 {
-    emit advance(0.01);
-
     glGetError();
     emit before_gl_sync();
     if (m_rendergraph) {
@@ -179,6 +186,8 @@ void OpenGLScene::paintGL()
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
+
+    advance_frame();
 }
 
 void OpenGLScene::setup_scene(engine::RenderGraph *rendergraph)
