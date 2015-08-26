@@ -37,6 +37,7 @@ the AUTHORS file.
 #include "ffengine/render/grid.hpp"
 #include "ffengine/render/pointer.hpp"
 #include "ffengine/render/fluid.hpp"
+#include "ffengine/render/aabb.hpp"
 
 #include "application.hpp"
 
@@ -577,6 +578,23 @@ void TerraformMode::apply_tool(const float x0,
     }
 }
 
+void collect_octree_aabbs(std::vector<AABB> &dest, const ffe::OctreeNode &node)
+{
+    dest.emplace_back(node.bounds());
+    for (unsigned int i = 0; i < 8; ++i) {
+        const ffe::OctreeNode *child = node.child(i);
+        if (child) {
+            collect_octree_aabbs(dest, *child);
+        }
+    }
+}
+
+void TerraformMode::collect_aabbs(std::vector<AABB> &dest)
+{
+    dest.clear();
+    collect_octree_aabbs(dest, m_scene->m_octree.root());
+}
+
 void TerraformMode::ensure_mouse_world_pos()
 {
     if (m_mouse_world_pos_updated) {
@@ -781,6 +799,12 @@ void TerraformMode::prepare_scene()
     engine::raise_last_gl_error();
     plane_node.attach_scene_depth_texture(scene.m_prewater_depth_buffer);
     engine::raise_last_gl_error();*/
+
+
+    scene.m_scenegraph.root().emplace<engine::DynamicAABBs>(
+                std::bind(&TerraformMode::collect_aabbs,
+                          this,
+                          std::placeholders::_1));
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)

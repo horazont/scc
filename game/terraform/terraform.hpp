@@ -29,6 +29,8 @@ the AUTHORS file.
 #include <QAbstractListModel>
 #include <QDir>
 
+#include "ffengine/math/octree.hpp"
+
 #include "ffengine/render/camera.hpp"
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/fancyterrain.hpp"
@@ -59,6 +61,7 @@ struct TerraformScene
     engine::Material *m_fluid;
     engine::Material *m_overlay;
     engine::Texture2D *m_brush;
+    ffe::Octree m_octree;
 
     /*engine::Texture2D *m_prewater_colour_buffer;
     engine::Texture2D *m_prewater_depth_buffer;
@@ -217,6 +220,7 @@ protected:
 
 protected:
     void apply_tool(const float x0, const float y0, bool secondary);
+    void collect_aabbs(std::vector<AABB> &dest);
     void ensure_mouse_world_pos();
     void load_brushes();
     void load_brushes_from(QDir dir, bool recurse=true);
