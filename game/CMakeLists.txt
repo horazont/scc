@@ -58,6 +58,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/frustum/main.frag
   resources/shaders/aabb/main.frag
   resources/shaders/aabb/main.vert
+  resources/shaders/oct_sphere/main.frag
+  resources/shaders/oct_sphere/main.vert
   )
 
 set(GAME_BRUSH_RESOURCES

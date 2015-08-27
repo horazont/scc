@@ -17,5 +17,7 @@
         <file>shaders/fluid/main.vert</file>
         <file>shaders/aabb/main.frag</file>
         <file>shaders/aabb/main.vert</file>
+        <file>shaders/oct_sphere/main.frag</file>
+        <file>shaders/oct_sphere/main.vert</file>
     </qresource>
 </RCC>
