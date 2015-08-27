@@ -35,7 +35,7 @@ OpenGLScene::OpenGLScene(QWidget *parent) :
     m_ui(new Ui::OpenGLScene),
     m_t(monoclock::now()),
     m_rendergraph(nullptr),
-    m_previous_fps(m_t),
+    m_previous_t(m_t),
     m_frames(0)
 {
     m_ui->setupUi(this);
@@ -172,10 +172,11 @@ void OpenGLScene::paintGL()
     {
         monoclock::time_point t_now = monoclock::now();
         auto seconds_passed =
-                std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1> > >(t_now-m_previous_fps).count();
+                std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1> > >(t_now-m_previous_t).count();
         if (seconds_passed > 1.f) {
-            logger.logf(io::LOG_DEBUG, "%.0f FPS", m_frames / seconds_passed);
-            m_previous_fps = t_now;
+            m_previous_fps = m_frames / seconds_passed;
+            logger.logf(io::LOG_DEBUG, "%.0f FPS", m_previous_fps);
+            m_previous_t = t_now;
             m_frames = 0;
         }
     }
@@ -188,6 +189,11 @@ void OpenGLScene::paintGL()
     glDisable(GL_BLEND);
 
     advance_frame();
+}
+
+double OpenGLScene::fps()
+{
+    return m_previous_fps;
 }
 
 void OpenGLScene::setup_scene(engine::RenderGraph *rendergraph)

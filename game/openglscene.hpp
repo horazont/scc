@@ -54,7 +54,8 @@ private:
 
     engine::RenderGraph *m_rendergraph;
 
-    monoclock::time_point m_previous_fps;
+    monoclock::time_point m_previous_t;
+    double m_previous_fps;
     unsigned int m_frames;
 
 signals:
@@ -69,6 +70,7 @@ protected:
     void paintGL() override;
 
 public:
+    double fps();
     void setup_scene(engine::RenderGraph *rendergraph);
 
 };
