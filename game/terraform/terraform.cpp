@@ -310,7 +310,7 @@ void TerraformMode::advance(engine::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
         m_scene->m_water_scenegraph.advance(dt);
-        m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(0, 0, 1)));
+        m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(1, 1, 1).normalized()));
     }
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
@@ -838,14 +838,11 @@ void TerraformMode::prepare_scene()
                           std::placeholders::_1));
 
     scene.m_octree_group = &scene.m_scenegraph.root().emplace<engine::scenegraph::OctreeGroup>();
-    scene.m_octree_group->root().emplace<engine::OctSphere>(
-                array_decl, *scene.m_sphere_vao, scene.m_sphere_material, 15);
-
     scene.m_sphere_rot = &scene.m_octree_group->root().emplace<engine::scenegraph::OctRotation>();
 
     engine::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<engine::scenegraph::OctGroup>();
 
-    for (double t = 0; t <= 1; t += 0.01) {
+    for (double t = 0; t <= 2; t += 0.02) {
         engine::scenegraph::OctRotation &rot = sphere_group.emplace<engine::scenegraph::OctRotation>();
         rot.set_rotation(Quaternionf::rot(4*t*M_PI, Vector3f(0, 0, 1)));
         engine::scenegraph::OctTranslation &tx = rot.emplace_child<engine::scenegraph::OctTranslation>();
