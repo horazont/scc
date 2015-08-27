@@ -842,7 +842,7 @@ void TerraformMode::prepare_scene()
 
     engine::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<engine::scenegraph::OctGroup>();
 
-    for (double t = 0; t <= 2; t += 0.02) {
+    /*for (double t = 0; t <= 2; t += 0.02) {
         engine::scenegraph::OctRotation &rot = sphere_group.emplace<engine::scenegraph::OctRotation>();
         rot.set_rotation(Quaternionf::rot(4*t*M_PI, Vector3f(0, 0, 1)));
         engine::scenegraph::OctTranslation &tx = rot.emplace_child<engine::scenegraph::OctTranslation>();
@@ -852,12 +852,15 @@ void TerraformMode::prepare_scene()
     }
 
     scene.m_sphere_vbo.sync();
-    scene.m_sphere_ibo.sync();
+    scene.m_sphere_ibo.sync();*/
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)
 {
     ApplicationMode::activate(app, parent);
+    m_ui->frame->setVisible(false);
+    m_ui->frame_2->setVisible(false);
+    m_ui->tabWidget->setVisible(false);
     m_advance_conn = connect(m_gl_scene, &OpenGLScene::advance,
                              this, &TerraformMode::advance,
                              Qt::DirectConnection);

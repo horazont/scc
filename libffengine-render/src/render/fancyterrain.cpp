@@ -40,7 +40,7 @@ namespace engine {
 
 static io::Logger &logger = io::logging().get_logger("render.fancyterrain");
 
-static const Vector3f fake_viewpoint(30, 30, 200);
+static const Vector3f fake_viewpoint(30, 30, 40);
 
 
 HeightmapSliceMeta::HeightmapSliceMeta():
@@ -364,12 +364,14 @@ void FancyTerrainNode::render(RenderContext &context)
     const timelog_clock::time_point t0 = timelog_clock::now();
     timelog_clock::time_point t_solid, t_overlay;
 #endif
-    /* glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); */
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDisable(GL_CULL_FACE);
     m_material.shader().bind();
     glUniform3fv(m_material.shader().uniform_location("lod_viewpoint"),
-                 1, context.viewpoint()/*fake_viewpoint*/.as_array);
+                 1, /*context.viewpoint()*/fake_viewpoint.as_array);
     render_all(context, *m_vao, m_material);
-    /* glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); */
+    glEnable(GL_CULL_FACE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 #ifdef TIMELOG_RENDER
     t_solid = timelog_clock::now();
 #endif
@@ -379,12 +381,12 @@ void FancyTerrainNode::render(RenderContext &context)
                  1, context.scene().viewpoint().as_array);
     render_all(context, *m_nd_vao, m_normal_debug_material); */
 
-    glDepthMask(GL_FALSE);
+    /*glDepthMask(GL_FALSE);
     for (auto &overlay: m_render_overlays)
     {
         overlay.material->shader().bind();
         glUniform3fv(overlay.material->shader().uniform_location("lod_viewpoint"),
-                     1, context.viewpoint()/*fake_viewpoint*/.as_array);
+                     1, *//*context.viewpoint()*//*fake_viewpoint.as_array);
         for (auto &slice: m_render_slices)
         {
             const unsigned int x = slice.basex;
@@ -399,7 +401,7 @@ void FancyTerrainNode::render(RenderContext &context)
             }
         }
     }
-    glDepthMask(GL_TRUE);
+    glDepthMask(GL_TRUE);*/
 #ifdef TIMELOG_RENDER
     t_overlay = timelog_clock::now();
     logger.logf(io::LOG_DEBUG, "render: solid time: %.2f ms",
@@ -434,7 +436,7 @@ void FancyTerrainNode::sync(RenderContext &context)
 #endif
 
     m_render_slices.clear();
-    collect_slices(m_render_slices, context.frustum(), context.viewpoint()/*fake_viewpoint*/);
+    collect_slices(m_render_slices, context.frustum(), /*context.viewpoint()*/fake_viewpoint);
 
     m_material.shader().bind();
     glUniform1f(m_material.shader().uniform_location("scale_to_radius"),
