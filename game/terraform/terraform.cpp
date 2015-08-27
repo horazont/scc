@@ -324,12 +324,17 @@ void TerraformMode::advance(engine::TimeInterval dt)
     /*if (dt > 0.02) {
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
     }*/
+
     m_t += dt;
 }
 
 void TerraformMode::after_gl_sync()
 {
     m_sync_lock.unlock();
+    if (m_scene) {
+        m_ui->ldebug_octree_selected_objects->setNum((int)m_scene->m_octree_group->selected_objects());
+        m_ui->ldebug_fps->setNum(std::round(m_gl_scene->fps()));
+    }
 }
 
 void TerraformMode::before_gl_sync()
