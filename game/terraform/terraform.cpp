@@ -38,6 +38,7 @@ the AUTHORS file.
 #include "ffengine/render/pointer.hpp"
 #include "ffengine/render/fluid.hpp"
 #include "ffengine/render/aabb.hpp"
+#include "ffengine/render/oct_sphere.hpp"
 
 #include "application.hpp"
 
@@ -88,6 +89,12 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
         return stream << "QModelIndex(" << index.row() << ", " << index.column() << ")";
     }
     return stream << "QModelIndex()";
+}
+
+
+TerraformScene::TerraformScene():
+    m_sphere_vbo(engine::VBOFormat({engine::VBOAttribute(3)}))
+{
 }
 
 
@@ -303,6 +310,7 @@ void TerraformMode::advance(engine::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
         m_scene->m_water_scenegraph.advance(dt);
+        m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(0, 0, 1)));
     }
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
@@ -592,7 +600,7 @@ void collect_octree_aabbs(std::vector<AABB> &dest, const ffe::OctreeNode &node)
 void TerraformMode::collect_aabbs(std::vector<AABB> &dest)
 {
     dest.clear();
-    collect_octree_aabbs(dest, m_scene->m_octree.root());
+    collect_octree_aabbs(dest, m_scene->m_octree_group->octree().root());
 }
 
 void TerraformMode::ensure_mouse_world_pos()
@@ -801,10 +809,48 @@ void TerraformMode::prepare_scene()
     engine::raise_last_gl_error();*/
 
 
+    bool success = scene.m_sphere_material.shader().attach_resource(
+                GL_VERTEX_SHADER,
+                ":/shaders/oct_sphere/main.vert");
+    success = success && scene.m_sphere_material.shader().attach_resource(
+                GL_FRAGMENT_SHADER,
+                ":/shaders/oct_sphere/main.frag");
+    success = success && scene.m_sphere_material.shader().link();
+
+    if (!success) {
+        throw std::runtime_error("failed to compile or link shader");
+    }
+
+    engine::ArrayDeclaration array_decl;
+    array_decl.declare_attribute("position", scene.m_sphere_vbo, 0);
+    array_decl.set_ibo(&scene.m_sphere_ibo);
+
+    scene.m_sphere_vao = array_decl.make_vao(scene.m_sphere_material.shader(), true);
+
     scene.m_scenegraph.root().emplace<engine::DynamicAABBs>(
                 std::bind(&TerraformMode::collect_aabbs,
                           this,
                           std::placeholders::_1));
+
+    scene.m_octree_group = &scene.m_scenegraph.root().emplace<engine::scenegraph::OctreeGroup>();
+    scene.m_octree_group->root().emplace<engine::OctSphere>(
+                array_decl, *scene.m_sphere_vao, scene.m_sphere_material, 15);
+
+    scene.m_sphere_rot = &scene.m_octree_group->root().emplace<engine::scenegraph::OctRotation>();
+
+    engine::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<engine::scenegraph::OctGroup>();
+
+    for (double t = 0; t <= 1; t += 0.01) {
+        engine::scenegraph::OctRotation &rot = sphere_group.emplace<engine::scenegraph::OctRotation>();
+        rot.set_rotation(Quaternionf::rot(4*t*M_PI, Vector3f(0, 0, 1)));
+        engine::scenegraph::OctTranslation &tx = rot.emplace_child<engine::scenegraph::OctTranslation>();
+        tx.set_translation(Vector3f(t*40, 0, 30+15*t));
+        tx.emplace_child<engine::OctSphere>(
+                    array_decl, *scene.m_sphere_vao, scene.m_sphere_material, 1.5);
+    }
+
+    scene.m_sphere_vbo.sync();
+    scene.m_sphere_ibo.sync();
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)
