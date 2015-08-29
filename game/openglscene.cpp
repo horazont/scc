@@ -158,6 +158,9 @@ void OpenGLScene::paintGL()
     if (m_rendergraph) {
         glGetError();
         m_rendergraph->render();
+        // make sure that no vertex array is bound anymore so that no incorrect
+        // state changes happen
+        glBindVertexArray(0);
         engine::raise_last_gl_error();
     } else {
         logger.log(io::LOG_WARNING, "nothing to draw");

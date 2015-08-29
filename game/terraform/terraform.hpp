@@ -66,10 +66,7 @@ struct TerraformScene
     engine::scenegraph::OctreeGroup *m_octree_group;
     engine::scenegraph::OctRotation *m_sphere_rot;
 
-    engine::VBO m_sphere_vbo;
-    engine::IBO m_sphere_ibo;
     engine::Material m_sphere_material;
-    std::unique_ptr<engine::VAO> m_sphere_vao;
 
     /*engine::Texture2D *m_prewater_colour_buffer;
     engine::Texture2D *m_prewater_depth_buffer;

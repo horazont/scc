@@ -93,7 +93,7 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
 
 
 TerraformScene::TerraformScene():
-    m_sphere_vbo(engine::VBOFormat({engine::VBOAttribute(3)}))
+    m_sphere_material(engine::VBOFormat({engine::VBOAttribute(3)}))
 {
 }
 
@@ -776,11 +776,20 @@ void TerraformMode::prepare_scene()
     scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
     engine::raise_last_gl_error();
 
-    scene.m_overlay = &scene.m_resources.emplace<engine::Material>("materials/overlay");
-    scene.m_overlay->shader().attach_resource(GL_FRAGMENT_SHADER,
-                                              ":/shaders/terrain/brush_overlay.frag");
-    scene.m_terrain_node->configure_overlay_material(*scene.m_overlay);
-    scene.m_terrain_node->configure_overlay(*scene.m_overlay, sim::TerrainRect(70, 70, 250, 250));
+    scene.m_overlay = &scene.m_resources.manage<engine::Material>(
+                "materials/overlay",
+                std::move(engine::Material::shared_with(
+                              scene.m_terrain_node->material()))
+                );
+    scene.m_overlay->shader().attach_resource(
+                GL_FRAGMENT_SHADER,
+                ":/shaders/terrain/brush_overlay.frag");
+    if (!scene.m_terrain_node->configure_overlay_material(*scene.m_overlay)) {
+        throw std::runtime_error("shader failed to compile or link");
+    }
+    scene.m_terrain_node->configure_overlay(
+                *scene.m_overlay,
+                sim::TerrainRect(70, 70, 250, 250));
     engine::raise_last_gl_error();
 
     scene.m_brush = &scene.m_resources.emplace<engine::Texture2D>(
@@ -820,17 +829,14 @@ void TerraformMode::prepare_scene()
     success = success && scene.m_sphere_material.shader().attach_resource(
                 GL_FRAGMENT_SHADER,
                 ":/shaders/oct_sphere/main.frag");
-    success = success && scene.m_sphere_material.shader().link();
+
+    scene.m_sphere_material.declare_attribute("position", 0);
+
+    success = success && scene.m_sphere_material.link();
 
     if (!success) {
         throw std::runtime_error("failed to compile or link shader");
     }
-
-    engine::ArrayDeclaration array_decl;
-    array_decl.declare_attribute("position", scene.m_sphere_vbo, 0);
-    array_decl.set_ibo(&scene.m_sphere_ibo);
-
-    scene.m_sphere_vao = array_decl.make_vao(scene.m_sphere_material.shader(), true);
 
     scene.m_scenegraph.root().emplace<engine::DynamicAABBs>(
                 std::bind(&TerraformMode::collect_aabbs,
@@ -847,12 +853,10 @@ void TerraformMode::prepare_scene()
         rot.set_rotation(Quaternionf::rot(4*t*M_PI, Vector3f(0, 0, 1)));
         engine::scenegraph::OctTranslation &tx = rot.emplace_child<engine::scenegraph::OctTranslation>();
         tx.set_translation(Vector3f(t*40, 0, 30+15*t));
-        tx.emplace_child<engine::OctSphere>(
-                    array_decl, *scene.m_sphere_vao, scene.m_sphere_material, 1.5);
+        tx.emplace_child<engine::OctSphere>(scene.m_sphere_material, 1.5);
     }
 
-    scene.m_sphere_vbo.sync();
-    scene.m_sphere_ibo.sync();
+    scene.m_sphere_material.sync();
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)
