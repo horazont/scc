@@ -230,7 +230,8 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_tool_ramp(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
-    m_brush_objects(this)
+    m_brush_objects(this),
+    m_paused(false)
 {
     m_ui->setupUi(this);
     setMouseTracking(true);
@@ -304,13 +305,27 @@ TerraformMode::~TerraformMode()
     delete m_ui;
 }
 
+void TerraformMode::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+    case Qt::Key_Space:
+    {
+        m_paused = !m_paused;
+        break;
+    }
+    }
+}
+
 void TerraformMode::advance(engine::TimeInterval dt)
 {
     if (m_scene) {
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
         m_scene->m_water_scenegraph.advance(dt);
-        m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(1, 1, 1).normalized()));
+        if (!m_paused) {
+            m_t += dt;
+            m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(1, 1, 1).normalized()));
+        }
     }
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
@@ -325,7 +340,6 @@ void TerraformMode::advance(engine::TimeInterval dt)
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
     }*/
 
-    m_t += dt;
 }
 
 void TerraformMode::after_gl_sync()
