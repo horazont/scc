@@ -43,6 +43,11 @@ ToolBackend::~ToolBackend()
 
 }
 
+void ToolBackend::set_sgnode(engine::scenegraph::OctGroup *sgnode)
+{
+    m_sgnode = sgnode;
+}
+
 std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
         const float x, const float y,
         const sim::Terrain::HeightField *field)
@@ -226,4 +231,76 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const float x0, const floa
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 -m_backend.brush_frontend().brush_strength());
+}
+
+
+/* TerraTestingTool::TerraTestingTool */
+
+TerraTestingTool::TerraTestingTool(ToolBackend &backend):
+    TerraTool(backend),
+    m_debug_node(nullptr),
+    m_step(0)
+{
+
+}
+
+void TerraTestingTool::set_preview_material(engine::Material &material)
+{
+    m_preview_material = &material;
+}
+
+sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const float y0)
+{
+    bool success;
+    float height;
+    std::tie(success, height) = m_backend.lookup_height(x0, y0);
+    if (!success) {
+        return nullptr;
+    }
+
+    const Vector3f p(x0, y0, height);
+
+    switch (m_step)
+    {
+    case 1:
+    {
+        m_tmp_curve.p2 = p;
+        m_tmp_curve.p3 = p;
+        m_debug_node->set_curve(m_tmp_curve);
+        m_step += 1;
+        break;
+    }
+    case 2:
+    {
+        m_tmp_curve.p3 = p;
+        m_debug_node->set_curve(m_tmp_curve);
+        m_debug_node = nullptr;
+        m_step = 0;
+        break;
+    }
+    default:
+    {
+        assert(!m_debug_node);
+        assert(m_preview_material);
+        m_debug_node = &m_backend.sgnode()->emplace<engine::QuadBezier3fDebug>(*m_preview_material, 20);
+        m_tmp_curve = QuadBezier3f(p, p, p);
+        m_debug_node->set_curve(m_tmp_curve);
+        m_step += 1;
+        break;
+    }
+    }
+
+    return nullptr;
+}
+
+sim::WorldOperationPtr TerraTestingTool::secondary_start(const float, const float)
+{
+    if (m_step > 0) {
+        assert(m_debug_node);
+        engine::scenegraph::OctGroup &group = *m_backend.sgnode();
+        auto iter = std::find_if(group.begin(), group.end(), [this](engine::scenegraph::OctNode &node){ return &node == m_debug_node; });
+        group.erase(iter);
+        m_step = 0;
+    }
+    return nullptr;
 }

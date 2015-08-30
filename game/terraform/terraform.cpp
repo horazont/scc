@@ -39,6 +39,7 @@ the AUTHORS file.
 #include "ffengine/render/fluid.hpp"
 #include "ffengine/render/aabb.hpp"
 #include "ffengine/render/oct_sphere.hpp"
+#include "ffengine/render/curve.hpp"
 
 #include "application.hpp"
 
@@ -229,6 +230,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_tool_smooth(m_tool_backend),
     m_tool_ramp(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
+    m_tool_testing(m_tool_backend),
     m_curr_tool(&m_tool_raise_lower),
     m_brush_objects(this),
     m_paused(false)
@@ -240,6 +242,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_ui->toolbtn_terrain_smooth->setDefaultAction(m_ui->tool_terrain_smooth);
     m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->tool_terrain_ramp);
     m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->tool_fluid_raise_lower);
+    m_ui->toolbtn_testing->setDefaultAction(m_ui->tool_testing);
 
     m_ui->tabWidget->tabBar()->setDrawBase(false);
 
@@ -860,7 +863,7 @@ void TerraformMode::prepare_scene()
     scene.m_octree_group = &scene.m_scenegraph.root().emplace<engine::scenegraph::OctreeGroup>();
     scene.m_sphere_rot = &scene.m_octree_group->root().emplace<engine::scenegraph::OctRotation>();
 
-    engine::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<engine::scenegraph::OctGroup>();
+    /*engine::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<engine::scenegraph::OctGroup>();
 
     for (double t = 0; t <= 2; t += 0.02) {
         engine::scenegraph::OctRotation &rot = sphere_group.emplace<engine::scenegraph::OctRotation>();
@@ -868,9 +871,31 @@ void TerraformMode::prepare_scene()
         engine::scenegraph::OctTranslation &tx = rot.emplace_child<engine::scenegraph::OctTranslation>();
         tx.set_translation(Vector3f(t*40, 0, 30+15*t));
         tx.emplace_child<engine::OctSphere>(scene.m_sphere_material, 1.5);
-    }
+    }*/
 
     scene.m_sphere_material.sync();
+
+    scene.m_bezier_material = &scene.m_resources.emplace<engine::Material>(
+                "material/sphere",
+                engine::VBOFormat({engine::VBOAttribute(4)}));
+
+    success = scene.m_bezier_material->shader().attach_resource(
+                GL_VERTEX_SHADER,
+                ":/shaders/curve/main.vert");
+    success = success && scene.m_bezier_material->shader().attach_resource(
+                GL_FRAGMENT_SHADER,
+                ":/shaders/curve/main.frag");
+
+    scene.m_bezier_material->declare_attribute("position_t", 0);
+
+    success = success && scene.m_bezier_material->link();
+
+    if (!success) {
+        throw std::runtime_error("shader failed to link or compile");
+    }
+
+    m_tool_backend.set_sgnode(&scene.m_octree_group->root());
+    m_tool_testing.set_preview_material(*scene.m_bezier_material);
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)
@@ -956,4 +981,9 @@ void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
                 m_brush_objects.vector()[index.row()]->m_brush.get()
             );
     m_brush_changed = true;
+}
+
+void TerraformMode::on_tool_testing_triggered()
+{
+    m_curr_tool = &m_tool_testing;
 }

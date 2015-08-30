@@ -31,6 +31,9 @@ the AUTHORS file.
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
 
+#include "ffengine/render/scenegraph.hpp"
+#include "ffengine/render/curve.hpp"
+
 #include "terraform/brush.hpp"
 
 
@@ -50,6 +53,7 @@ public:
 private:
     BrushFrontend &m_brush_frontend;
     const sim::WorldState &m_world;
+    engine::scenegraph::OctGroup *m_sgnode;
 
 public:
     inline BrushFrontend &brush_frontend()
@@ -61,6 +65,13 @@ public:
     {
         return m_world;
     }
+
+    inline engine::scenegraph::OctGroup *sgnode()
+    {
+        return m_sgnode;
+    }
+
+    void set_sgnode(engine::scenegraph::OctGroup *sgnode);
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
             const float x, const float y,
@@ -176,6 +187,26 @@ public:
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
     sim::WorldOperationPtr secondary(const float x0, const float y0) override;
+
+};
+
+class TerraTestingTool: public TerraTool
+{
+public:
+    TerraTestingTool(ToolBackend &backend);
+
+private:
+    engine::QuadBezier3fDebug *m_debug_node;
+    unsigned int m_step;
+    QuadBezier3f m_tmp_curve;
+    engine::Material *m_preview_material;
+
+public:
+    void set_preview_material(engine::Material &material);
+
+public:
+    sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
+    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
 
 };
 

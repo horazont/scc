@@ -62,6 +62,7 @@ struct TerraformScene
     engine::scenegraph::Transformation *m_fluidplane_trafo_node;
     engine::Material *m_fluid;
     engine::Material *m_overlay;
+    engine::Material *m_bezier_material;
     engine::Texture2D *m_brush;
     engine::scenegraph::OctreeGroup *m_octree_group;
     engine::scenegraph::OctRotation *m_sphere_rot;
@@ -212,6 +213,7 @@ private:
     TerraSmoothTool m_tool_smooth;
     TerraRampTool m_tool_ramp;
     TerraFluidRaiseTool m_tool_fluid_raise;
+    TerraTestingTool m_tool_testing;
     TerraTool *m_curr_tool;
 
     BrushList m_brush_objects;
@@ -259,6 +261,7 @@ private slots:
     void on_slider_brush_size_valueChanged(int value);
     void on_slider_brush_strength_valueChanged(int value);
     void on_brush_list_clicked(const QModelIndex &index);
+    void on_tool_testing_triggered();
 };
 
 #endif
