@@ -19,5 +19,7 @@
         <file>shaders/aabb/main.vert</file>
         <file>shaders/oct_sphere/main.frag</file>
         <file>shaders/oct_sphere/main.vert</file>
+        <file>shaders/curve/main.frag</file>
+        <file>shaders/curve/main.vert</file>
     </qresource>
 </RCC>

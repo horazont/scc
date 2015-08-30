@@ -60,6 +60,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/aabb/main.vert
   resources/shaders/oct_sphere/main.frag
   resources/shaders/oct_sphere/main.vert
+  resources/shaders/curve/main.frag
+  resources/shaders/curve/main.vert
   )
 
 set(GAME_BRUSH_RESOURCES
