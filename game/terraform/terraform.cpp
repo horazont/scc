@@ -781,7 +781,11 @@ void TerraformMode::prepare_scene()
     load_image_to_texture(":/textures/waves00.png");
     engine::raise_last_gl_error();
 
-    scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
+    engine::FullTerrainNode &full_terrain = scene.m_scenegraph.root().emplace<engine::FullTerrainNode>(
+                m_terrain_interface.size(),
+                m_terrain_interface.grid_size());
+
+    scene.m_terrain_node = &full_terrain.emplace<engine::FancyTerrainNode>(
                 m_terrain_interface,
                 scene.m_resources);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
