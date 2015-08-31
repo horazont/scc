@@ -27,6 +27,7 @@ the AUTHORS file.
 
 #include <QApplication>
 #include <QResource>
+#include <QSettings>
 #include <QStyleFactory>
 
 #include "application.hpp"
@@ -34,19 +35,28 @@ the AUTHORS file.
 
 #include "ffengine/io/log.hpp"
 
+
+static const QString organization = QStringLiteral("zombofant.net");
+static const QString application = QStringLiteral("scc");
+
+
 int main(int argc, char *argv[])
 {
+    QSettings pre_app_settings(organization, application);
+    pre_app_settings.beginGroup("gl");
+    pre_app_settings.beginGroup("surface");
+
     QSurfaceFormat format;
     format.setRenderableType(QSurfaceFormat::OpenGL);
     format.setVersion(3, 3);
     format.setProfile(QSurfaceFormat::CoreProfile);
-    format.setSamples(0);
+    format.setSamples(pre_app_settings.value("samples", 0).toUInt());
     format.setRedBufferSize(8);
     format.setGreenBufferSize(8);
     format.setBlueBufferSize(8);
     format.setAlphaBufferSize(0);
-    format.setStencilBufferSize(8);
-    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(pre_app_settings.value("stencil", 8).toUInt());
+    format.setDepthBufferSize(pre_app_settings.value("depth", 24).toUInt());
 
     QSurfaceFormat::setDefaultFormat(format);
 
