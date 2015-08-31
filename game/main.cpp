@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     QSurfaceFormat::setDefaultFormat(format);
 
     io::logging().attach_sink<io::LogAsynchronousSink>(
-                std::move(std::unique_ptr<io::LogSink>(new io::LogTTYSink()))
+                std::move(std::make_unique<io::LogTTYSink>())
                 )->set_synchronous(true);
     io::logging().log(io::LOG_INFO) << "Log initialized" << io::submit;
 

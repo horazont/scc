@@ -208,7 +208,7 @@ void BrushList::append(std::unique_ptr<Brush> &&brush, const QString &display_na
 
 void BrushList::append(const gamedata::PixelBrushDef &brush)
 {
-    append(std::unique_ptr<Brush>(new ImageBrush(brush)),
+    append(std::make_unique<ImageBrush>(brush),
            QString::fromStdString(brush.display_name()));
 }
 
@@ -272,8 +272,8 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_brush_frontend.set_brush(&m_test_brush);
     m_brush_frontend.set_brush_size(32);
 
-    m_brush_objects.append(std::unique_ptr<Brush>(new ParzenBrush()), "Parzen");
-    m_brush_objects.append(std::unique_ptr<Brush>(new CircleBrush()), "Circle");
+    m_brush_objects.append(std::make_unique<ParzenBrush>(), "Parzen");
+    m_brush_objects.append(std::make_unique<CircleBrush>(), "Circle");
 
     load_brushes();
 
@@ -693,7 +693,7 @@ void TerraformMode::prepare_scene()
         return;
     }
 
-    m_scene = std::unique_ptr<TerraformScene>(new TerraformScene());
+    m_scene = std::make_unique<TerraformScene>();
     TerraformScene &scene = *m_scene;
 
     const QSize size = window()->size() * window()->devicePixelRatio();
