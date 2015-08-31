@@ -62,6 +62,9 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/oct_sphere/main.vert
   resources/shaders/curve/main.frag
   resources/shaders/curve/main.vert
+  resources/shaders/lib/universal_shader.frag
+  resources/shaders/lib/cubehelix.frag
+  resources/shaders/lib/matrix_block.glsl
   )
 
 set(GAME_BRUSH_RESOURCES

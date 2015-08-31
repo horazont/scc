@@ -782,7 +782,8 @@ void TerraformMode::prepare_scene()
     engine::raise_last_gl_error();
 
     scene.m_terrain_node = &scene.m_scenegraph.root().emplace<engine::FancyTerrainNode>(
-                m_terrain_interface);
+                m_terrain_interface,
+                scene.m_resources);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
@@ -798,9 +799,11 @@ void TerraformMode::prepare_scene()
                 std::move(engine::Material::shared_with(
                               scene.m_terrain_node->material()))
                 );
-    scene.m_overlay->shader().attach_resource(
-                GL_FRAGMENT_SHADER,
-                ":/shaders/terrain/brush_overlay.frag");
+    spp::EvaluationContext ctx(scene.m_resources.shader_library());
+    scene.m_overlay->shader().attach(
+                scene.m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag"),
+                ctx,
+                GL_FRAGMENT_SHADER);
     if (!scene.m_terrain_node->configure_overlay_material(*scene.m_overlay)) {
         throw std::runtime_error("shader failed to compile or link");
     }

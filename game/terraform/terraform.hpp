@@ -31,6 +31,8 @@ the AUTHORS file.
 
 #include "ffengine/math/octree.hpp"
 
+#include "ffengine/gl/resource.hpp"
+
 #include "ffengine/render/camera.hpp"
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/fancyterrain.hpp"
@@ -47,7 +49,7 @@ struct TerraformScene
 {
     TerraformScene();
 
-    engine::ResourceManager m_resources;
+    engine::GLResourceManager m_resources;
     engine::WindowRenderTarget m_window;
     engine::RenderGraph m_rendergraph;
     engine::SceneGraph m_scenegraph;

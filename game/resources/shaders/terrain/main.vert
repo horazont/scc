@@ -1,19 +1,15 @@
 #version 330 core
 
-layout(std140) uniform MatrixBlock {
-   layout(row_major) mat4 proj;
-   layout(row_major) mat4 view;
-   layout(row_major) mat4 model;
-   layout(row_major) mat3 normal;
-} mats;
+{% include ":/shaders/lib/matrix_block.glsl" %}
 
 uniform float chunk_size;
 uniform vec2 chunk_translation;
 uniform sampler2D heightmap;
 uniform sampler2D normalt;
 uniform vec3 lod_viewpoint;
-uniform float zoffset;
-uniform float heightmap_factor/*  = 0.03076923076923077; */;
+
+const float zoffset = ZOFFSET;
+const float heightmap_factor = HEIGHTMAP_FACTOR;
 
 const float grid_size = 60;
 uniform float scale_to_radius/* = 1.984375; */;

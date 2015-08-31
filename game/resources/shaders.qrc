@@ -21,5 +21,8 @@
         <file>shaders/oct_sphere/main.vert</file>
         <file>shaders/curve/main.frag</file>
         <file>shaders/curve/main.vert</file>
+        <file>shaders/lib/universal_shader.frag</file>
+        <file>shaders/lib/cubehelix.frag</file>
+        <file>shaders/lib/matrix_block.glsl</file>
     </qresource>
 </RCC>
