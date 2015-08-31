@@ -784,10 +784,12 @@ void TerraformMode::prepare_scene()
     engine::FullTerrainNode &full_terrain = scene.m_scenegraph.root().emplace<engine::FullTerrainNode>(
                 m_terrain_interface.size(),
                 m_terrain_interface.grid_size());
+    full_terrain.set_detail_level(0);
 
     scene.m_terrain_node = &full_terrain.emplace<engine::FancyTerrainNode>(
                 m_terrain_interface,
                 scene.m_resources);
+    scene.m_terrain_node->set_enable_linear_filter(false);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
