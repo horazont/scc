@@ -239,7 +239,9 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const float x0, const floa
 TerraTestingTool::TerraTestingTool(ToolBackend &backend):
     TerraTool(backend),
     m_debug_node(nullptr),
-    m_step(0)
+    m_step(0),
+    m_preview_material(nullptr),
+    m_road_material(nullptr)
 {
 
 }
@@ -247,6 +249,11 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend):
 void TerraTestingTool::set_preview_material(engine::Material &material)
 {
     m_preview_material = &material;
+}
+
+void TerraTestingTool::set_road_material(engine::Material &material)
+{
+    m_road_material = &material;
 }
 
 sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const float y0)
@@ -272,8 +279,13 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const flo
     }
     case 2:
     {
+        engine::scenegraph::OctGroup &group = *m_backend.sgnode();
+
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
+        auto iter = std::find_if(group.begin(), group.end(), [this](engine::scenegraph::OctNode &node){ return &node == m_debug_node; });
+        group.erase(iter);
+        group.emplace<engine::QuadBezier3fRoadTest>(*m_road_material, 20).set_curve(m_tmp_curve);
         m_debug_node = nullptr;
         m_step = 0;
         break;

@@ -65,6 +65,7 @@ struct TerraformScene
     engine::Material *m_fluid;
     engine::Material *m_overlay;
     engine::Material *m_bezier_material;
+    engine::Material *m_road_material;
     engine::Texture2D *m_brush;
     engine::scenegraph::OctreeGroup *m_octree_group;
     engine::scenegraph::OctRotation *m_sphere_rot;

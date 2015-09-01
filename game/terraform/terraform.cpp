@@ -885,7 +885,7 @@ void TerraformMode::prepare_scene()
     scene.m_sphere_material.sync();
 
     scene.m_bezier_material = &scene.m_resources.emplace<engine::Material>(
-                "material/sphere",
+                "material/bezier",
                 engine::VBOFormat({engine::VBOAttribute(4)}));
 
     success = scene.m_bezier_material->shader().attach_resource(
@@ -903,8 +903,28 @@ void TerraformMode::prepare_scene()
         throw std::runtime_error("shader failed to link or compile");
     }
 
+    scene.m_road_material = &scene.m_resources.emplace<engine::Material>(
+                "material/road",
+                engine::VBOFormat({engine::VBOAttribute(4)}));
+
+    success = scene.m_road_material->shader().attach_resource(
+                GL_VERTEX_SHADER,
+                ":/shaders/curve/main.vert");
+    success = success && scene.m_road_material->shader().attach_resource(
+                GL_FRAGMENT_SHADER,
+                ":/shaders/curve/main.frag");
+
+    scene.m_road_material->declare_attribute("position_t", 0);
+
+    success = success && scene.m_road_material->link();
+
+    if (!success) {
+        throw std::runtime_error("shader failed to link or compile");
+    }
+
     m_tool_backend.set_sgnode(&scene.m_octree_group->root());
     m_tool_testing.set_preview_material(*scene.m_bezier_material);
+    m_tool_testing.set_road_material(*scene.m_road_material);
 }
 
 void TerraformMode::activate(Application &app, QWidget &parent)

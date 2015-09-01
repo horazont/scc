@@ -200,9 +200,11 @@ private:
     unsigned int m_step;
     QuadBezier3f m_tmp_curve;
     engine::Material *m_preview_material;
+    engine::Material *m_road_material;
 
 public:
     void set_preview_material(engine::Material &material);
+    void set_road_material(engine::Material &material);
 
 public:
     sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
