@@ -202,6 +202,10 @@ private:
     engine::Material *m_preview_material;
     engine::Material *m_road_material;
 
+protected:
+    void add_segment(const QuadBezier3f &curve);
+    void add_segmentized();
+
 public:
     void set_preview_material(engine::Material &material);
     void set_road_material(engine::Material &material);
