@@ -96,6 +96,10 @@ protected:
 
     sigc::signal<void, float> m_value_changed;
 
+protected:
+    bool m_uses_brushes;
+    bool m_uses_hover;
+
 public:
     inline sigc::signal<void, float> &value_changed()
     {
@@ -112,10 +116,21 @@ public:
         return m_value_name;
     }
 
+    inline bool uses_brushes() const
+    {
+        return m_uses_brushes;
+    }
+
+    inline bool uses_hover() const
+    {
+        return m_uses_hover;
+    }
+
 public:
     virtual void set_value(float new_value);
 
 public:
+    virtual std::pair<bool, Vector3f> hover(const Vector3f &cursor);
     virtual sim::WorldOperationPtr primary_start(const float x0,
                                                  const float y0);
     virtual sim::WorldOperationPtr primary(const float x0,
@@ -128,10 +143,18 @@ public:
 };
 
 
-class TerraRaiseLowerTool: public TerraTool
+class TerrainBrushTool: public TerraTool
 {
 public:
-    using TerraTool::TerraTool;
+    explicit TerrainBrushTool(ToolBackend &backend);
+
+};
+
+
+class TerraRaiseLowerTool: public TerrainBrushTool
+{
+public:
+    using TerrainBrushTool::TerrainBrushTool;
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
@@ -139,10 +162,10 @@ public:
 
 };
 
-class TerraLevelTool: public TerraTool
+class TerraLevelTool: public TerrainBrushTool
 {
 public:
-    TerraLevelTool(ToolBackend &backend);
+    explicit TerraLevelTool(ToolBackend &backend);
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
@@ -150,20 +173,20 @@ public:
 
 };
 
-class TerraSmoothTool: public TerraTool
+class TerraSmoothTool: public TerrainBrushTool
 {
 public:
-    using TerraTool::TerraTool;
+    using TerrainBrushTool::TerrainBrushTool;
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
 
 };
 
-class TerraRampTool: public TerraTool
+class TerraRampTool: public TerrainBrushTool
 {
 public:
-    using TerraTool::TerraTool;
+    using TerrainBrushTool::TerrainBrushTool;
 
 private:
     Vector3f m_destination_point;
@@ -179,10 +202,10 @@ public:
 
 };
 
-class TerraFluidRaiseTool: public TerraTool
+class TerraFluidRaiseTool: public TerrainBrushTool
 {
 public:
-    using TerraTool::TerraTool;
+    using TerrainBrushTool::TerrainBrushTool;
 
 public:
     sim::WorldOperationPtr primary(const float x0, const float y0) override;
@@ -211,6 +234,7 @@ public:
     void set_road_material(engine::Material &material);
 
 public:
+    std::pair<bool, Vector3f> hover(const Vector3f &cursor) override;
     sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
     sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
 

@@ -231,7 +231,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_tool_ramp(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
     m_tool_testing(m_tool_backend),
-    m_curr_tool(&m_tool_raise_lower),
+    m_curr_tool(nullptr),
     m_brush_objects(this),
     m_paused(false)
 {
@@ -269,6 +269,8 @@ TerraformMode::TerraformMode(QWidget *parent):
         }
     }*/
 
+    switch_to_tool(&m_tool_raise_lower);
+
     m_brush_frontend.set_brush(&m_test_brush);
     m_brush_frontend.set_brush_size(32);
 
@@ -279,13 +281,15 @@ TerraformMode::TerraformMode(QWidget *parent):
 
     m_brush_frontend.set_brush(m_brush_objects.vector()[0]->m_brush.get());
     m_brush_frontend.set_brush_size(32);
-    m_curr_tool = &m_tool_raise_lower;
+
+    switch_to_tool(&m_tool_raise_lower);
 
     m_brush_frontend.set_brush_strength(10.0);
     apply_tool(15, 20, false);
     m_brush_frontend.set_brush_strength(1.0);
 
-    m_curr_tool = &m_tool_level;
+    switch_to_tool(&m_tool_level);
+
     m_tool_level.set_value(0.f);
     m_brush_frontend.set_brush_strength(5.0);
     m_brush_frontend.set_brush_size(64);
@@ -364,37 +368,21 @@ void TerraformMode::before_gl_sync()
 
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
-    Brush *const curr_brush = m_brush_frontend.curr_brush();
-    ensure_mouse_world_pos();
-    if (m_brush_changed) {
-        if (curr_brush) {
-            std::vector<Brush::density_t> buf(129*129);
-            curr_brush->preview_buffer(129, buf);
-            m_scene->m_brush->bind();
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 129, 129, GL_RED, GL_FLOAT,
-                            buf.data());
-        }
-        m_brush_changed = false;
+    if (m_curr_tool && m_curr_tool->uses_brushes()) {
+        update_brush();
     }
-    if (curr_brush && m_mouse_world_pos_valid) {
-        float brush_radius = m_brush_frontend.brush_size()/2.f;
 
-        m_scene->m_overlay->shader().bind();
-        glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
-                    m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
-        glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
-                    brush_radius);
-        m_scene->m_terrain_node->configure_overlay(
-                    *m_scene->m_overlay,
-                    sim::TerrainRect(std::max(0.f, std::floor(m_mouse_world_pos[eX]-brush_radius)),
-                                     std::max(0.f, std::floor(m_mouse_world_pos[eY]-brush_radius)),
-                                     std::ceil(m_mouse_world_pos[eX]+brush_radius),
-                                     std::ceil(m_mouse_world_pos[eY]+brush_radius)));
-    } else {
-        m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
-    }
-    if (m_mouse_world_pos_valid) {
-        m_scene->m_pointer_trafo_node->transformation() = translation4(m_mouse_world_pos);
+    if (m_curr_tool && m_curr_tool->uses_hover()) {
+        ensure_mouse_world_pos();
+
+        Vector3f cursor;
+        bool valid = m_mouse_world_pos_valid;
+        if (valid) {
+            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_world_pos);
+        }
+        if (valid) {
+            m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
+        }
     }
 
     const QSize size = window()->size() * window()->devicePixelRatio();
@@ -606,6 +594,22 @@ void TerraformMode::apply_tool(const float x0,
             m_server.enqueue_op(std::move(op));
         }
     }
+}
+
+void TerraformMode::switch_to_tool(TerraTool *new_tool)
+{
+    if (new_tool == m_curr_tool) {
+        return;
+    }
+
+    m_curr_tool = new_tool;
+
+    bool any_settings = false;
+
+    any_settings = any_settings || m_curr_tool->uses_brushes();
+    m_ui->brush_settings->setVisible(m_curr_tool->uses_brushes());
+
+    m_ui->tool_settings_frame->setVisible(any_settings);
 }
 
 void collect_octree_aabbs(std::vector<AABB> &dest, const ffe::OctreeNode &node)
@@ -927,6 +931,39 @@ void TerraformMode::prepare_scene()
     m_tool_testing.set_road_material(*scene.m_road_material);
 }
 
+void TerraformMode::update_brush()
+{
+    Brush *const curr_brush = m_brush_frontend.curr_brush();
+    ensure_mouse_world_pos();
+    if (m_brush_changed) {
+        if (curr_brush) {
+            std::vector<Brush::density_t> buf(129*129);
+            curr_brush->preview_buffer(129, buf);
+            m_scene->m_brush->bind();
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 129, 129, GL_RED, GL_FLOAT,
+                            buf.data());
+        }
+        m_brush_changed = false;
+    }
+    if (curr_brush && m_mouse_world_pos_valid) {
+        float brush_radius = m_brush_frontend.brush_size()/2.f;
+
+        m_scene->m_overlay->shader().bind();
+        glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
+                    m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
+        glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
+                    brush_radius);
+        m_scene->m_terrain_node->configure_overlay(
+                    *m_scene->m_overlay,
+                    sim::TerrainRect(std::max(0.f, std::floor(m_mouse_world_pos[eX]-brush_radius)),
+                                     std::max(0.f, std::floor(m_mouse_world_pos[eY]-brush_radius)),
+                                     std::ceil(m_mouse_world_pos[eX]+brush_radius),
+                                     std::ceil(m_mouse_world_pos[eY]+brush_radius)));
+    } else {
+        m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
+    }
+}
+
 void TerraformMode::activate(Application &app, QWidget &parent)
 {
     ApplicationMode::activate(app, parent);
@@ -966,27 +1003,27 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
 void TerraformMode::on_tool_terrain_raise_lower_triggered()
 {
-    m_curr_tool = &m_tool_raise_lower;
+    switch_to_tool(&m_tool_raise_lower);
 }
 
 void TerraformMode::on_tool_terrain_flatten_triggered()
 {
-    m_curr_tool = &m_tool_level;
+    switch_to_tool(&m_tool_level);
 }
 
 void TerraformMode::on_tool_terrain_smooth_triggered()
 {
-    m_curr_tool = &m_tool_smooth;
+    switch_to_tool(&m_tool_smooth);
 }
 
 void TerraformMode::on_tool_terrain_ramp_triggered()
 {
-    m_curr_tool = &m_tool_ramp;
+    switch_to_tool(&m_tool_ramp);
 }
 
 void TerraformMode::on_tool_fluid_raise_lower_triggered()
 {
-    m_curr_tool = &m_tool_fluid_raise;
+    switch_to_tool(&m_tool_fluid_raise);
 }
 
 void TerraformMode::on_slider_brush_size_valueChanged(int value)
@@ -1014,5 +1051,5 @@ void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
 
 void TerraformMode::on_tool_testing_triggered()
 {
-    m_curr_tool = &m_tool_testing;
+    switch_to_tool(&m_tool_testing);
 }

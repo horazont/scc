@@ -233,11 +233,13 @@ protected:
 
 protected:
     void apply_tool(const float x0, const float y0, bool secondary);
+    void switch_to_tool(TerraTool *new_tool);
     void collect_aabbs(std::vector<AABB> &dest);
     void ensure_mouse_world_pos();
     void load_brushes();
     void load_brushes_from(QDir dir, bool recurse=true);
     void prepare_scene();
+    void update_brush();
 
 public slots:
     void advance(engine::TimeInterval dt);

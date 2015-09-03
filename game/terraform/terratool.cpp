@@ -74,7 +74,9 @@ std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
 
 TerraTool::TerraTool(ToolBackend &backend):
     m_backend(backend),
-    m_has_value(false)
+    m_has_value(false),
+    m_uses_brushes(false),
+    m_uses_hover(false)
 {
 
 }
@@ -94,6 +96,11 @@ void TerraTool::set_value(float new_value)
     }
     m_value = new_value;
     m_value_changed.emit(new_value);
+}
+
+std::pair<bool, Vector3f> TerraTool::hover(const Vector3f &cursor)
+{
+    return std::make_pair(true, cursor);
 }
 
 sim::WorldOperationPtr TerraTool::primary_start(const float, const float)
@@ -136,8 +143,16 @@ sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const float x0, const floa
 }
 
 
-TerraLevelTool::TerraLevelTool(ToolBackend &backend):
+TerrainBrushTool::TerrainBrushTool(ToolBackend &backend):
     TerraTool(backend)
+{
+    m_uses_brushes = true;
+    m_uses_hover = true;
+}
+
+
+TerraLevelTool::TerraLevelTool(ToolBackend &backend):
+    TerrainBrushTool(backend)
 {
     m_has_value = true;
     m_value_name = "Level";
@@ -243,7 +258,8 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend):
     m_preview_material(nullptr),
     m_road_material(nullptr)
 {
-
+    m_uses_brushes = false;
+    m_uses_hover = true;
 }
 
 void TerraTestingTool::add_segment(const QuadBezier3f &curve)
@@ -322,6 +338,28 @@ void TerraTestingTool::set_preview_material(engine::Material &material)
 void TerraTestingTool::set_road_material(engine::Material &material)
 {
     m_road_material = &material;
+}
+
+std::pair<bool, Vector3f> TerraTestingTool::hover(const Vector3f &cursor)
+{
+    switch (m_step)
+    {
+    case 1:
+    {
+        m_tmp_curve.p2 = cursor;
+        m_tmp_curve.p3 = cursor;
+        m_debug_node->set_curve(m_tmp_curve);
+        break;
+    }
+    case 2:
+    {
+        m_tmp_curve.p3 = cursor;
+        m_debug_node->set_curve(m_tmp_curve);
+        break;
+    }
+    default:;
+    }
+    return TerraTool::hover(cursor);
 }
 
 sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const float y0)
