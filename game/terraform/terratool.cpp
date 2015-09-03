@@ -26,6 +26,7 @@ the AUTHORS file.
 #include "terraform/terratool.hpp"
 
 #include "ffengine/math/algo.hpp"
+#include "ffengine/math/intersect.hpp"
 
 #include "ffengine/sim/world_ops.hpp"
 
@@ -43,9 +44,19 @@ ToolBackend::~ToolBackend()
 
 }
 
-void ToolBackend::set_sgnode(engine::scenegraph::OctGroup *sgnode)
+void ToolBackend::set_camera(engine::PerspectivalCamera &camera)
 {
-    m_sgnode = sgnode;
+    m_camera = &camera;
+}
+
+void ToolBackend::set_sgnode(engine::scenegraph::OctreeGroup &sgnode)
+{
+    m_sgnode = &sgnode;
+}
+
+void ToolBackend::set_viewport_size(const Vector2f &size)
+{
+    m_viewport_size = size;
 }
 
 std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
@@ -98,45 +109,46 @@ void TerraTool::set_value(float new_value)
     m_value_changed.emit(new_value);
 }
 
-std::pair<bool, Vector3f> TerraTool::hover(const Vector3f &cursor)
+std::pair<bool, Vector3f> TerraTool::hover(const Vector2f &viewport_cursor,
+                                           const Vector3f &world_cursor)
 {
-    return std::make_pair(true, cursor);
+    return std::make_pair(true, world_cursor);
 }
 
-sim::WorldOperationPtr TerraTool::primary_start(const float, const float)
-{
-    return nullptr;
-}
-
-sim::WorldOperationPtr TerraTool::primary(const float, const float)
+sim::WorldOperationPtr TerraTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraTool::secondary_start(const float, const float)
+sim::WorldOperationPtr TerraTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraTool::secondary(const float, const float)
+sim::WorldOperationPtr TerraTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+{
+    return nullptr;
+}
+
+sim::WorldOperationPtr TerraTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return nullptr;
 }
 
 
-sim::WorldOperationPtr TerraRaiseLowerTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraRaiseLowerTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::TerraformRaise>(
-                x0, y0,
+                world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength());
 }
 
-sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const float x0, const float y0)
+sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::TerraformRaise>(
-                x0, y0,
+                world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 -m_backend.brush_frontend().brush_strength());
@@ -159,61 +171,43 @@ TerraLevelTool::TerraLevelTool(ToolBackend &backend):
     m_value = 10.f;
 }
 
-sim::WorldOperationPtr TerraLevelTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraLevelTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::TerraformLevel>(
-                x0, y0,
+                world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength(),
                 m_value);
 }
 
-sim::WorldOperationPtr TerraLevelTool::secondary_start(const float x0, const float y0)
+sim::WorldOperationPtr TerraLevelTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
-    float new_height;
-    bool success;
-    std::tie(success, new_height) = m_backend.lookup_height(x0, y0);
-    if (success) {
-        set_value(new_height);
-    }
+    set_value(world_cursor[eZ]);
     return nullptr;
 }
 
 
-sim::WorldOperationPtr TerraSmoothTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraSmoothTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::TerraformSmooth>(
-                x0, y0,
+                world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength());
 }
 
 
-void TerraRampTool::reference_point(const float x0, const float y0,
-                                    Vector3f &dest)
+sim::WorldOperationPtr TerraRampTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
-    bool success = false;
-    float height;
-    std::tie(success, height) = m_backend.lookup_height(x0, y0);
-    if (!success) {
-        return;
-    }
-
-    dest = Vector3f(x0, y0, height);
-}
-
-sim::WorldOperationPtr TerraRampTool::primary_start(const float x0, const float y0)
-{
-    reference_point(x0, y0, m_source_point);
+    m_source_point = world_cursor;
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraRampTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraRampTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::TerraformRamp>(
-                x0, y0,
+                world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength(),
@@ -223,26 +217,26 @@ sim::WorldOperationPtr TerraRampTool::primary(const float x0, const float y0)
                 m_destination_point[eZ]);
 }
 
-sim::WorldOperationPtr TerraRampTool::secondary_start(const float x0, const float y0)
+sim::WorldOperationPtr TerraRampTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
-    reference_point(x0, y0, m_destination_point);
+    m_destination_point = world_cursor;
     return nullptr;
 }
 
 
-sim::WorldOperationPtr TerraFluidRaiseTool::primary(const float x0, const float y0)
+sim::WorldOperationPtr TerraFluidRaiseTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::FluidRaise>(
-                x0-0.5, y0-0.5,
+                world_cursor[eX]-0.5, world_cursor[eY]-0.5,
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength());
 }
 
-sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const float x0, const float y0)
+sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     return std::make_unique<sim::ops::FluidRaise>(
-                x0-0.5, y0-0.5,
+                world_cursor[eX]-0.5, world_cursor[eY]-0.5,
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 -m_backend.brush_frontend().brush_strength());
@@ -264,7 +258,7 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend):
 
 void TerraTestingTool::add_segment(const QuadBezier3f &curve)
 {
-    engine::scenegraph::OctGroup &group = *m_backend.sgnode();
+    engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
     group.emplace<engine::QuadBezier3fRoadTest>(*m_road_material, 20).set_curve(curve);
 }
 
@@ -330,6 +324,54 @@ void TerraTestingTool::add_segmentized()
     }
 }
 
+std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewport_cursor,
+                                                          const Vector3f &world_cursor)
+{
+    std::vector<ffe::OctreeRayHitInfo> hitset;
+    const Ray r = m_backend.view_ray(viewport_cursor);
+    m_backend.sgnode()->octree().select_nodes_by_ray(r, hitset);
+    std::sort(hitset.begin(), hitset.end());
+
+    engine::QuadBezier3fRoadTest *obj = nullptr;
+    float closest = std::numeric_limits<float>::max();
+
+    for (auto iter = hitset.begin();
+         iter != hitset.end();
+         ++iter)
+    {
+        if (iter->tmin >= closest) {
+            continue;
+        }
+
+        for (auto obj_iter = iter->node->cbegin();
+             obj_iter != iter->node->cend();
+             ++obj_iter)
+        {
+            engine::QuadBezier3fRoadTest *this_obj = dynamic_cast<
+                    engine::QuadBezier3fRoadTest*>(*obj_iter);
+            if (!this_obj) {
+                continue;
+            }
+
+            float tmin = 0, tmax;
+            bool hit = isect_ray_sphere(r, this_obj->bounds(), tmin, tmax);
+            if (!hit) {
+                continue;
+            }
+
+            if (tmin < closest) {
+                obj = this_obj;
+            }
+        }
+    }
+
+    if (obj) {
+        return std::make_pair(true, obj->curve().p3);
+    }
+
+    return std::make_pair(false, world_cursor);
+}
+
 void TerraTestingTool::set_preview_material(engine::Material &material)
 {
     m_preview_material = &material;
@@ -340,52 +382,63 @@ void TerraTestingTool::set_road_material(engine::Material &material)
     m_road_material = &material;
 }
 
-std::pair<bool, Vector3f> TerraTestingTool::hover(const Vector3f &cursor)
+std::pair<bool, Vector3f> TerraTestingTool::hover(
+        const Vector2f &viewport_cursor,
+        const Vector3f &world_cursor)
 {
     switch (m_step)
     {
+    case 0:
+    {
+        auto potential_result = snapped_point(viewport_cursor, world_cursor);;
+        if (potential_result.first) {
+            return potential_result;
+        }
+        break;
+    }
     case 1:
     {
-        m_tmp_curve.p2 = cursor;
-        m_tmp_curve.p3 = cursor;
+        m_tmp_curve.p2 = world_cursor;
+        m_tmp_curve.p3 = world_cursor;
         m_debug_node->set_curve(m_tmp_curve);
         break;
     }
     case 2:
     {
-        m_tmp_curve.p3 = cursor;
+        bool valid;
+        Vector3f p;
+        std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
+        m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
+        if (valid) {
+            return std::make_pair(valid, p);
+        }
         break;
     }
     default:;
     }
-    return TerraTool::hover(cursor);
+    return TerraTool::hover(viewport_cursor, world_cursor);
 }
 
-sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const float y0)
+sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
-    bool success;
-    float height;
-    std::tie(success, height) = m_backend.lookup_height(x0, y0);
-    if (!success) {
-        return nullptr;
-    }
-
-    const Vector3f p(x0, y0, height);
-
     switch (m_step)
     {
     case 1:
     {
-        m_tmp_curve.p2 = p;
-        m_tmp_curve.p3 = p;
+        m_tmp_curve.p2 = world_cursor;
+        m_tmp_curve.p3 = world_cursor;
         m_debug_node->set_curve(m_tmp_curve);
         m_step += 1;
         break;
     }
     case 2:
     {
-        engine::scenegraph::OctGroup &group = *m_backend.sgnode();
+        bool valid;
+        Vector3f p;
+        std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
+
+        engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
 
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
@@ -398,9 +451,13 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const flo
     }
     default:
     {
+        bool valid;
+        Vector3f p;
+        std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
+
         assert(!m_debug_node);
         assert(m_preview_material);
-        m_debug_node = &m_backend.sgnode()->emplace<engine::QuadBezier3fDebug>(*m_preview_material, 20);
+        m_debug_node = &m_backend.sgnode()->root().emplace<engine::QuadBezier3fDebug>(*m_preview_material, 20);
         m_tmp_curve = QuadBezier3f(p, p, p);
         m_debug_node->set_curve(m_tmp_curve);
         m_step += 1;
@@ -411,14 +468,15 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const float x0, const flo
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraTestingTool::secondary_start(const float, const float)
+sim::WorldOperationPtr TerraTestingTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
     if (m_step > 0) {
         assert(m_debug_node);
-        engine::scenegraph::OctGroup &group = *m_backend.sgnode();
+        engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
         auto iter = std::find_if(group.begin(), group.end(), [this](engine::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
         m_step = 0;
+        m_debug_node = nullptr;
     }
     return nullptr;
 }

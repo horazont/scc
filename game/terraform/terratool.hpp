@@ -53,7 +53,9 @@ public:
 private:
     BrushFrontend &m_brush_frontend;
     const sim::WorldState &m_world;
-    engine::scenegraph::OctGroup *m_sgnode;
+    engine::scenegraph::OctreeGroup *m_sgnode;
+    engine::PerspectivalCamera *m_camera;
+    Vector2f m_viewport_size;
 
 public:
     inline BrushFrontend &brush_frontend()
@@ -66,12 +68,19 @@ public:
         return m_world;
     }
 
-    inline engine::scenegraph::OctGroup *sgnode()
+    inline engine::scenegraph::OctreeGroup *sgnode()
     {
         return m_sgnode;
     }
 
-    void set_sgnode(engine::scenegraph::OctGroup *sgnode);
+    inline Ray view_ray(const Vector2f &viewport_pos) const
+    {
+        return m_camera->ray(viewport_pos, m_viewport_size);
+    }
+
+    void set_camera(engine::PerspectivalCamera &camera);
+    void set_sgnode(engine::scenegraph::OctreeGroup &sgnode);
+    void set_viewport_size(const Vector2f &size);
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
             const float x, const float y,
@@ -130,15 +139,16 @@ public:
     virtual void set_value(float new_value);
 
 public:
-    virtual std::pair<bool, Vector3f> hover(const Vector3f &cursor);
-    virtual sim::WorldOperationPtr primary_start(const float x0,
-                                                 const float y0);
-    virtual sim::WorldOperationPtr primary(const float x0,
-                                           const float y0);
-    virtual sim::WorldOperationPtr secondary_start(const float x0,
-                                                   const float y0);
-    virtual sim::WorldOperationPtr secondary(const float x0,
-                                             const float y0);
+    virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
+                                            const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
+                                                 const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                           const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
+                                                   const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
+                                             const Vector3f &world_cursor);
 
 };
 
@@ -157,8 +167,10 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                   const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
+                                     const Vector3f &world_cursor) override;
 
 };
 
@@ -168,8 +180,10 @@ public:
     explicit TerraLevelTool(ToolBackend &backend);
 
 public:
-    sim::WorldOperationPtr primary(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                   const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
+                                           const Vector3f &world_cursor) override;
 
 };
 
@@ -179,7 +193,8 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                   const Vector3f &world_cursor) override;
 
 };
 
@@ -192,13 +207,13 @@ private:
     Vector3f m_destination_point;
     Vector3f m_source_point;
 
-protected:
-    void reference_point(const float x0, const float y0, Vector3f &dest);
-
 public:
-    sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
-    sim::WorldOperationPtr primary(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
+                                         const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                   const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
+                                           const Vector3f &world_cursor) override;
 
 };
 
@@ -208,8 +223,10 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary(const float x0, const float y0) override;
+    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
+                                   const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
+                                     const Vector3f &world_cursor) override;
 
 };
 
@@ -228,15 +245,20 @@ private:
 protected:
     void add_segment(const QuadBezier3f &curve);
     void add_segmentized();
+    std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor,
+                                            const Vector3f &world_cursor);
 
 public:
     void set_preview_material(engine::Material &material);
     void set_road_material(engine::Material &material);
 
 public:
-    std::pair<bool, Vector3f> hover(const Vector3f &cursor) override;
-    sim::WorldOperationPtr primary_start(const float x0, const float y0) override;
-    sim::WorldOperationPtr secondary_start(const float x0, const float y0) override;
+    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
+                                    const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
+                                         const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
+                                           const Vector3f &world_cursor) override;
 
 };
 

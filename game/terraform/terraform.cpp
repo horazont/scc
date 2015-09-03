@@ -285,7 +285,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     switch_to_tool(&m_tool_raise_lower);
 
     m_brush_frontend.set_brush_strength(10.0);
-    apply_tool(15, 20, false);
+    apply_tool(Vector2f(), Vector3f(15, 20, 0), false);
     m_brush_frontend.set_brush_strength(1.0);
 
     switch_to_tool(&m_tool_level);
@@ -293,7 +293,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_tool_level.set_value(0.f);
     m_brush_frontend.set_brush_strength(5.0);
     m_brush_frontend.set_brush_size(64);
-    apply_tool(30, 20, false);
+    apply_tool(Vector2f(), Vector3f(30, 20, 0), false);
 
     m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(10, 20, 5, 1, 0.3));
     m_server.enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(80, 20, 5, 8, 0.3));
@@ -301,7 +301,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_curr_tool = &m_tool_smooth;
     m_brush_frontend.set_brush_strength(1.0);
     m_brush_frontend.set_brush_size(4);
-    apply_tool(100, 100, false);
+    apply_tool(Vector2f(), Vector3f(100, 100, 0), false);
 
     m_ui->slider_brush_size->setValue(64);
     m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
@@ -337,8 +337,7 @@ void TerraformMode::advance(engine::TimeInterval dt)
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
         if (m_mouse_world_pos_valid) {
-            apply_tool(m_mouse_world_pos[eX], m_mouse_world_pos[eY],
-                       m_paint_secondary);
+            apply_tool(m_mouse_pos_win, m_mouse_world_pos, m_paint_secondary);
         }
         // terrain under mouse probably changed
         m_mouse_world_pos_updated = false;
@@ -378,7 +377,8 @@ void TerraformMode::before_gl_sync()
         Vector3f cursor;
         bool valid = m_mouse_world_pos_valid;
         if (valid) {
-            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_world_pos);
+            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win,
+                                                         m_mouse_world_pos);
         }
         if (valid) {
             m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
@@ -430,6 +430,7 @@ void TerraformMode::resizeEvent(QResizeEvent *event)
     ApplicationMode::resizeEvent(event);
     const QSize size = m_gl_scene->size() * window()->devicePixelRatio();
     m_viewport_size = engine::ViewportSize(size.width(), size.height());
+    m_tool_backend.set_viewport_size(m_viewport_size);
 }
 
 void TerraformMode::mouseMoveEvent(QMouseEvent *event)
@@ -499,11 +500,11 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
         ensure_mouse_world_pos();
         if (m_mouse_world_pos_valid) {
             if (m_paint_secondary) {
-                m_curr_tool->secondary_start(m_mouse_world_pos[eX],
-                                             m_mouse_world_pos[eY]);
+                m_curr_tool->secondary_start(m_mouse_pos_win,
+                                             m_mouse_world_pos);
             } else {
-                m_curr_tool->primary_start(m_mouse_world_pos[eX],
-                                           m_mouse_world_pos[eY]);
+                m_curr_tool->primary_start(m_mouse_pos_win,
+                                           m_mouse_world_pos);
             }
         }
         break;
@@ -578,17 +579,17 @@ void TerraformMode::wheelEvent(QWheelEvent *event)
                 );
 }
 
-void TerraformMode::apply_tool(const float x0,
-                               const float y0,
+void TerraformMode::apply_tool(const Vector2f &viewport_pos,
+                               const Vector3f &world_pos,
                                bool secondary)
 {
     if (m_curr_tool) {
         auto lock = m_server.sync_safe_point();
         sim::WorldOperationPtr op(nullptr);
         if (secondary) {
-            op = m_curr_tool->secondary(x0, y0);
+            op = m_curr_tool->secondary(viewport_pos, world_pos);
         } else {
-            op = m_curr_tool->primary(x0, y0);
+            op = m_curr_tool->primary(viewport_pos, world_pos);
         }
         if (op) {
             m_server.enqueue_op(std::move(op));
@@ -926,7 +927,9 @@ void TerraformMode::prepare_scene()
         throw std::runtime_error("shader failed to link or compile");
     }
 
-    m_tool_backend.set_sgnode(&scene.m_octree_group->root());
+    m_tool_backend.set_sgnode(*scene.m_octree_group);
+    m_tool_backend.set_camera(scene.m_camera);
+
     m_tool_testing.set_preview_material(*scene.m_bezier_material);
     m_tool_testing.set_road_material(*scene.m_road_material);
 }

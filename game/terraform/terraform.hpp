@@ -232,7 +232,9 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 protected:
-    void apply_tool(const float x0, const float y0, bool secondary);
+    void apply_tool(const Vector2f &viewport_pos,
+                    const Vector3f &world_pos,
+                    bool secondary);
     void switch_to_tool(TerraTool *new_tool);
     void collect_aabbs(std::vector<AABB> &dest);
     void ensure_mouse_world_pos();
