@@ -8,8 +8,9 @@ uniform float chunk_lod_scale;
 uniform float scale_to_radius;
 
 in vec3 position;
+in vec4 fluiddata;
 
-out vec2 morph_value;
+out float depth;
 
 vec2 morph_vertex(vec2 vertex, float morph_k)
 {
@@ -25,7 +26,7 @@ void main() {
 
     vec2 morphed = morph_vertex(position.xy, morph_k_value) + vec2(0.5, 0.5);
 
-    morph_value = vec2(morph_k_value, morph_k_value);
+    depth = fluiddata.y;
 
     gl_Position = mats.proj * mats.view * vec4(morphed.xy, position.z, 1.f);
 }

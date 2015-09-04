@@ -2,8 +2,10 @@
 
 out vec4 colour;
 
-in vec2 morph_value;
+in float depth;
+
+const float depth_factor = 0.5f;
 
 void main() {
-    colour = vec4(0.5, 0.5, 0.5, 1.0);
+    colour = vec4(0.05, 0.1, 0.2, min(1, 1 - pow(0.8, depth)));
 }
