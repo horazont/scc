@@ -417,10 +417,6 @@ void TerraformMode::before_gl_sync()
 
     m_sync_lock = m_server.sync_safe_point();
 
-    Vector3f pos = m_scene->m_camera.controller().pos();
-    m_scene->m_fluidplane_trafo_node->transformation() = translation4(
-                Vector3f(std::round(pos[eX])+0.5, std::round(pos[eY])+0.5, 0.f));
-
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
     engine::raise_last_gl_error();
 }
@@ -800,6 +796,8 @@ void TerraformMode::prepare_scene()
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
     engine::raise_last_gl_error();
 
+    full_terrain.emplace<engine::CPUFluid>(scene.m_resources, m_server.state().fluid());
+
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             engine::scenegraph::Transformation>();
     scene.m_pointer_trafo_node->emplace_child<engine::PointerNode>(1.0);
@@ -838,20 +836,6 @@ void TerraformMode::prepare_scene()
                 160, 160);
     scene.m_overlay->attach_texture("brush", scene.m_brush);
     engine::raise_last_gl_error();
-
-    scene.m_fluidplane_trafo_node = &scene.m_water_scenegraph.root().emplace<
-            engine::scenegraph::Transformation>();
-    engine::raise_last_gl_error();
-
-    /*engine::FluidNode &plane_node = scene.m_fluidplane_trafo_node->emplace_child<engine::FluidNode>(
-                m_server.state().fluid());
-    engine::raise_last_gl_error();
-    plane_node.attach_waves_texture(scene.m_waves);
-    engine::raise_last_gl_error();
-    plane_node.attach_scene_colour_texture(scene.m_prewater_colour_buffer);
-    engine::raise_last_gl_error();
-    plane_node.attach_scene_depth_texture(scene.m_prewater_depth_buffer);
-    engine::raise_last_gl_error();*/
 
 
     bool success = scene.m_sphere_material.shader().attach_resource(

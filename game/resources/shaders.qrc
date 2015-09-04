@@ -24,5 +24,7 @@
         <file>shaders/lib/universal_shader.frag</file>
         <file>shaders/lib/cubehelix.frag</file>
         <file>shaders/lib/matrix_block.glsl</file>
+        <file>shaders/fluid/cpu.frag</file>
+        <file>shaders/fluid/cpu.vert</file>
     </qresource>
 </RCC>
