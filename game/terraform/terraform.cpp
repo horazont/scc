@@ -45,6 +45,10 @@ the AUTHORS file.
 
 static io::Logger &logger = io::logging().get_logger("app.terraform");
 
+#include <chrono>
+typedef std::chrono::steady_clock timelog_clock;
+#define ms_cast(x) std::chrono::duration_cast<std::chrono::duration<float, std::ratio<1, 1000> > >(x)
+
 static const char *brush_search_paths[] = {
     ":/brushes/",
     "/usr/share/gimp/2.0/brushes/",
@@ -248,6 +252,8 @@ TerraformMode::TerraformMode(QWidget *parent):
 
     m_ui->brush_list->setModel(&m_brush_objects);
 
+    setFocusPolicy(Qt::StrongFocus);
+
     /* m_terrain.from_perlin(PerlinNoiseGenerator(Vector3(2048, 2048, 0),
                                                Vector3(13, 13, 3),
                                                0.45,
@@ -319,6 +325,17 @@ void TerraformMode::keyPressEvent(QKeyEvent *event)
     {
         m_paused = !m_paused;
         break;
+    }
+    case Qt::Key_R:
+    {
+        if (m_scene) {
+            logger.logf(io::LOG_INFO, "re-balancing octree on user request");
+            timelog_clock::time_point t0 = timelog_clock::now();
+            timelog_clock::time_point t1;
+            m_scene->m_octree_group->octree().rebalance();
+            t1 = timelog_clock::now();
+            logger.logf(io::LOG_INFO, "rebalance() took %.2f ms", ms_cast(t1-t0).count());
+        }
     }
     }
 }
