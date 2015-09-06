@@ -53,8 +53,8 @@ public:
 private:
     BrushFrontend &m_brush_frontend;
     const sim::WorldState &m_world;
-    engine::scenegraph::OctreeGroup *m_sgnode;
-    engine::PerspectivalCamera *m_camera;
+    ffe::scenegraph::OctreeGroup *m_sgnode;
+    ffe::PerspectivalCamera *m_camera;
     Vector2f m_viewport_size;
 
 public:
@@ -68,7 +68,7 @@ public:
         return m_world;
     }
 
-    inline engine::scenegraph::OctreeGroup *sgnode()
+    inline ffe::scenegraph::OctreeGroup *sgnode()
     {
         return m_sgnode;
     }
@@ -78,8 +78,8 @@ public:
         return m_camera->ray(viewport_pos, m_viewport_size);
     }
 
-    void set_camera(engine::PerspectivalCamera &camera);
-    void set_sgnode(engine::scenegraph::OctreeGroup &sgnode);
+    void set_camera(ffe::PerspectivalCamera &camera);
+    void set_sgnode(ffe::scenegraph::OctreeGroup &sgnode);
     void set_viewport_size(const Vector2f &size);
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
@@ -236,11 +236,11 @@ public:
     TerraTestingTool(ToolBackend &backend);
 
 private:
-    engine::QuadBezier3fDebug *m_debug_node;
+    ffe::QuadBezier3fDebug *m_debug_node;
     unsigned int m_step;
     QuadBezier3f m_tmp_curve;
-    engine::Material *m_preview_material;
-    engine::Material *m_road_material;
+    ffe::Material *m_preview_material;
+    ffe::Material *m_road_material;
 
 protected:
     void add_segment(const QuadBezier3f &curve);
@@ -249,8 +249,8 @@ protected:
                                             const Vector3f &world_cursor);
 
 public:
-    void set_preview_material(engine::Material &material);
-    void set_road_material(engine::Material &material);
+    void set_preview_material(ffe::Material &material);
+    void set_road_material(ffe::Material &material);
 
 public:
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,

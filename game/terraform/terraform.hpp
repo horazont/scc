@@ -49,27 +49,27 @@ struct TerraformScene
 {
     TerraformScene();
 
-    engine::GLResourceManager m_resources;
-    engine::WindowRenderTarget m_window;
-    engine::RenderGraph m_rendergraph;
-    engine::SceneGraph m_scenegraph;
-    engine::SceneGraph m_water_scenegraph;
-    engine::PerspectivalCamera m_camera;
-    engine::Texture2D *m_grass;
-    engine::Texture2D *m_rock;
-    engine::Texture2D *m_blend;
-    engine::Texture2D *m_waves;
-    engine::FancyTerrainNode *m_terrain_node;
-    engine::scenegraph::Transformation *m_pointer_trafo_node;
-    engine::Material *m_fluid;
-    engine::Material *m_overlay;
-    engine::Material *m_bezier_material;
-    engine::Material *m_road_material;
-    engine::Texture2D *m_brush;
-    engine::scenegraph::OctreeGroup *m_octree_group;
-    engine::scenegraph::OctRotation *m_sphere_rot;
+    ffe::GLResourceManager m_resources;
+    ffe::WindowRenderTarget m_window;
+    ffe::RenderGraph m_rendergraph;
+    ffe::SceneGraph m_scenegraph;
+    ffe::SceneGraph m_water_scenegraph;
+    ffe::PerspectivalCamera m_camera;
+    ffe::Texture2D *m_grass;
+    ffe::Texture2D *m_rock;
+    ffe::Texture2D *m_blend;
+    ffe::Texture2D *m_waves;
+    ffe::FancyTerrainNode *m_terrain_node;
+    ffe::scenegraph::Transformation *m_pointer_trafo_node;
+    ffe::Material *m_fluid;
+    ffe::Material *m_overlay;
+    ffe::Material *m_bezier_material;
+    ffe::Material *m_road_material;
+    ffe::Texture2D *m_brush;
+    ffe::scenegraph::OctreeGroup *m_octree_group;
+    ffe::scenegraph::OctRotation *m_sphere_rot;
 
-    engine::Material m_sphere_material;
+    ffe::Material m_sphere_material;
 
     /*engine::Texture2D *m_prewater_colour_buffer;
     engine::Texture2D *m_prewater_depth_buffer;
@@ -183,7 +183,7 @@ private:
     std::unique_ptr<TerraformScene> m_scene;
     sim::Server m_server;
     sim::Server::SyncSafeLock m_sync_lock;
-    engine::FancyTerrainInterface m_terrain_interface;
+    ffe::FancyTerrainInterface m_terrain_interface;
 
     QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_after_gl_sync_conn;
@@ -191,7 +191,7 @@ private:
 
     float m_t;
 
-    engine::ViewportSize m_viewport_size;
+    ffe::ViewportSize m_viewport_size;
     Vector2f m_mouse_pos_win;
 
     MouseMode m_mouse_mode;
@@ -243,7 +243,7 @@ protected:
     void update_brush();
 
 public slots:
-    void advance(engine::TimeInterval dt);
+    void advance(ffe::TimeInterval dt);
     void after_gl_sync();
     void before_gl_sync();
 

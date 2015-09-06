@@ -44,12 +44,12 @@ ToolBackend::~ToolBackend()
 
 }
 
-void ToolBackend::set_camera(engine::PerspectivalCamera &camera)
+void ToolBackend::set_camera(ffe::PerspectivalCamera &camera)
 {
     m_camera = &camera;
 }
 
-void ToolBackend::set_sgnode(engine::scenegraph::OctreeGroup &sgnode)
+void ToolBackend::set_sgnode(ffe::scenegraph::OctreeGroup &sgnode)
 {
     m_sgnode = &sgnode;
 }
@@ -258,8 +258,8 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend):
 
 void TerraTestingTool::add_segment(const QuadBezier3f &curve)
 {
-    engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
-    group.emplace<engine::QuadBezier3fRoadTest>(*m_road_material, 20).set_curve(curve);
+    ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
+    group.emplace<ffe::QuadBezier3fRoadTest>(*m_road_material, 20).set_curve(curve);
 }
 
 void TerraTestingTool::add_segmentized()
@@ -332,7 +332,7 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
     m_backend.sgnode()->octree().select_nodes_by_ray(r, hitset);
     std::sort(hitset.begin(), hitset.end());
 
-    engine::QuadBezier3fRoadTest *obj = nullptr;
+    ffe::QuadBezier3fRoadTest *obj = nullptr;
     float closest = std::numeric_limits<float>::max();
 
     for (auto iter = hitset.begin();
@@ -347,8 +347,8 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
              obj_iter != iter->node->cend();
              ++obj_iter)
         {
-            engine::QuadBezier3fRoadTest *this_obj = dynamic_cast<
-                    engine::QuadBezier3fRoadTest*>(*obj_iter);
+            ffe::QuadBezier3fRoadTest *this_obj = dynamic_cast<
+                    ffe::QuadBezier3fRoadTest*>(*obj_iter);
             if (!this_obj) {
                 continue;
             }
@@ -372,12 +372,12 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
     return std::make_pair(false, world_cursor);
 }
 
-void TerraTestingTool::set_preview_material(engine::Material &material)
+void TerraTestingTool::set_preview_material(ffe::Material &material)
 {
     m_preview_material = &material;
 }
 
-void TerraTestingTool::set_road_material(engine::Material &material)
+void TerraTestingTool::set_road_material(ffe::Material &material)
 {
     m_road_material = &material;
 }
@@ -438,11 +438,11 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_
         Vector3f p;
         std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
 
-        engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
+        ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
 
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
-        auto iter = std::find_if(group.begin(), group.end(), [this](engine::scenegraph::OctNode &node){ return &node == m_debug_node; });
+        auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
         add_segmentized();
         m_debug_node = nullptr;
@@ -457,7 +457,7 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_
 
         assert(!m_debug_node);
         assert(m_preview_material);
-        m_debug_node = &m_backend.sgnode()->root().emplace<engine::QuadBezier3fDebug>(*m_preview_material, 20);
+        m_debug_node = &m_backend.sgnode()->root().emplace<ffe::QuadBezier3fDebug>(*m_preview_material, 20);
         m_tmp_curve = QuadBezier3f(p, p, p);
         m_debug_node->set_curve(m_tmp_curve);
         m_step += 1;
@@ -472,8 +472,8 @@ sim::WorldOperationPtr TerraTestingTool::secondary_start(const Vector2f &viewpor
 {
     if (m_step > 0) {
         assert(m_debug_node);
-        engine::scenegraph::OctGroup &group = m_backend.sgnode()->root();
-        auto iter = std::find_if(group.begin(), group.end(), [this](engine::scenegraph::OctNode &node){ return &node == m_debug_node; });
+        ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
+        auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
         m_step = 0;
         m_debug_node = nullptr;

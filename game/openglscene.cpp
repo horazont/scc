@@ -161,7 +161,7 @@ void OpenGLScene::paintGL()
         // make sure that no vertex array is bound anymore so that no incorrect
         // state changes happen
         glBindVertexArray(0);
-        engine::raise_last_gl_error();
+        ffe::raise_last_gl_error();
     } else {
         logger.log(io::LOG_WARNING, "nothing to draw");
     }
@@ -199,7 +199,7 @@ double OpenGLScene::fps()
     return m_previous_fps;
 }
 
-void OpenGLScene::setup_scene(engine::RenderGraph *rendergraph)
+void OpenGLScene::setup_scene(ffe::RenderGraph *rendergraph)
 {
     m_rendergraph = rendergraph;
     update();
