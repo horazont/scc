@@ -51,10 +51,13 @@ struct TerraformScene
 
     ffe::GLResourceManager m_resources;
     ffe::WindowRenderTarget m_window;
-    ffe::RenderGraph m_rendergraph;
     ffe::SceneGraph m_scenegraph;
-    ffe::SceneGraph m_water_scenegraph;
     ffe::PerspectivalCamera m_camera;
+    ffe::Scene m_scene;
+    ffe::RenderGraph m_rendergraph;
+    ffe::RenderPass *m_solid_pass;
+    ffe::RenderPass *m_transparent_pass;
+    ffe::RenderPass *m_water_pass;
     ffe::Texture2D *m_grass;
     ffe::Texture2D *m_rock;
     ffe::Texture2D *m_blend;
@@ -69,6 +72,7 @@ struct TerraformScene
     ffe::scenegraph::OctreeGroup *m_octree_group;
     ffe::scenegraph::OctRotation *m_sphere_rot;
 
+    ffe::Material m_aabb_material;
     ffe::Material m_sphere_material;
 
     /*engine::Texture2D *m_prewater_colour_buffer;

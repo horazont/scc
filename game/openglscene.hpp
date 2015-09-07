@@ -32,6 +32,7 @@ the AUTHORS file.
 
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/camera.hpp"
+#include "ffengine/render/renderpass.hpp"
 
 typedef std::chrono::steady_clock monoclock;
 

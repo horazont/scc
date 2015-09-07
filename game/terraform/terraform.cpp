@@ -98,6 +98,9 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
 
 
 TerraformScene::TerraformScene():
+    m_scene(m_scenegraph, m_camera),
+    m_rendergraph(m_scene),
+    m_aabb_material(ffe::VBOFormat({ffe::VBOAttribute(4)})),
     m_sphere_material(ffe::VBOFormat({ffe::VBOAttribute(3)}))
 {
 }
@@ -345,7 +348,6 @@ void TerraformMode::advance(ffe::TimeInterval dt)
     if (m_scene) {
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
-        m_scene->m_water_scenegraph.advance(dt);
         if (!m_paused) {
             m_t += dt;
             m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(1, 1, 1).normalized()));
@@ -378,8 +380,6 @@ void TerraformMode::before_gl_sync()
 {
     ffe::raise_last_gl_error();
     prepare_scene();
-    ffe::raise_last_gl_error();
-    m_scene->m_camera.sync();
     ffe::raise_last_gl_error();
 
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
@@ -746,12 +746,15 @@ void TerraformMode::prepare_scene()
     scene.m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, scene.m_prewater_depth_buffer);
     scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);*/
 
-    ffe::SceneRenderNode &scene_node = scene.m_rendergraph.new_node<ffe::SceneRenderNode>(
-                scene.m_window,
-                scene.m_scenegraph,
-                scene.m_camera);
-    scene_node.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    scene_node.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
+    scene.m_solid_pass = &scene.m_rendergraph.new_node<ffe::RenderPass>(
+                scene.m_window);
+    scene.m_solid_pass->set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    scene.m_solid_pass->set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
+
+    scene.m_transparent_pass = &scene.m_rendergraph.new_node<ffe::RenderPass>(
+                scene.m_window);
+    scene.m_transparent_pass->set_clear_mask(0);
+    scene.m_transparent_pass->dependencies().push_back(scene.m_solid_pass);
 
     /*ffe::BlitNode &blit_node = scene.m_rendergraph.new_node<ffe::BlitNode>(
                 *scene.m_prewater_pass,
@@ -806,18 +809,21 @@ void TerraformMode::prepare_scene()
 
     scene.m_terrain_node = &full_terrain.emplace<ffe::FancyTerrainNode>(
                 m_terrain_interface,
-                scene.m_resources);
+                scene.m_resources,
+                *scene.m_solid_pass);
     scene.m_terrain_node->set_enable_linear_filter(false);
     scene.m_terrain_node->attach_grass_texture(scene.m_grass);
     scene.m_terrain_node->attach_rock_texture(scene.m_rock);
     scene.m_terrain_node->attach_blend_texture(scene.m_blend);
     ffe::raise_last_gl_error();
 
-    full_terrain.emplace<ffe::CPUFluid>(scene.m_resources, m_server.state().fluid());
+    full_terrain.emplace<ffe::CPUFluid>(scene.m_resources, m_server.state().fluid(),
+                                        *scene.m_transparent_pass,
+                                        *scene.m_water_pass);
 
     scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
             ffe::scenegraph::Transformation>();
-    scene.m_pointer_trafo_node->emplace_child<ffe::PointerNode>(1.0);
+    /*scene.m_pointer_trafo_node->emplace_child<ffe::PointerNode>(1.0);*/
     ffe::raise_last_gl_error();
 
     scene.m_overlay = &scene.m_resources.manage<ffe::Material>(
@@ -826,7 +832,7 @@ void TerraformMode::prepare_scene()
                               scene.m_terrain_node->material()))
                 );
     spp::EvaluationContext ctx(scene.m_resources.shader_library());
-    scene.m_overlay->shader().attach(
+    scene.m_overlay->make_pass_material(*scene.m_solid_pass).shader().attach(
                 scene.m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag"),
                 ctx,
                 GL_FRAGMENT_SHADER);
@@ -848,19 +854,53 @@ void TerraformMode::prepare_scene()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     ffe::raise_last_gl_error();
 
-    scene.m_overlay->shader().bind();
-    glUniform2f(scene.m_overlay->shader().uniform_location("center"),
-                160, 160);
+    {
+        ffe::MaterialPass &pass = scene.m_overlay->make_pass_material(*scene.m_solid_pass);
+        pass.shader().bind();
+        glUniform2f(pass.shader().uniform_location("center"),
+                    160, 160);
+    }
     scene.m_overlay->attach_texture("brush", scene.m_brush);
     ffe::raise_last_gl_error();
 
 
-    bool success = scene.m_sphere_material.shader().attach_resource(
-                GL_VERTEX_SHADER,
-                ":/shaders/oct_sphere/main.vert");
-    success = success && scene.m_sphere_material.shader().attach_resource(
-                GL_FRAGMENT_SHADER,
-                ":/shaders/oct_sphere/main.frag");
+    bool success = true;
+
+    {
+        ffe::MaterialPass &pass = scene.m_aabb_material.make_pass_material(*scene.m_solid_pass);
+
+        success = success && pass.shader().attach_resource(
+                    GL_VERTEX_SHADER,
+                    ":/shaders/aabb/main.vert");
+        success = success && pass.shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/aabb/main.frag");
+    }
+
+    scene.m_aabb_material.declare_attribute("position_t", 0);
+
+    success = success && scene.m_aabb_material.link();
+
+    if (!success) {
+        throw std::runtime_error("failed to compile or link shader");
+    }
+
+    scene.m_scenegraph.root().emplace<ffe::DynamicAABBs>(
+                scene.m_aabb_material,
+                std::bind(&TerraformMode::collect_aabbs,
+                          this,
+                          std::placeholders::_1));
+
+    {
+        ffe::MaterialPass &pass = scene.m_sphere_material.make_pass_material(*scene.m_solid_pass);
+
+        success = success && pass.shader().attach_resource(
+                    GL_VERTEX_SHADER,
+                    ":/shaders/oct_sphere/main.vert");
+        success = success && pass.shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/oct_sphere/main.frag");
+    }
 
     scene.m_sphere_material.declare_attribute("position", 0);
 
@@ -869,11 +909,6 @@ void TerraformMode::prepare_scene()
     if (!success) {
         throw std::runtime_error("failed to compile or link shader");
     }
-
-    scene.m_scenegraph.root().emplace<ffe::DynamicAABBs>(
-                std::bind(&TerraformMode::collect_aabbs,
-                          this,
-                          std::placeholders::_1));
 
     scene.m_octree_group = &scene.m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>();
     scene.m_sphere_rot = &scene.m_octree_group->root().emplace<ffe::scenegraph::OctRotation>();
@@ -888,18 +923,22 @@ void TerraformMode::prepare_scene()
         tx.emplace_child<ffe::OctSphere>(scene.m_sphere_material, 1.5);
     }*/
 
-    scene.m_sphere_material.sync();
+    scene.m_sphere_material.sync_buffers();
 
     scene.m_bezier_material = &scene.m_resources.emplace<ffe::Material>(
                 "material/bezier",
                 ffe::VBOFormat({ffe::VBOAttribute(4)}));
 
-    success = scene.m_bezier_material->shader().attach_resource(
-                GL_VERTEX_SHADER,
+    {
+        ffe::MaterialPass &pass = scene.m_bezier_material->make_pass_material(*scene.m_solid_pass);
+
+        success = pass.shader().attach_resource(
+                    GL_VERTEX_SHADER,
                 ":/shaders/curve/main.vert");
-    success = success && scene.m_bezier_material->shader().attach_resource(
-                GL_FRAGMENT_SHADER,
-                ":/shaders/curve/main.frag");
+        success = success && pass.shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/curve/main.frag");
+    }
 
     scene.m_bezier_material->declare_attribute("position_t", 0);
 
@@ -913,12 +952,15 @@ void TerraformMode::prepare_scene()
                 "material/road",
                 ffe::VBOFormat({ffe::VBOAttribute(4)}));
 
-    success = scene.m_road_material->shader().attach_resource(
-                GL_VERTEX_SHADER,
-                ":/shaders/curve/main.vert");
-    success = success && scene.m_road_material->shader().attach_resource(
-                GL_FRAGMENT_SHADER,
-                ":/shaders/curve/main.frag");
+    {
+        ffe::MaterialPass &pass = scene.m_road_material->make_pass_material(*scene.m_solid_pass);
+        success = pass.shader().attach_resource(
+                    GL_VERTEX_SHADER,
+                    ":/shaders/curve/main.vert");
+        success = success && pass.shader().attach_resource(
+                    GL_FRAGMENT_SHADER,
+                    ":/shaders/curve/main.frag");
+    }
 
     scene.m_road_material->declare_attribute("position_t", 0);
 
@@ -952,10 +994,12 @@ void TerraformMode::update_brush()
     if (curr_brush && m_mouse_world_pos_valid) {
         float brush_radius = m_brush_frontend.brush_size()/2.f;
 
-        m_scene->m_overlay->shader().bind();
-        glUniform2f(m_scene->m_overlay->shader().uniform_location("location"),
+        ffe::ShaderProgram &shader = m_scene->m_overlay->make_pass_material(
+                    *m_scene->m_solid_pass).shader();
+        shader.bind();
+        glUniform2f(shader.uniform_location("location"),
                     m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
-        glUniform1f(m_scene->m_overlay->shader().uniform_location("radius"),
+        glUniform1f(shader.uniform_location("radius"),
                     brush_radius);
         m_scene->m_terrain_node->configure_overlay(
                     *m_scene->m_overlay,
