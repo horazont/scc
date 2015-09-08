@@ -6,4 +6,5 @@ layout(std140) uniform MatrixBlock {
    vec4 sun_colour;
    vec3 sun_direction;
    vec4 sky_colour;
+   vec3 world_viewpoint;
 } mats;

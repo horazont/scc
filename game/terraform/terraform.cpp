@@ -147,6 +147,11 @@ TerraformScene::TerraformScene(
                 GL_FLOAT)),
     m_octree_group(m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>())
 {
+    m_scenegraph.set_sun_colour(Vector4f(1, 0.99, 0.95, 2.3));
+    m_scenegraph.set_sun_direction(Vector3f(1, 1, 4).normalized());
+    m_scenegraph.set_sky_colour(Vector4f(0.95, 0.99, 1.0, 1.0));
+
+
     m_solid_pass.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     m_solid_pass.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
 

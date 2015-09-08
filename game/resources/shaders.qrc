@@ -26,5 +26,6 @@
         <file>shaders/lib/matrix_block.glsl</file>
         <file>shaders/fluid/cpu.frag</file>
         <file>shaders/fluid/cpu.vert</file>
+        <file>shaders/lib/sunlight.frag</file>
     </qresource>
 </RCC>

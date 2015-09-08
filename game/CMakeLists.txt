@@ -67,6 +67,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/lib/universal_shader.frag
   resources/shaders/lib/cubehelix.frag
   resources/shaders/lib/matrix_block.glsl
+  resources/shaders/lib/sunlight.frag
   )
 
 set(GAME_BRUSH_RESOURCES
