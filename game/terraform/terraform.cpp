@@ -277,6 +277,8 @@ TerraformScene::TerraformScene(
         if (!success) {
             throw std::runtime_error("failed to compile or link bezier material");
         }
+
+        m_road_material.set_polygon_mode(GL_LINE);
     }
 }
 
