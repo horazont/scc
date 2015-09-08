@@ -97,12 +97,252 @@ std::ostream &operator<<(std::ostream &stream, const QModelIndex &index)
 }
 
 
-TerraformScene::TerraformScene():
+TerraformScene::TerraformScene(
+        ffe::FancyTerrainInterface &terrain_interface,
+        const sim::WorldState &state,
+        QSize window_size,
+        ffe::DynamicAABBs::DiscoverCallback &&aabb_callback):
     m_scene(m_scenegraph, m_camera),
     m_rendergraph(m_scene),
-    m_aabb_material(ffe::VBOFormat({ffe::VBOAttribute(4)})),
-    m_sphere_material(ffe::VBOFormat({ffe::VBOAttribute(3)}))
+    m_prewater_buffer(m_resources.emplace<ffe::FBO>(
+                          "prewater_buffer",
+                          window_size.width(),
+                          window_size.height())),
+    m_prewater_colour(m_resources.emplace<ffe::Texture2D>(
+                          "prewater_buffer/colour",
+                          GL_RGBA8, window_size.width(), window_size.height())),
+    m_prewater_depth(m_resources.emplace<ffe::Texture2D>(
+                         "prewater_buffer/depth",
+                         GL_DEPTH_COMPONENT24,
+                         window_size.width(), window_size.height(),
+                         GL_DEPTH_COMPONENT, GL_FLOAT)),
+    m_solid_pass(m_rendergraph.new_node<ffe::RenderPass>(m_prewater_buffer)),
+    m_transparent_pass(m_rendergraph.new_node<ffe::RenderPass>(m_prewater_buffer)),
+    m_water_pass(m_rendergraph.new_node<ffe::RenderPass>(m_window)),
+    m_grass(load_texture_resource("grass", ":/textures/grass00.png")),
+    m_rock(load_texture_resource("rock", ":/textures/rock00.png")),
+    m_blend(load_texture_resource("blend", ":/textures/blend00.png")),
+    m_waves(load_texture_resource("waves", ":/textures/waves00.png")),
+    m_full_terrain(m_scenegraph.root().emplace<ffe::FullTerrainNode>(
+                       terrain_interface.size(),
+                       terrain_interface.grid_size())),
+    m_terrain_geometry(m_full_terrain.emplace<ffe::FancyTerrainNode>(
+                           terrain_interface, m_resources, m_solid_pass)),
+    m_overlay_material(m_resources.manage<ffe::Material>(
+                           "brush_overlay",
+                           std::move(ffe::Material::shared_with(m_terrain_geometry.material())))),
+    m_bezier_material(m_resources.emplace<ffe::Material>(
+                          "bezier",
+                          ffe::VBOFormat({ffe::VBOAttribute(4)}))),
+    m_road_material(m_resources.emplace<ffe::Material>(
+                        "road",
+                        ffe::VBOFormat({ffe::VBOAttribute(4)}))),
+    m_aabb_material(m_resources.emplace<ffe::Material>(
+                        "debug/aabb",
+                        ffe::VBOFormat({ffe::VBOAttribute(4)}))),
+    m_brush(m_resources.emplace<ffe::Texture2D>(
+                "runtime/brush_texture",
+                GL_R32F, 129, 129,
+                GL_RED,
+                GL_FLOAT)),
+    m_octree_group(m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>())
 {
+    m_solid_pass.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    m_solid_pass.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
+
+    m_transparent_pass.set_clear_mask(0);
+    m_transparent_pass.dependencies().push_back(&m_solid_pass);
+
+    m_water_pass.set_blit_colour_src(&m_prewater_buffer);
+    m_water_pass.set_blit_depth_src(&m_prewater_buffer);
+    m_water_pass.dependencies().push_back(&m_transparent_pass);
+
+    if (!m_rendergraph.resort()) {
+        throw std::runtime_error("rendergraph has cycles");
+    }
+
+    m_camera.controller().set_distance(40.0);
+    m_camera.controller().set_rot(Vector2f(-60.f / 180.f * M_PI, 0));
+    m_camera.controller().set_pos(Vector3f(20, 30, 20));
+    m_camera.set_fovy(60. / 180. * M_PI);
+    m_camera.set_zfar(10000);
+    m_camera.set_znear(1);
+
+    /* terrain configuration */
+
+    m_full_terrain.set_detail_level(0);
+
+    m_terrain_geometry.set_enable_linear_filter(false);
+    m_terrain_geometry.attach_grass_texture(&m_grass);
+    m_terrain_geometry.attach_rock_texture(&m_rock);
+    m_terrain_geometry.attach_blend_texture(&m_blend);
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_overlay_material.make_pass_material(m_solid_pass);
+        bool success = pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        if (!success || !m_terrain_geometry.configure_overlay_material(m_overlay_material)) {
+            throw std::runtime_error("overlay material failed to build");
+        }
+
+        m_brush.bind();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    m_overlay_material.attach_texture("brush", &m_brush);
+
+    /* fluid configuration */
+
+    m_full_terrain.emplace<ffe::CPUFluid>(m_resources,
+                                          state.fluid(),
+                                          m_transparent_pass,
+                                          m_water_pass);
+
+    /* testing materials */
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_aabb_material.make_pass_material(m_solid_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/aabb/main.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/aabb/main.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_aabb_material.declare_attribute("position_t", 0);
+
+        success = success && m_aabb_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link AABB material");
+        }
+    }
+
+    m_scenegraph.root().emplace<ffe::DynamicAABBs>(
+                m_aabb_material,
+                std::move(aabb_callback));
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_bezier_material.make_pass_material(m_solid_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/curve/main.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/curve/main.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_bezier_material.declare_attribute("position_t", 0);
+
+        success = success && m_bezier_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link bezier material");
+        }
+    }
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_road_material.make_pass_material(m_solid_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/curve/main.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/curve/main.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_road_material.declare_attribute("position_t", 0);
+
+        success = success && m_road_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link bezier material");
+        }
+    }
+}
+
+TerraformScene::~TerraformScene()
+{
+
+}
+
+ffe::Texture2D &TerraformScene::load_texture_resource(
+        const std::string &resource_name,
+        const QString &source_path)
+{
+    QImage texture_image = QImage(source_path);
+    texture_image = texture_image.convertToFormat(QImage::Format_ARGB32);
+
+    ffe::Texture2D &tex = m_resources.emplace<ffe::Texture2D>(
+                resource_name,
+                GL_RGBA,
+                texture_image.width(), texture_image.height());
+    tex.bind();
+
+    uint8_t *pixbase = texture_image.bits();
+    for (int i = 0; i < texture_image.width()*texture_image.height(); i++)
+    {
+        const uint8_t A = pixbase[3];
+        const uint8_t R = pixbase[2];
+        const uint8_t G = pixbase[1];
+        const uint8_t B = pixbase[0];
+
+        pixbase[0] = R;
+        pixbase[1] = G;
+        pixbase[2] = B;
+        pixbase[3] = A;
+
+        pixbase += 4;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+                    0, 0,
+                    texture_image.width(), texture_image.height(),
+                    GL_RGBA,
+                    GL_UNSIGNED_BYTE,
+                    texture_image.bits());
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    return tex;
+}
+
+void TerraformScene::update_size(const QSize &new_size)
+{
+    if (m_window.width() != new_size.width() ||
+            m_window.height() != new_size.height() )
+    {
+        // resize window
+        m_window.set_size(new_size.width(), new_size.height());
+        // resize FBO
+        m_prewater_buffer = ffe::FBO(new_size.width(), new_size.height());
+        m_prewater_colour.bind();
+        m_prewater_colour.reinit(GL_RGBA, new_size.width(), new_size.height());
+        m_prewater_depth.bind();
+        m_prewater_depth.reinit(GL_DEPTH_COMPONENT24, new_size.width(), new_size.height());
+        m_prewater_buffer.attach(GL_COLOR_ATTACHMENT0, &m_prewater_colour);
+        m_prewater_buffer.attach(GL_DEPTH_ATTACHMENT, &m_prewater_depth);
+    }
 }
 
 
@@ -335,7 +575,7 @@ void TerraformMode::keyPressEvent(QKeyEvent *event)
             logger.logf(io::LOG_INFO, "re-balancing octree on user request");
             timelog_clock::time_point t0 = timelog_clock::now();
             timelog_clock::time_point t1;
-            m_scene->m_octree_group->octree().rebalance();
+            m_scene->m_octree_group.octree().rebalance();
             t1 = timelog_clock::now();
             logger.logf(io::LOG_INFO, "rebalance() took %.2f ms", ms_cast(t1-t0).count());
         }
@@ -348,10 +588,6 @@ void TerraformMode::advance(ffe::TimeInterval dt)
     if (m_scene) {
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
-        if (!m_paused) {
-            m_t += dt;
-            m_scene->m_sphere_rot->set_rotation(Quaternionf::rot(m_t * M_PI / 10., Vector3f(1, 1, 1).normalized()));
-        }
     }
     if (m_mouse_mode == MOUSE_PAINT) {
         ensure_mouse_world_pos();
@@ -371,7 +607,7 @@ void TerraformMode::after_gl_sync()
 {
     m_sync_lock.unlock();
     if (m_scene) {
-        m_ui->ldebug_octree_selected_objects->setNum((int)m_scene->m_octree_group->selected_objects());
+        m_ui->ldebug_octree_selected_objects->setNum((int)m_scene->m_octree_group.selected_objects());
         m_ui->ldebug_fps->setNum(std::round(m_gl_scene->fps()));
     }
 }
@@ -398,25 +634,12 @@ void TerraformMode::before_gl_sync()
                                                          m_mouse_world_pos);
         }
         if (valid) {
-            m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
+            // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
         }
     }
 
     const QSize size = window()->size() * window()->devicePixelRatio();
-    if (m_scene->m_window.width() != size.width() ||
-            m_scene->m_window.height() != size.height() )
-    {
-        // resize window
-        m_scene->m_window.set_size(size.width(), size.height());
-        // resize FBO
-        /*(*m_scene->m_prewater_pass) = ffe::FBO(size.width(), size.height());
-        m_scene->m_prewater_colour_buffer->bind();
-        m_scene->m_prewater_colour_buffer->reinit(GL_RGBA, size.width(), size.height());
-        m_scene->m_prewater_depth_buffer->bind();
-        m_scene->m_prewater_depth_buffer->reinit(GL_DEPTH_COMPONENT24, size.width(), size.height());
-        m_scene->m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, m_scene->m_prewater_colour_buffer);
-        m_scene->m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, m_scene->m_prewater_depth_buffer);*/
-    }
+    m_scene->update_size(size);
 
     /*{
         Vector3f pos = m_scene->m_camera.controller().pos();
@@ -485,8 +708,7 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
         m_drag_camera_pos = m_scene->m_camera.controller().pos();
         m_mouse_world_pos = now_at;
         m_mouse_world_pos_updated = true;
-        m_scene->m_pointer_trafo_node->transformation() = translation4(
-                    now_at);
+        // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(now_at);
         break;
     }
     default:;
@@ -640,7 +862,7 @@ void collect_octree_aabbs(std::vector<AABB> &dest, const ffe::OctreeNode &node)
 void TerraformMode::collect_aabbs(std::vector<AABB> &dest)
 {
     dest.clear();
-    collect_octree_aabbs(dest, m_scene->m_octree_group->octree().root());
+    collect_octree_aabbs(dest, m_scene->m_octree_group.octree().root());
 }
 
 void TerraformMode::ensure_mouse_world_pos()
@@ -711,270 +933,24 @@ void TerraformMode::prepare_scene()
         return;
     }
 
-    m_scene = std::make_unique<TerraformScene>();
-    TerraformScene &scene = *m_scene;
-
     const QSize size = window()->size() * window()->devicePixelRatio();
-    scene.m_window.set_size(size.width(), size.height());
 
-    /*scene.m_prewater_pass = &scene.m_resources.emplace<ffe::FBO>(
-                "fbo/prewater",
-                size.width(), size.height());
-    ffe::raise_last_gl_error();
-    scene.m_prewater_colour_buffer = &scene.m_resources.emplace<ffe::Texture2D>(
-                "fbo/prewater/colour0",
-                GL_RGBA,
-                size.width(), size.height());
-    scene.m_prewater_colour_buffer->bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    scene.m_prewater_depth_buffer = &scene.m_resources.emplace<ffe::Texture2D>(
-                "fbo/prewater/depth",
-                GL_DEPTH_COMPONENT24,
-                size.width(), size.height(),
-                GL_DEPTH_COMPONENT, GL_FLOAT);
-    scene.m_prewater_depth_buffer->bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    ffe::raise_last_gl_error();
-    scene.m_prewater_pass->attach(GL_DEPTH_ATTACHMENT, scene.m_prewater_depth_buffer);
-    scene.m_prewater_pass->attach(GL_COLOR_ATTACHMENT0, scene.m_prewater_colour_buffer);*/
-
-    scene.m_solid_pass = &scene.m_rendergraph.new_node<ffe::RenderPass>(
-                scene.m_window);
-    scene.m_solid_pass->set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    scene.m_solid_pass->set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
-
-    scene.m_transparent_pass = &scene.m_rendergraph.new_node<ffe::RenderPass>(
-                scene.m_window);
-    scene.m_transparent_pass->set_clear_mask(0);
-    scene.m_transparent_pass->dependencies().push_back(scene.m_solid_pass);
-
-    /*ffe::BlitNode &blit_node = scene.m_rendergraph.new_node<ffe::BlitNode>(
-                *scene.m_prewater_pass,
-                scene.m_window);
-    blit_node.dependencies().push_back(&scene_node);
-
-    ffe::SceneRenderNode &water_node = scene.m_rendergraph.new_node<ffe::SceneRenderNode>(
-                scene.m_window,
-                scene.m_water_scenegraph,
-                scene.m_camera);
-    water_node.set_clear_mask(0);
-    water_node.dependencies().push_back(&blit_node);*/
-
-    if (!scene.m_rendergraph.resort()) {
-        throw std::runtime_error("rendergraph has cycles");
-    }
-
-    /*scene.m_scenegraph.root().emplace<ffe::GridNode>(1024, 1024, 8);*/
-
-    scene.m_camera.controller().set_distance(40.0);
-    scene.m_camera.controller().set_rot(Vector2f(-60.f/180.f*M_PI, 0));
-    scene.m_camera.controller().set_pos(Vector3f(20, 30, 20));
-    scene.m_camera.set_fovy(60. / 180. * M_PI);
-    scene.m_camera.set_zfar(10000.0);
-    scene.m_camera.set_znear(1.0);
-
-    scene.m_grass = &scene.m_resources.emplace<ffe::Texture2D>(
-                "grass", GL_RGBA, 512, 512);
-    scene.m_grass->bind();
-    load_image_to_texture(":/textures/grass00.png");
-
-    scene.m_rock = &scene.m_resources.emplace<ffe::Texture2D>(
-                "rock", GL_RGBA, 512, 512);
-    scene.m_rock->bind();
-    load_image_to_texture(":/textures/rock00.png");
-
-    scene.m_blend = &scene.m_resources.emplace<ffe::Texture2D>(
-                "blend", GL_RED, 256, 256);
-    scene.m_blend->bind();
-    load_image_to_texture(":/textures/blend00.png");
-
-    scene.m_waves = &scene.m_resources.emplace<ffe::Texture2D>(
-                "waves", GL_RGBA, 512, 512);
-    scene.m_waves->bind();
-    load_image_to_texture(":/textures/waves00.png");
-    ffe::raise_last_gl_error();
-
-    ffe::FullTerrainNode &full_terrain = scene.m_scenegraph.root().emplace<ffe::FullTerrainNode>(
-                m_terrain_interface.size(),
-                m_terrain_interface.grid_size());
-    full_terrain.set_detail_level(0);
-
-    scene.m_terrain_node = &full_terrain.emplace<ffe::FancyTerrainNode>(
+    m_scene = std::make_unique<TerraformScene>(
                 m_terrain_interface,
-                scene.m_resources,
-                *scene.m_solid_pass);
-    scene.m_terrain_node->set_enable_linear_filter(false);
-    scene.m_terrain_node->attach_grass_texture(scene.m_grass);
-    scene.m_terrain_node->attach_rock_texture(scene.m_rock);
-    scene.m_terrain_node->attach_blend_texture(scene.m_blend);
-    ffe::raise_last_gl_error();
-
-    full_terrain.emplace<ffe::CPUFluid>(scene.m_resources, m_server.state().fluid(),
-                                        *scene.m_transparent_pass,
-                                        *scene.m_water_pass);
-
-    scene.m_pointer_trafo_node = &scene.m_scenegraph.root().emplace<
-            ffe::scenegraph::Transformation>();
-    /*scene.m_pointer_trafo_node->emplace_child<ffe::PointerNode>(1.0);*/
-    ffe::raise_last_gl_error();
-
-    scene.m_overlay = &scene.m_resources.manage<ffe::Material>(
-                "materials/overlay",
-                std::move(ffe::Material::shared_with(
-                              scene.m_terrain_node->material()))
-                );
-    spp::EvaluationContext ctx(scene.m_resources.shader_library());
-    scene.m_overlay->make_pass_material(*scene.m_solid_pass).shader().attach(
-                scene.m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag"),
-                ctx,
-                GL_FRAGMENT_SHADER);
-    if (!scene.m_terrain_node->configure_overlay_material(*scene.m_overlay)) {
-        throw std::runtime_error("shader failed to compile or link");
-    }
-    scene.m_terrain_node->configure_overlay(
-                *scene.m_overlay,
-                sim::TerrainRect(70, 70, 250, 250));
-    ffe::raise_last_gl_error();
-
-    scene.m_brush = &scene.m_resources.emplace<ffe::Texture2D>(
-                "textures/brush", GL_R32F, 129, 129, GL_RED, GL_FLOAT);
-    ffe::raise_last_gl_error();
-    scene.m_brush->bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    ffe::raise_last_gl_error();
-
-    {
-        ffe::MaterialPass &pass = scene.m_overlay->make_pass_material(*scene.m_solid_pass);
-        pass.shader().bind();
-        glUniform2f(pass.shader().uniform_location("center"),
-                    160, 160);
-    }
-    scene.m_overlay->attach_texture("brush", scene.m_brush);
-    ffe::raise_last_gl_error();
-
-
-    bool success = true;
-
-    {
-        ffe::MaterialPass &pass = scene.m_aabb_material.make_pass_material(*scene.m_solid_pass);
-
-        success = success && pass.shader().attach_resource(
-                    GL_VERTEX_SHADER,
-                    ":/shaders/aabb/main.vert");
-        success = success && pass.shader().attach_resource(
-                    GL_FRAGMENT_SHADER,
-                    ":/shaders/aabb/main.frag");
-    }
-
-    scene.m_aabb_material.declare_attribute("position_t", 0);
-
-    success = success && scene.m_aabb_material.link();
-
-    if (!success) {
-        throw std::runtime_error("failed to compile or link shader");
-    }
-
-    scene.m_scenegraph.root().emplace<ffe::DynamicAABBs>(
-                scene.m_aabb_material,
+                m_server.state(),
+                size,
                 std::bind(&TerraformMode::collect_aabbs,
                           this,
-                          std::placeholders::_1));
+                          std::placeholders::_1)
+                );
 
-    {
-        ffe::MaterialPass &pass = scene.m_sphere_material.make_pass_material(*scene.m_solid_pass);
+    TerraformScene &scene = *m_scene;
 
-        success = success && pass.shader().attach_resource(
-                    GL_VERTEX_SHADER,
-                    ":/shaders/oct_sphere/main.vert");
-        success = success && pass.shader().attach_resource(
-                    GL_FRAGMENT_SHADER,
-                    ":/shaders/oct_sphere/main.frag");
-    }
-
-    scene.m_sphere_material.declare_attribute("position", 0);
-
-    success = success && scene.m_sphere_material.link();
-
-    if (!success) {
-        throw std::runtime_error("failed to compile or link shader");
-    }
-
-    scene.m_octree_group = &scene.m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>();
-    scene.m_sphere_rot = &scene.m_octree_group->root().emplace<ffe::scenegraph::OctRotation>();
-
-    /*ffe::scenegraph::OctGroup &sphere_group = scene.m_sphere_rot->emplace_child<ffe::scenegraph::OctGroup>();
-
-    for (double t = 0; t <= 2; t += 0.02) {
-        ffe::scenegraph::OctRotation &rot = sphere_group.emplace<ffe::scenegraph::OctRotation>();
-        rot.set_rotation(Quaternionf::rot(4*t*M_PI, Vector3f(0, 0, 1)));
-        ffe::scenegraph::OctTranslation &tx = rot.emplace_child<ffe::scenegraph::OctTranslation>();
-        tx.set_translation(Vector3f(t*40, 0, 30+15*t));
-        tx.emplace_child<ffe::OctSphere>(scene.m_sphere_material, 1.5);
-    }*/
-
-    scene.m_sphere_material.sync_buffers();
-
-    scene.m_bezier_material = &scene.m_resources.emplace<ffe::Material>(
-                "material/bezier",
-                ffe::VBOFormat({ffe::VBOAttribute(4)}));
-
-    {
-        ffe::MaterialPass &pass = scene.m_bezier_material->make_pass_material(*scene.m_solid_pass);
-
-        success = pass.shader().attach_resource(
-                    GL_VERTEX_SHADER,
-                ":/shaders/curve/main.vert");
-        success = success && pass.shader().attach_resource(
-                    GL_FRAGMENT_SHADER,
-                    ":/shaders/curve/main.frag");
-    }
-
-    scene.m_bezier_material->declare_attribute("position_t", 0);
-
-    success = success && scene.m_bezier_material->link();
-
-    if (!success) {
-        throw std::runtime_error("shader failed to link or compile");
-    }
-
-    scene.m_road_material = &scene.m_resources.emplace<ffe::Material>(
-                "material/road",
-                ffe::VBOFormat({ffe::VBOAttribute(4)}));
-
-    {
-        ffe::MaterialPass &pass = scene.m_road_material->make_pass_material(*scene.m_solid_pass);
-        success = pass.shader().attach_resource(
-                    GL_VERTEX_SHADER,
-                    ":/shaders/curve/main.vert");
-        success = success && pass.shader().attach_resource(
-                    GL_FRAGMENT_SHADER,
-                    ":/shaders/curve/main.frag");
-    }
-
-    scene.m_road_material->declare_attribute("position_t", 0);
-
-    success = success && scene.m_road_material->link();
-
-    if (!success) {
-        throw std::runtime_error("shader failed to link or compile");
-    }
-
-    m_tool_backend.set_sgnode(*scene.m_octree_group);
+    m_tool_backend.set_sgnode(scene.m_octree_group);
     m_tool_backend.set_camera(scene.m_camera);
 
-    m_tool_testing.set_preview_material(*scene.m_bezier_material);
-    m_tool_testing.set_road_material(*scene.m_road_material);
+    m_tool_testing.set_preview_material(scene.m_bezier_material);
+    m_tool_testing.set_road_material(scene.m_road_material);
 }
 
 void TerraformMode::update_brush()
@@ -985,7 +961,7 @@ void TerraformMode::update_brush()
         if (curr_brush) {
             std::vector<Brush::density_t> buf(129*129);
             curr_brush->preview_buffer(129, buf);
-            m_scene->m_brush->bind();
+            m_scene->m_brush.bind();
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 129, 129, GL_RED, GL_FLOAT,
                             buf.data());
         }
@@ -994,21 +970,21 @@ void TerraformMode::update_brush()
     if (curr_brush && m_mouse_world_pos_valid) {
         float brush_radius = m_brush_frontend.brush_size()/2.f;
 
-        ffe::ShaderProgram &shader = m_scene->m_overlay->make_pass_material(
-                    *m_scene->m_solid_pass).shader();
+        ffe::ShaderProgram &shader = m_scene->m_overlay_material.make_pass_material(
+                    m_scene->m_solid_pass).shader();
         shader.bind();
         glUniform2f(shader.uniform_location("location"),
                     m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
         glUniform1f(shader.uniform_location("radius"),
                     brush_radius);
-        m_scene->m_terrain_node->configure_overlay(
-                    *m_scene->m_overlay,
+        m_scene->m_terrain_geometry.configure_overlay(
+                    m_scene->m_overlay_material,
                     sim::TerrainRect(std::max(0.f, std::floor(m_mouse_world_pos[eX]-brush_radius)),
                                      std::max(0.f, std::floor(m_mouse_world_pos[eY]-brush_radius)),
                                      std::ceil(m_mouse_world_pos[eX]+brush_radius),
                                      std::ceil(m_mouse_world_pos[eY]+brush_radius)));
     } else {
-        m_scene->m_terrain_node->remove_overlay(*m_scene->m_overlay);
+        m_scene->m_terrain_geometry.remove_overlay(m_scene->m_overlay_material);
     }
 }
 

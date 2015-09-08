@@ -36,6 +36,7 @@ the AUTHORS file.
 #include "ffengine/render/camera.hpp"
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/fancyterrain.hpp"
+#include "ffengine/render/aabb.hpp"
 
 #include "ffengine/sim/terrain.hpp"
 
@@ -47,7 +48,11 @@ the AUTHORS file.
 
 struct TerraformScene
 {
-    TerraformScene();
+    TerraformScene(ffe::FancyTerrainInterface &terrain_interface,
+                   const sim::WorldState &state,
+                   QSize window_size,
+                   ffe::DynamicAABBs::DiscoverCallback &&aabb_callback);
+    ~TerraformScene();
 
     ffe::GLResourceManager m_resources;
     ffe::WindowRenderTarget m_window;
@@ -55,29 +60,39 @@ struct TerraformScene
     ffe::PerspectivalCamera m_camera;
     ffe::Scene m_scene;
     ffe::RenderGraph m_rendergraph;
-    ffe::RenderPass *m_solid_pass;
-    ffe::RenderPass *m_transparent_pass;
-    ffe::RenderPass *m_water_pass;
-    ffe::Texture2D *m_grass;
-    ffe::Texture2D *m_rock;
-    ffe::Texture2D *m_blend;
-    ffe::Texture2D *m_waves;
-    ffe::FancyTerrainNode *m_terrain_node;
-    ffe::scenegraph::Transformation *m_pointer_trafo_node;
-    ffe::Material *m_fluid;
-    ffe::Material *m_overlay;
-    ffe::Material *m_bezier_material;
-    ffe::Material *m_road_material;
-    ffe::Texture2D *m_brush;
-    ffe::scenegraph::OctreeGroup *m_octree_group;
-    ffe::scenegraph::OctRotation *m_sphere_rot;
 
-    ffe::Material m_aabb_material;
-    ffe::Material m_sphere_material;
+    ffe::FBO &m_prewater_buffer;
 
-    /*engine::Texture2D *m_prewater_colour_buffer;
-    engine::Texture2D *m_prewater_depth_buffer;
-    engine::FBO *m_prewater_pass;*/
+    ffe::Texture2D &m_prewater_colour;
+    ffe::Texture2D &m_prewater_depth;
+
+    ffe::RenderPass &m_solid_pass;
+    ffe::RenderPass &m_transparent_pass;
+    ffe::RenderPass &m_water_pass;
+
+    ffe::Texture2D &m_grass;
+    ffe::Texture2D &m_rock;
+    ffe::Texture2D &m_blend;
+    ffe::Texture2D &m_waves;
+
+    ffe::FullTerrainNode &m_full_terrain;
+    ffe::FancyTerrainNode &m_terrain_geometry;
+
+    ffe::Material &m_overlay_material;
+    ffe::Material &m_bezier_material;
+    ffe::Material &m_road_material;
+    ffe::Material &m_aabb_material;
+
+    ffe::Texture2D &m_brush;
+
+    ffe::scenegraph::OctreeGroup &m_octree_group;
+
+public:
+    ffe::Texture2D &load_texture_resource(
+            const std::string &resource_name,
+            const QString &source_path);
+    void update_size(const QSize &new_size);
+
 };
 
 

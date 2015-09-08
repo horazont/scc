@@ -1,4 +1,4 @@
-#version 330
+#version 330 core
 
 layout(std140) uniform MatrixBlock {
    layout(row_major) mat4 proj;
