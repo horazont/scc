@@ -139,7 +139,7 @@ void OpenGLScene::paintGL()
     glGetError();
     emit before_gl_sync();
     if (m_rendergraph) {
-        m_rendergraph->sync();
+        m_rendergraph->prepare();
     }
     emit after_gl_sync();
 

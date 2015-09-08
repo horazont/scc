@@ -657,6 +657,8 @@ void TerraformMode::before_gl_sync()
 
     m_sync_lock = m_server.sync_safe_point();
 
+    m_scene->m_camera.sync();
+    m_scene->m_scenegraph.sync();
     m_gl_scene->setup_scene(&m_scene->m_rendergraph);
     ffe::raise_last_gl_error();
 }
