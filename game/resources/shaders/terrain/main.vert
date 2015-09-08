@@ -52,7 +52,7 @@ void main() {
 
     float dist = length(lod_viewpoint - world);
 
-    vec4 final_position = mats.proj * mats.view * mats.model * vec4(
+    vec4 final_position = mats.proj * mats.view * vec4(
                 /* morphed, height+zoffset*dist*0.0001, 1.f); */
                 morphed, height, 1.f);
 

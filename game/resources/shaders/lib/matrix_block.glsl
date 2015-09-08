@@ -3,6 +3,7 @@
 layout(std140) uniform MatrixBlock {
    layout(row_major) mat4 proj;
    layout(row_major) mat4 view;
-   layout(row_major) mat4 model;
-   layout(row_major) mat3 normal;
+   vec4 sun_colour;
+   vec3 sun_direction;
+   vec4 sky_colour;
 } mats;

@@ -26,7 +26,7 @@ void main() {
        nd_out.normal = normal;
        EmitVertex();
        gl_Position = gl_in[i].gl_Position +
-           mats.proj * mats.view * mats.model * vec4(normal * normal_length, 0.f);
+           mats.proj * mats.view * vec4(normal * normal_length, 0.f);
        nd_out.normal = normal;
        EmitVertex();
        EndPrimitive();
