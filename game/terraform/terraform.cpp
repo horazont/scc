@@ -622,21 +622,26 @@ void TerraformMode::before_gl_sync()
 
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
-    if (m_curr_tool && m_curr_tool->uses_brushes()) {
-        update_brush();
-    }
-
-    if (m_curr_tool && m_curr_tool->uses_hover()) {
-        ensure_mouse_world_pos();
-
-        Vector3f cursor;
-        bool valid = m_mouse_world_pos_valid;
-        if (valid) {
-            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win,
-                                                         m_mouse_world_pos);
+    if (m_curr_tool) {
+        if (m_curr_tool->uses_brushes()) {
+            update_brush();
+        } else {
+            m_scene->m_terrain_geometry.remove_overlay(
+                        m_scene->m_overlay_material);
         }
-        if (valid) {
-            // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
+
+        if (m_curr_tool->uses_hover()) {
+            ensure_mouse_world_pos();
+
+            Vector3f cursor;
+            bool valid = m_mouse_world_pos_valid;
+            if (valid) {
+                std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win,
+                                                             m_mouse_world_pos);
+            }
+            if (valid) {
+                // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
+            }
         }
     }
 
