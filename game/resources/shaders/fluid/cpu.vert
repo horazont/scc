@@ -9,8 +9,10 @@ uniform float scale_to_radius;
 
 in vec3 position;
 in vec4 fluiddata;
+in vec4 normal_t;
 
 out float depth;
+out vec3 normal;
 
 vec2 morph_vertex(vec2 vertex, float morph_k)
 {
@@ -27,6 +29,8 @@ void main() {
     vec2 morphed = morph_vertex(position.xy, morph_k_value) + vec2(0.5, 0.5);
 
     depth = fluiddata.y;
+
+    normal = normal_t.xyz;
 
     gl_Position = mats.proj * mats.view * vec4(morphed.xy, position.z, 1.f);
 }
