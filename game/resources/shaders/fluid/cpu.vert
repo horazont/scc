@@ -13,6 +13,7 @@ in vec4 normal_t;
 
 out vec3 world;
 out vec3 normal;
+out float depth;
 
 vec2 morph_vertex(vec2 vertex, float morph_k)
 {
@@ -32,6 +33,8 @@ void main() {
 
     vec3 world_pos = vec3(morphed.xy, position.z);
     world = world_pos;
+
+    depth = fluiddata.y;
 
     gl_Position = mats.proj * mats.view * vec4(world_pos, 1.f);
 }

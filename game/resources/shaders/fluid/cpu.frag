@@ -7,6 +7,7 @@
 out vec4 colour;
 
 in vec3 world;
+in float depth;
 in vec3 normal;
 
 const float depth_factor = 0.5f;
@@ -19,5 +20,11 @@ void main() {
     const float metallic = 0.8f;
     const float roughness = 0.1f;
 
-    colour = vec4(lighting(normal, eyedir, vec3(0.1, 0.2, 1.0), metallic, roughness), 1.f);
+    float alpha = min(1, 1 - pow(0.8, depth));
+
+    colour = transparent_lighting(normal,
+                                  eyedir,
+                                  vec4(0.1, 0.2, 1.0, alpha),
+                                  metallic,
+                                  roughness);
 }

@@ -18,7 +18,7 @@ vec4 colourize_density(float density)
 {
     vec3 colour = cubehelix(density, M_PI/12., -1.0, 1.0);
     float alpha = min(density, 0.4);
-    return vec4(colour, alpha);
+    return vec4(colour * alpha * 1.1, alpha);
 }
 
 void main() {
