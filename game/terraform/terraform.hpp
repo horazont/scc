@@ -39,6 +39,8 @@ the AUTHORS file.
 #include "ffengine/render/aabb.hpp"
 
 #include "ffengine/sim/terrain.hpp"
+#include "ffengine/sim/world.hpp"
+#include "ffengine/sim/server.hpp"
 
 #include "mode.hpp"
 

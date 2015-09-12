@@ -21,7 +21,7 @@ FEEDBACK & QUESTIONS
 For feedback and questions about SCC please e-mail one of the authors named in
 the AUTHORS file.
 **********************************************************************/
-#define QT_NO_KEYWORDS
+#define QT_NO_EMIT
 
 #include "terraform/terratool.hpp"
 
