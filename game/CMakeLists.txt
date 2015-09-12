@@ -76,12 +76,17 @@ set(GAME_BRUSH_RESOURCES
   resources/brushes/test.pbrush
   )
 
+set(GAME_STYLESHEET_RESOURCES
+  resources/stylesheets/main.css
+  )
+
 add_custom_target(
     game-resources
     DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/shaders.rcc
     ${CMAKE_CURRENT_BINARY_DIR}/textures.rcc
     ${CMAKE_CURRENT_BINARY_DIR}/brushes.rcc
+    ${CMAKE_CURRENT_BINARY_DIR}/stylesheets.rcc
     SOURCES
     resources/shaders.qrc
     ${GAME_SHADER_RESOURCES}
@@ -89,6 +94,8 @@ add_custom_target(
     ${GAME_TEXTURE_RESOURCES}
     resources/brushes.qrc
     ${GAME_BRUSH_RESOURCES}
+    resources/stylesheets.qrc
+    ${GAME_STYLESHEET_RESOURCES}
     ${GAME_UIS})
 
 function(add_resource_pack PACKNAME QRC SOURCES)
@@ -103,6 +110,7 @@ endfunction(add_resource_pack)
 add_resource_pack("textures" "resources/textures.qrc" "${GAME_TEXTURE_RESOURCES}")
 add_resource_pack("shaders" "resources/shaders.qrc" "${GAME_SHADER_RESOURCES}")
 add_resource_pack("brushes" "resources/brushes.qrc" "${GAME_BRUSH_RESOURCES}")
+add_resource_pack("stylesheets" "resources/stylesheets.qrc" "${GAME_STYLESHEET_RESOURCES}")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

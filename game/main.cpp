@@ -78,7 +78,17 @@ int main(int argc, char *argv[])
     QResource::registerResource("textures.rcc");
     QResource::registerResource("shaders.rcc");
     QResource::registerResource("brushes.rcc");
+    QResource::registerResource("stylesheets.rcc");
     io::logging().log(io::LOG_INFO) << "Resource packs registered" << io::submit;
+
+    {
+        QFile css_file(":/stylesheets/main.css");;
+        if (!css_file.open(QIODevice::ReadOnly)) {
+            io::logging().logf(io::LOG_ERROR, "failed to load stylesheet");
+        } else {
+            qapp.setStyleSheet(css_file.readAll());
+        }
+    }
 
     Application app;
     app.show();
