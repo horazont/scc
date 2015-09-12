@@ -28,14 +28,21 @@ the AUTHORS file.
 
 #include <sigc++/sigc++.h>
 
+#include "ffengine/math/curve.hpp"
+
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
 
 #include "ffengine/render/scenegraph.hpp"
-#include "ffengine/render/curve.hpp"
 
 #include "terraform/brush.hpp"
 
+namespace ffe {
+
+class QuadBezier3fDebug;
+class Material;
+
+}
 
 enum class TerraToolType
 {
@@ -57,6 +64,8 @@ private:
     ffe::PerspectivalCamera *m_camera;
     Vector2f m_viewport_size;
 
+    std::vector<ffe::OctreeRayHitInfo> m_ray_hitset;
+
 public:
     inline BrushFrontend &brush_frontend()
     {
@@ -77,6 +86,10 @@ public:
     {
         return m_camera->ray(viewport_pos, m_viewport_size);
     }
+
+    ffe::OctreeObject *hittest_octree_object(
+            const Ray &ray,
+            const std::function<bool(const ffe::OctreeObject &)> &predicate);
 
     void set_camera(ffe::PerspectivalCamera &camera);
     void set_sgnode(ffe::scenegraph::OctreeGroup &sgnode);

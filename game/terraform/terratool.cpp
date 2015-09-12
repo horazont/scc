@@ -30,6 +30,9 @@ the AUTHORS file.
 
 #include "ffengine/sim/world_ops.hpp"
 
+#include "ffengine/render/curve.hpp"
+#include "ffengine/render/renderpass.hpp"
+
 
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
                          const sim::WorldState &world):
@@ -42,6 +45,49 @@ ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
 ToolBackend::~ToolBackend()
 {
 
+}
+
+ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
+        const std::function<bool (const ffe::OctreeObject &)> &predicate)
+{
+    m_sgnode->octree().select_nodes_by_ray(ray, m_ray_hitset);
+    std::sort(m_ray_hitset.begin(), m_ray_hitset.end());
+
+    ffe::OctreeObject *closest_object = nullptr;
+    float closest = std::numeric_limits<float>::max();
+
+    for (auto iter = m_ray_hitset.begin();
+         iter != m_ray_hitset.end();
+         ++iter)
+    {
+        if (iter->tmin >= closest) {
+            continue;
+        }
+
+        for (auto obj_iter = iter->node->cbegin();
+             obj_iter != iter->node->cend();
+             ++obj_iter)
+        {
+            ffe::OctreeObject *obj = *obj_iter;
+            if (!predicate(*obj)) {
+                continue;
+            }
+
+            float tmin = 0;
+            bool hit = obj->isect_ray(ray, tmin);
+            if (!hit) {
+                continue;
+            }
+
+            if (tmin < closest) {
+                closest_object = obj;
+            }
+        }
+    }
+
+    m_ray_hitset.clear();
+
+    return closest_object;
 }
 
 void ToolBackend::set_camera(ffe::PerspectivalCamera &camera)
@@ -327,43 +373,11 @@ void TerraTestingTool::add_segmentized()
 std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewport_cursor,
                                                           const Vector3f &world_cursor)
 {
-    std::vector<ffe::OctreeRayHitInfo> hitset;
     const Ray r = m_backend.view_ray(viewport_cursor);
-    m_backend.sgnode()->octree().select_nodes_by_ray(r, hitset);
-    std::sort(hitset.begin(), hitset.end());
 
-    ffe::QuadBezier3fRoadTest *obj = nullptr;
-    float closest = std::numeric_limits<float>::max();
-
-    for (auto iter = hitset.begin();
-         iter != hitset.end();
-         ++iter)
-    {
-        if (iter->tmin >= closest) {
-            continue;
-        }
-
-        for (auto obj_iter = iter->node->cbegin();
-             obj_iter != iter->node->cend();
-             ++obj_iter)
-        {
-            ffe::QuadBezier3fRoadTest *this_obj = dynamic_cast<
-                    ffe::QuadBezier3fRoadTest*>(*obj_iter);
-            if (!this_obj) {
-                continue;
-            }
-
-            float tmin = 0, tmax;
-            bool hit = isect_ray_sphere(r, this_obj->bounds(), tmin, tmax);
-            if (!hit) {
-                continue;
-            }
-
-            if (tmin < closest) {
-                obj = this_obj;
-            }
-        }
-    }
+    ffe::QuadBezier3fRoadTest *obj = static_cast<ffe::QuadBezier3fRoadTest*>(
+                m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::QuadBezier3fRoadTest*>(&obj)); })
+                );
 
     if (obj) {
         return std::make_pair(true, obj->curve().p3);
