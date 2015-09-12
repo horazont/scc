@@ -77,6 +77,11 @@ QAbstractButton {
 	border-radius: 1px;
 }
 
+QAbstractButton:checked {
+	background-color: darkblue;
+	color: white;
+}
+
 QAbstractButton:hover {
 	background-color: lightblue;
 }
@@ -668,7 +673,7 @@ QScrollBar::left-arrow {
   </layout>
   <action name="tool_terrain_raise_lower">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>R/L</string>
@@ -679,7 +684,7 @@ QScrollBar::left-arrow {
   </action>
   <action name="tool_terrain_flatten">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Flt</string>
@@ -690,7 +695,7 @@ QScrollBar::left-arrow {
   </action>
   <action name="tool_terrain_smooth">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Smth</string>
@@ -701,7 +706,7 @@ QScrollBar::left-arrow {
   </action>
   <action name="tool_terrain_ramp">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Rmp</string>
@@ -711,6 +716,9 @@ QScrollBar::left-arrow {
    </property>
   </action>
   <action name="tool_fluid_raise_lower">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>FR/L</string>
    </property>
@@ -719,6 +727,9 @@ QScrollBar::left-arrow {
    </property>
   </action>
   <action name="tool_testing">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>T</string>
    </property>

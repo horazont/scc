@@ -470,6 +470,7 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
 TerraformMode::TerraformMode(QWidget *parent):
     ApplicationMode(parent),
     m_ui(new Ui::TerraformMode),
+    m_tools(nullptr),
     m_server(),
     m_terrain_interface(m_server.state().terrain(), 61),
     m_t(100),
@@ -497,6 +498,13 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->tool_terrain_ramp);
     m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->tool_fluid_raise_lower);
     m_ui->toolbtn_testing->setDefaultAction(m_ui->tool_testing);
+
+    m_tools.addAction(m_ui->tool_fluid_raise_lower);
+    m_tools.addAction(m_ui->tool_testing);
+    m_tools.addAction(m_ui->tool_terrain_ramp);
+    m_tools.addAction(m_ui->tool_terrain_smooth);
+    m_tools.addAction(m_ui->tool_terrain_flatten);
+    m_tools.addAction(m_ui->tool_terrain_raise_lower);
 
     m_ui->tabWidget->tabBar()->setDrawBase(false);
 
@@ -561,6 +569,8 @@ TerraformMode::TerraformMode(QWidget *parent):
 
     m_ui->slider_brush_size->setValue(64);
     m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
+
+    m_ui->tool_terrain_raise_lower->trigger();
 }
 
 TerraformMode::~TerraformMode()

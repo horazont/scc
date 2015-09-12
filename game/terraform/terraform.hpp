@@ -27,6 +27,7 @@ the AUTHORS file.
 #include "fixups.hpp"
 
 #include <QAbstractListModel>
+#include <QActionGroup>
 #include <QDir>
 
 #include "ffengine/math/octree.hpp"
@@ -200,6 +201,7 @@ public:
 
 private:
     Ui::TerraformMode *m_ui;
+    QActionGroup m_tools;
 
     std::unique_ptr<TerraformScene> m_scene;
     sim::Server m_server;
