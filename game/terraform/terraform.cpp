@@ -507,6 +507,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_tool_ramp(m_tool_backend),
     m_tool_fluid_raise(m_tool_backend),
     m_tool_testing(m_tool_backend),
+    m_tool_fluid_source(m_tool_backend),
     m_curr_tool(nullptr),
     m_brush_objects(this),
     m_paused(false)
@@ -519,7 +520,9 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->tool_terrain_ramp);
     m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->tool_fluid_raise_lower);
     m_ui->toolbtn_testing->setDefaultAction(m_ui->tool_testing);
+    m_ui->toolbtn_fluid_source->setDefaultAction(m_ui->tool_fluid_source);
 
+    m_tools.addAction(m_ui->tool_fluid_source);
     m_tools.addAction(m_ui->tool_fluid_raise_lower);
     m_tools.addAction(m_ui->tool_testing);
     m_tools.addAction(m_ui->tool_terrain_ramp);
@@ -591,7 +594,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_ui->slider_brush_size->setValue(64);
     m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
 
-    m_ui->tool_terrain_raise_lower->trigger();
+    m_ui->tool_fluid_source->trigger();
 }
 
 TerraformMode::~TerraformMode()
@@ -1142,4 +1145,9 @@ void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
 void TerraformMode::on_tool_testing_triggered()
 {
     switch_to_tool(&m_tool_testing);
+}
+
+void TerraformMode::on_tool_fluid_source_triggered()
+{
+    switch_to_tool(&m_tool_fluid_source);
 }

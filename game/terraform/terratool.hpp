@@ -39,6 +39,7 @@ the AUTHORS file.
 
 namespace ffe {
 
+class FluidSource;
 class QuadBezier3fDebug;
 class Material;
 
@@ -240,6 +241,26 @@ public:
                                    const Vector3f &world_cursor) override;
     sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
                                      const Vector3f &world_cursor) override;
+
+};
+
+class TerraFluidSourceTool: public TerraTool
+{
+public:
+    TerraFluidSourceTool(ToolBackend &backend);
+
+private:
+    ffe::FluidSource *m_selected_source;
+
+protected:
+    ffe::FluidSource *find_fluid_source(const Vector2f &viewport_cursor);
+
+public:
+    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
+                                    const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
+                                         const Vector3f &world_cursor) override;
+
 
 };
 

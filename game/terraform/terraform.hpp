@@ -241,6 +241,8 @@ private:
     TerraRampTool m_tool_ramp;
     TerraFluidRaiseTool m_tool_fluid_raise;
     TerraTestingTool m_tool_testing;
+    TerraFluidSourceTool m_tool_fluid_source;
+
     TerraTool *m_curr_tool;
 
     BrushList m_brush_objects;
@@ -293,6 +295,7 @@ private slots:
     void on_slider_brush_strength_valueChanged(int value);
     void on_brush_list_clicked(const QModelIndex &index);
     void on_tool_testing_triggered();
+    void on_tool_fluid_source_triggered();
 };
 
 #endif

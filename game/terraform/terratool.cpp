@@ -31,6 +31,7 @@ the AUTHORS file.
 #include "ffengine/sim/world_ops.hpp"
 
 #include "ffengine/render/curve.hpp"
+#include "ffengine/render/fluidsource.hpp"
 #include "ffengine/render/renderpass.hpp"
 
 
@@ -286,6 +287,60 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const Vector2f &viewport_c
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 -m_backend.brush_frontend().brush_strength());
+}
+
+
+/* TerraFluidSourceTool */
+
+TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend):
+    TerraTool(backend),
+    m_selected_source(nullptr)
+{
+    m_uses_hover = true;
+    m_uses_brushes = false;
+}
+
+ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
+{
+    const Ray r = m_backend.view_ray(viewport_cursor);
+
+    return static_cast<ffe::FluidSource*>(
+                m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::FluidSource*>(&obj)); })
+                );
+}
+
+std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
+        const Vector2f &viewport_cursor,
+        const Vector3f &world_cursor)
+{
+    if (m_selected_source) {
+        m_selected_source->set_ui_state(ffe::UI_STATE_SELECTED);
+    }
+
+    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+
+    if (obj) {
+        if (obj != m_selected_source) {
+            obj->set_ui_state(ffe::UI_STATE_HOVER);
+        }
+        return std::make_pair(true, world_cursor);
+    }
+
+    return std::make_pair(false, world_cursor);
+}
+
+sim::WorldOperationPtr TerraFluidSourceTool::primary_start(
+        const Vector2f &viewport_cursor,
+        const Vector3f&)
+{
+    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+
+    if (obj) {
+        obj->set_ui_state(ffe::UI_STATE_SELECTED);
+        m_selected_source = obj;
+    }
+
+    return nullptr;
 }
 
 
