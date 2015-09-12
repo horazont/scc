@@ -28,6 +28,8 @@ the AUTHORS file.
 
 #include <memory>
 #include <QMainWindow>
+#include <QMetaObject>
+#include <QMdiSubWindow>
 
 #include "ffengine/io/filesystem.hpp"
 
@@ -56,6 +58,12 @@ private:
     Ui::Application *m_ui;
 
     std::unique_ptr<ApplicationMode> m_curr_mode;
+    std::unordered_map<QMdiSubWindow*, QMetaObject::Connection> m_mdi_connections;
+
+private:
+    void subdialog_done(QMdiSubWindow *wnd);
+    void mdi_window_closed();
+    void mdi_window_opened();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -63,6 +71,8 @@ protected:
 public:
     void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
     OpenGLScene &scene();
+    void show_dialog(QDialog &window);
+    void show_widget_as_window(QWidget &window, Qt::WindowFlags flags = 0);
 
 };
 
