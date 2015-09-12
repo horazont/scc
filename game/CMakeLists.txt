@@ -42,6 +42,8 @@ set(GAME_TEXTURE_RESOURCES
 
 set(GAME_SHADER_RESOURCES
   resources/shaders/generic/normal_debug.frag
+  resources/shaders/terraform/fluidsource.frag
+  resources/shaders/terraform/fluidsource.vert
   resources/shaders/terrain/normal_debug.geom
   resources/shaders/terrain/main.vert
   resources/shaders/terrain/main.geom

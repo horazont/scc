@@ -38,6 +38,7 @@ the AUTHORS file.
 #include "ffengine/render/scenegraph.hpp"
 #include "ffengine/render/fancyterrain.hpp"
 #include "ffengine/render/aabb.hpp"
+#include "ffengine/render/fluidsource.hpp"
 
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
@@ -85,6 +86,7 @@ struct TerraformScene
     ffe::Material &m_bezier_material;
     ffe::Material &m_road_material;
     ffe::Material &m_aabb_material;
+    ffe::FluidSourceMaterial &m_fluid_source_material;
 
     ffe::Texture2D &m_brush;
 

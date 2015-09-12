@@ -140,6 +140,7 @@ TerraformScene::TerraformScene(
     m_aabb_material(m_resources.emplace<ffe::Material>(
                         "debug/aabb",
                         ffe::VBOFormat({ffe::VBOAttribute(4)}))),
+    m_fluid_source_material(m_resources.emplace<ffe::FluidSourceMaterial>("terraform/fluidsource", 13)),
     m_brush(m_resources.emplace<ffe::Texture2D>(
                 "runtime/brush_texture",
                 GL_R32F, 129, 129,
@@ -284,6 +285,26 @@ TerraformScene::TerraformScene(
         }
 
         m_road_material.set_polygon_mode(GL_LINE);
+    }
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_fluid_source_material.make_pass_material(m_transparent_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/fluidsource.vert"),
+                    ctx);
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/fluidsource.frag"),
+                    ctx);
+
+        success = success && m_fluid_source_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link fluid source material");
+        }
     }
 }
 
@@ -975,6 +996,27 @@ void TerraformMode::prepare_scene()
 
     m_tool_testing.set_preview_material(scene.m_bezier_material);
     m_tool_testing.set_road_material(scene.m_road_material);
+
+    /*for (const sim::Fluid::Source *source: m_server.state().fluid().sources())
+    {
+        ffe::FluidSource &rendernode = scene.m_octree_group.root().emplace<ffe::FluidSource>(
+                    scene.m_fluid_source_material);
+        rendernode.update_from_source(source);
+    }*/
+
+    ffe::FluidSource *rendernode = &scene.m_octree_group.root().emplace<ffe::FluidSource>(
+                scene.m_fluid_source_material);
+    rendernode->set_base(Vector2f(10, 20));
+    rendernode->set_radius(5);
+    rendernode->set_height(1);
+    rendernode->set_capacity(0.3);
+
+    rendernode = &scene.m_octree_group.root().emplace<ffe::FluidSource>(
+                scene.m_fluid_source_material);
+    rendernode->set_base(Vector2f(80, 20));
+    rendernode->set_radius(5);
+    rendernode->set_height(8);
+    rendernode->set_capacity(0.3);
 }
 
 void TerraformMode::update_brush()

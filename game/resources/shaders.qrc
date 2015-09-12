@@ -27,5 +27,7 @@
         <file>shaders/fluid/cpu.frag</file>
         <file>shaders/fluid/cpu.vert</file>
         <file>shaders/lib/sunlight.frag</file>
+        <file>shaders/terraform/fluidsource.frag</file>
+        <file>shaders/terraform/fluidsource.vert</file>
     </qresource>
 </RCC>
