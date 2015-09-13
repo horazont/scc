@@ -56,8 +56,7 @@ MainMenu::~MainMenu()
 
 void MainMenu::on_action_mainmenu_map_editor_triggered()
 {
-    m_app.enter_mode(std::make_unique<TerraformMode>(m_app));
-    // MainMenu is deleted here!
+    m_app.enter_mode(Application::TERRAFORM);
 }
 
 void MainMenu::on_action_mainmenu_quit_triggered()

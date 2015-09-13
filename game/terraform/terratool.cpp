@@ -35,10 +35,9 @@ the AUTHORS file.
 #include "ffengine/render/renderpass.hpp"
 
 
-ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
-                         const sim::WorldState &world):
+ToolBackend::ToolBackend(BrushFrontend &brush_frontend):
     m_brush_frontend(brush_frontend),
-    m_world(world)
+    m_world(nullptr)
 {
 
 }
@@ -106,11 +105,16 @@ void ToolBackend::set_viewport_size(const Vector2f &size)
     m_viewport_size = size;
 }
 
+void ToolBackend::set_world(const sim::WorldState *world)
+{
+    m_world = world;
+}
+
 std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
         const float x, const float y,
         const sim::Terrain::HeightField *field)
 {
-    const unsigned int terrain_size = m_world.terrain().size();
+    const unsigned int terrain_size = m_world->terrain().size();
 
     const int terrainx = std::round(x);
     const int terrainy = std::round(y);
@@ -123,7 +127,7 @@ std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
 
     std::shared_lock<std::shared_timed_mutex> lock;
     if (!field) {
-        lock = m_world.terrain().readonly_field(field);
+        lock = m_world->terrain().readonly_field(field);
     }
 
     return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx]);

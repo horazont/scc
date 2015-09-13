@@ -44,6 +44,9 @@ namespace Ui {
 class Application;
 }
 
+class MainMenu;
+class TerraformMode;
+
 class Application : public QMainWindow
 {
     Q_OBJECT
@@ -63,10 +66,14 @@ private:
     KeybindingsModel m_keybindings;
     MousebindingsModel m_mousebindings;
 
-    std::unique_ptr<ApplicationMode> m_curr_mode;
+    std::unique_ptr<MainMenu> m_main_menu;
+    std::unique_ptr<TerraformMode> m_map_editor;
+
+    ApplicationMode *m_curr_mode;
     std::unordered_map<QMdiSubWindow*, QMetaObject::Connection> m_mdi_connections;
 
 private:
+    void enter_mode(ApplicationMode *mode);
     void subdialog_done(QMdiSubWindow *wnd);
     void mdi_window_closed();
     void mdi_window_opened();
@@ -75,7 +82,7 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 public:
-    void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
+    void enter_mode(Mode mode);
     OpenGLScene &scene();
     void show_dialog(QDialog &window);
     void show_preferences_dialog();

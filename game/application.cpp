@@ -31,33 +31,42 @@ the AUTHORS file.
 
 #include "preferencesdialog.hpp"
 
+#include "mainmenu.hpp"
+#include "terraform/terraform.hpp"
+
 
 static io::Logger &logger = io::logging().get_logger("app");
 
 Application::Application(QWidget *parent) :
     QMainWindow(parent),
-    m_ui(new Ui::Application)
+    m_ui(new Ui::Application),
+    m_main_menu(new MainMenu(*this)),
+    m_map_editor(new TerraformMode(*this)),
+    m_curr_mode(nullptr)
 {
     m_ui->setupUi(this);
     m_ui->mdiArea->hide();
-
-    /*m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_edit_sources);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_ocean_level);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_raise_lower);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_flatten);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_raise_lower);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_ramp);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_smooth);
-    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_test);*/
-
 }
 
 Application::~Application()
 {
     if (m_curr_mode) {
-        m_curr_mode->deactivate();
+        enter_mode(nullptr);
     }
     delete m_ui;
+}
+
+void Application::enter_mode(ApplicationMode *mode)
+{
+    if (m_curr_mode) {
+        logger.log(io::LOG_DEBUG, "deactivating previous mode");
+        m_curr_mode->deactivate();
+    }
+    m_curr_mode = mode;
+    if (m_curr_mode) {
+        logger.log(io::LOG_DEBUG, "activating new mode");
+        m_curr_mode->activate(*m_ui->modeParent);
+    }
 }
 
 void Application::subdialog_done(QMdiSubWindow *wnd)
@@ -97,16 +106,20 @@ void Application::resizeEvent(QResizeEvent *event)
     m_ui->mdiArea->setGeometry(geometry);
 }
 
-void Application::enter_mode(std::unique_ptr<ApplicationMode> &&mode)
+void Application::enter_mode(Mode mode)
 {
-    if (m_curr_mode) {
-        logger.log(io::LOG_DEBUG, "deactivating previous mode");
-        m_curr_mode->deactivate();
+    switch (mode)
+    {
+    case MAIN_MENU:
+    {
+        enter_mode(m_main_menu.get());
+        break;
     }
-    m_curr_mode = std::move(mode);
-    if (m_curr_mode) {
-        logger.log(io::LOG_DEBUG, "activating new mode");
-        m_curr_mode->activate(*m_ui->modeParent);
+    case TERRAFORM:
+    {
+        enter_mode(m_map_editor.get());
+        break;
+    }
     }
 }
 

@@ -206,9 +206,9 @@ private:
     QActionGroup m_tools;
 
     std::unique_ptr<TerraformScene> m_scene;
-    sim::Server m_server;
+    std::unique_ptr<sim::Server> m_server;
     sim::Server::SyncSafeLock m_sync_lock;
-    ffe::FancyTerrainInterface m_terrain_interface;
+    std::unique_ptr<ffe::FancyTerrainInterface> m_terrain_interface;
 
     QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_after_gl_sync_conn;

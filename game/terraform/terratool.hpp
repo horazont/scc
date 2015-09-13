@@ -54,13 +54,12 @@ enum class TerraToolType
 class ToolBackend
 {
 public:
-    ToolBackend(BrushFrontend &brush_frontend,
-                const sim::WorldState &world);
+    ToolBackend(BrushFrontend &brush_frontend);
     virtual ~ToolBackend();
 
 private:
     BrushFrontend &m_brush_frontend;
-    const sim::WorldState &m_world;
+    const sim::WorldState *m_world;
     ffe::scenegraph::OctreeGroup *m_sgnode;
     ffe::PerspectivalCamera *m_camera;
     Vector2f m_viewport_size;
@@ -75,7 +74,7 @@ public:
 
     inline const sim::WorldState &world() const
     {
-        return m_world;
+        return *m_world;
     }
 
     inline ffe::scenegraph::OctreeGroup *sgnode()
@@ -95,6 +94,7 @@ public:
     void set_camera(ffe::PerspectivalCamera &camera);
     void set_sgnode(ffe::scenegraph::OctreeGroup &sgnode);
     void set_viewport_size(const Vector2f &size);
+    void set_world(const sim::WorldState *world);
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
             const float x, const float y,
