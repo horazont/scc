@@ -164,3 +164,22 @@ QScrollBar::left-arrow {
 	border: 1px solid hsva(0, 0, 221, 100%);
 	border-radius: 2px;
 }
+
+QGroupBox {
+    border: 1px solid rgba(223, 223, 223, 0.7);
+    background-color: rgba(255, 255, 255, 0.5);
+    margin-top: 1.2em;
+    border-radius: 2px;
+}
+
+QGroupBox::title {
+    border: 1px solid rgba(223, 223, 223, 0.7);
+    border-bottom: none;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0.1em 0.1em;
+    background-color: rgba(255, 255, 255, 0.5);
+    margin-left: 2px;
+}
