@@ -15,6 +15,7 @@ set(GAME_SRC
   mainmenu.cpp
   mode.cpp
   openglscene.cpp
+  mousebinding.cpp
   terraform/brush.cpp
   terraform/terraform.cpp
   terraform/terratool.cpp
