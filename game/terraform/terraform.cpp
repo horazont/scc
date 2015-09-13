@@ -633,7 +633,7 @@ void TerraformMode::before_gl_sync()
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
     if (m_curr_tool) {
-        if (m_curr_tool->uses_brushes()) {
+        if (m_curr_tool->uses_brush()) {
             update_brush();
         } else {
             m_scene->m_terrain_geometry.remove_overlay(
@@ -830,9 +830,9 @@ void TerraformMode::apply_tool(const Vector2f &viewport_pos,
         auto lock = m_server->sync_safe_point();
         sim::WorldOperationPtr op(nullptr);
         if (secondary) {
-            op = m_curr_tool->secondary(viewport_pos, world_pos);
+            op = m_curr_tool->secondary_move(viewport_pos, world_pos);
         } else {
-            op = m_curr_tool->primary(viewport_pos, world_pos);
+            op = m_curr_tool->primary_move(viewport_pos, world_pos);
         }
         if (op) {
             m_server->enqueue_op(std::move(op));
@@ -840,7 +840,7 @@ void TerraformMode::apply_tool(const Vector2f &viewport_pos,
     }
 }
 
-void TerraformMode::switch_to_tool(TerraTool *new_tool)
+void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
 {
     if (new_tool == m_curr_tool) {
         return;
@@ -850,8 +850,8 @@ void TerraformMode::switch_to_tool(TerraTool *new_tool)
 
     bool any_settings = false;
 
-    any_settings = any_settings || m_curr_tool->uses_brushes();
-    m_ui->brush_settings->setVisible(m_curr_tool->uses_brushes());
+    any_settings = any_settings || m_curr_tool->uses_brush();
+    m_ui->brush_settings->setVisible(m_curr_tool->uses_brush());
 
     m_ui->tool_settings_frame->setVisible(any_settings);
 }
@@ -1169,8 +1169,24 @@ void TerraformMode::on_tool_primary_triggered()
         return;
     }
 
-    m_paint_secondary = false;
-    enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_primary);
+    if (!m_curr_tool) {
+        return;
+    }
+
+    bool keep_going = false;
+    sim::WorldOperationPtr op;
+    {
+        auto lock = m_server->sync_safe_point();
+        std::tie(keep_going, op) = m_curr_tool->primary_start(m_mouse_pos_win, m_mouse_world_pos);
+        if (keep_going) {
+            m_paint_secondary = false;
+            enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_primary);
+        }
+        std::cout << "keep going: " << keep_going << std::endl;
+        if (op) {
+            m_server->enqueue_op(std::move(op));
+        }
+    }
 }
 
 void TerraformMode::on_tool_secondary_triggered()
@@ -1183,6 +1199,22 @@ void TerraformMode::on_tool_secondary_triggered()
         return;
     }
 
-    m_paint_secondary = true;
-    enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_secondary);
+    if (!m_curr_tool) {
+        return;
+    }
+
+    bool keep_going = false;
+    sim::WorldOperationPtr op;
+    {
+        auto lock = m_server->sync_safe_point();
+        std::tie(keep_going, op) = m_curr_tool->secondary_start(m_mouse_pos_win, m_mouse_world_pos);
+        if (keep_going) {
+            m_paint_secondary = true;
+            enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_secondary);
+        }
+        std::cout << "keep going: " << keep_going << std::endl;
+        if (op) {
+            m_server->enqueue_op(std::move(op));
+        }
+    }
 }

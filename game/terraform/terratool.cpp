@@ -123,61 +123,71 @@ std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
     return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx]);
 }
 
+/* AbstractTerraTool */
 
-TerraTool::TerraTool(ToolBackend &backend):
+AbstractTerraTool::AbstractTerraTool(ToolBackend &backend):
     m_backend(backend),
-    m_has_value(false),
-    m_uses_brushes(false),
+    m_uses_brush(false),
     m_uses_hover(false)
 {
 
 }
 
-TerraTool::~TerraTool()
-{
-
-}
-
-void TerraTool::set_value(float new_value)
-{
-    if (!m_has_value) {
-        return;
-    }
-    if (m_value == new_value) {
-        return;
-    }
-    m_value = new_value;
-    m_value_changed.emit(new_value);
-}
-
-std::pair<bool, Vector3f> TerraTool::hover(const Vector2f &viewport_cursor,
-                                           const Vector3f &world_cursor)
+std::pair<bool, Vector3f> AbstractTerraTool::hover(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     return std::make_pair(true, world_cursor);
 }
 
-sim::WorldOperationPtr TerraTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> AbstractTerraTool::primary_start(
+        const Vector2f &, const Vector3f &)
+{
+    return std::make_pair(false, nullptr);
+}
+
+sim::WorldOperationPtr AbstractTerraTool::primary_move(
+        const Vector2f &, const Vector3f &)
 {
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> AbstractTerraTool::secondary_start(
+        const Vector2f &, const Vector3f &)
+{
+    return std::make_pair(false, nullptr);
+}
+
+sim::WorldOperationPtr AbstractTerraTool::secondary_move(
+        const Vector2f &, const Vector3f &)
 {
     return nullptr;
 }
 
-sim::WorldOperationPtr TerraTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+/* TerrainBrushTool */
+
+TerrainBrushTool::TerrainBrushTool(ToolBackend &backend):
+    AbstractTerraTool(backend)
 {
-    return nullptr;
+    m_uses_brush = true;
+    m_uses_hover = true;
 }
 
-sim::WorldOperationPtr TerraTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerrainBrushTool::primary_start(
+        const Vector2f &, const Vector3f &)
 {
-    return nullptr;
+    return std::make_pair(true, nullptr);
+}
+
+std::pair<bool, sim::WorldOperationPtr> TerrainBrushTool::secondary_start(
+        const Vector2f &, const Vector3f &)
+{
+    return std::make_pair(true, nullptr);
 }
 
 
-sim::WorldOperationPtr TerraRaiseLowerTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+sim::WorldOperationPtr TerraRaiseLowerTool::primary_move(
+        const Vector2f &, const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -190,7 +200,8 @@ sim::WorldOperationPtr TerraRaiseLowerTool::primary(const Vector2f &viewport_cur
                 m_backend.brush_frontend().brush_strength());
 }
 
-sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+sim::WorldOperationPtr TerraRaiseLowerTool::secondary_move(
+        const Vector2f &, const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -204,23 +215,16 @@ sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const Vector2f &viewport_c
 }
 
 
-TerrainBrushTool::TerrainBrushTool(ToolBackend &backend):
-    TerraTool(backend)
-{
-    m_uses_brushes = true;
-    m_uses_hover = true;
-}
-
+/* TerraLevelTool */
 
 TerraLevelTool::TerraLevelTool(ToolBackend &backend):
     TerrainBrushTool(backend)
 {
-    m_has_value = true;
-    m_value_name = "Level";
-    m_value = 10.f;
+
 }
 
-sim::WorldOperationPtr TerraLevelTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+sim::WorldOperationPtr TerraLevelTool::primary_move(
+        const Vector2f &, const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -231,17 +235,22 @@ sim::WorldOperationPtr TerraLevelTool::primary(const Vector2f &viewport_cursor, 
                 m_backend.brush_frontend().brush_size(),
                 m_backend.brush_frontend().sampled(),
                 m_backend.brush_frontend().brush_strength(),
-                m_value);
+                m_reference_height);
 }
 
-sim::WorldOperationPtr TerraLevelTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerraLevelTool::secondary_start(
+        const Vector2f &, const Vector3f &world_cursor)
 {
-    set_value(world_cursor[eZ]);
-    return nullptr;
+    m_reference_height = world_cursor[eZ];
+    return std::make_pair(false, nullptr);
 }
 
 
-sim::WorldOperationPtr TerraSmoothTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+/* TerraSmoothTool */
+
+sim::WorldOperationPtr TerraSmoothTool::primary_move(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -254,14 +263,27 @@ sim::WorldOperationPtr TerraSmoothTool::primary(const Vector2f &viewport_cursor,
                 m_backend.brush_frontend().brush_strength());
 }
 
-
-sim::WorldOperationPtr TerraRampTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerraSmoothTool::secondary_start(
+        const Vector2f &,
+        const Vector3f &)
 {
-    m_source_point = world_cursor;
-    return nullptr;
+    return std::make_pair(false, nullptr);
 }
 
-sim::WorldOperationPtr TerraRampTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+
+/* TerraRampTool */
+
+std::pair<bool, sim::WorldOperationPtr> TerraRampTool::primary_start(
+        const Vector2f &,
+        const Vector3f &world_cursor)
+{
+    m_source_point = world_cursor;
+    return std::make_pair(true, nullptr);
+}
+
+sim::WorldOperationPtr TerraRampTool::primary_move(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -278,14 +300,20 @@ sim::WorldOperationPtr TerraRampTool::primary(const Vector2f &viewport_cursor, c
                 m_destination_point[eZ]);
 }
 
-sim::WorldOperationPtr TerraRampTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerraRampTool::secondary_start(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     m_destination_point = world_cursor;
-    return nullptr;
+    return std::make_pair(false, nullptr);
 }
 
 
-sim::WorldOperationPtr TerraFluidRaiseTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+/* TerraFluidRaiseTool */
+
+sim::WorldOperationPtr TerraFluidRaiseTool::primary_move(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -298,7 +326,9 @@ sim::WorldOperationPtr TerraFluidRaiseTool::primary(const Vector2f &viewport_cur
                 m_backend.brush_frontend().brush_strength());
 }
 
-sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+sim::WorldOperationPtr TerraFluidRaiseTool::secondary_move(
+        const Vector2f &,
+        const Vector3f &world_cursor)
 {
     if (!m_backend.brush_frontend().curr_brush()) {
         return nullptr;
@@ -315,11 +345,11 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const Vector2f &viewport_c
 /* TerraFluidSourceTool */
 
 TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend):
-    TerraTool(backend),
+    AbstractTerraTool(backend),
     m_selected_source(nullptr)
 {
     m_uses_hover = true;
-    m_uses_brushes = false;
+    m_uses_brush = false;
 }
 
 ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
@@ -351,7 +381,7 @@ std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
     return std::make_pair(false, world_cursor);
 }
 
-sim::WorldOperationPtr TerraFluidSourceTool::primary_start(
+std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
         const Vector2f &viewport_cursor,
         const Vector3f&)
 {
@@ -362,22 +392,23 @@ sim::WorldOperationPtr TerraFluidSourceTool::primary_start(
         m_selected_source = obj;
     }
 
-    return nullptr;
+    return std::make_pair(false, nullptr);
 }
 
 
 /* TerraTestingTool::TerraTestingTool */
 
 TerraTestingTool::TerraTestingTool(ToolBackend &backend,
-                                   ffe::Material &preview_material, ffe::Material &road_material):
+                                   ffe::Material &preview_material,
+                                   ffe::Material &road_material):
 
-    TerraTool(backend),
+    AbstractTerraTool(backend),
     m_debug_node(nullptr),
     m_step(0),
     m_preview_material(preview_material),
     m_road_material(road_material)
 {
-    m_uses_brushes = false;
+    m_uses_brush = false;
     m_uses_hover = true;
 }
 
@@ -500,10 +531,12 @@ std::pair<bool, Vector3f> TerraTestingTool::hover(
     }
     default:;
     }
-    return TerraTool::hover(viewport_cursor, world_cursor);
+    return AbstractTerraTool::hover(viewport_cursor, world_cursor);
 }
 
-sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::primary_start(
+        const Vector2f &viewport_cursor,
+        const Vector3f &world_cursor)
 {
     switch (m_step)
     {
@@ -548,10 +581,12 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_
     }
     }
 
-    return nullptr;
+    return std::make_pair(false, nullptr);
 }
 
-sim::WorldOperationPtr TerraTestingTool::secondary_start(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
+std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::secondary_start(
+        const Vector2f &,
+        const Vector3f &)
 {
     if (m_step > 0) {
         assert(m_debug_node);
@@ -561,5 +596,5 @@ sim::WorldOperationPtr TerraTestingTool::secondary_start(const Vector2f &viewpor
         m_step = 0;
         m_debug_node = nullptr;
     }
-    return nullptr;
+    return std::make_pair(false, nullptr);
 }

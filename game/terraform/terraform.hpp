@@ -246,7 +246,7 @@ private:
     std::unique_ptr<TerraTestingTool> m_tool_testing;
     std::unique_ptr<TerraFluidSourceTool> m_tool_fluid_source;
 
-    TerraTool *m_curr_tool;
+    AbstractTerraTool *m_curr_tool;
 
     BrushList m_brush_objects;
 
@@ -271,7 +271,7 @@ protected:
     void apply_tool(const Vector2f &viewport_pos,
                     const Vector3f &world_pos,
                     bool secondary);
-    void switch_to_tool(TerraTool *new_tool);
+    void switch_to_tool(AbstractTerraTool *new_tool);
     void collect_aabbs(std::vector<AABB> &dest);
     void ensure_mouse_world_pos();
     void load_brushes();

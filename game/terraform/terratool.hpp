@@ -103,45 +103,22 @@ public:
 };
 
 
-class TerraTool
+class AbstractTerraTool: public QObject
 {
+    Q_OBJECT
 public:
-    TerraTool(ToolBackend &backend);
-    virtual ~TerraTool();
+    explicit AbstractTerraTool(ToolBackend &backend);
 
 protected:
     ToolBackend &m_backend;
 
-    TerraToolType m_type;
-    bool m_has_value;
-    float m_value;
-    std::string m_value_name;
-
-    sigc::signal<void, float> m_value_changed;
-
-protected:
-    bool m_uses_brushes;
+    bool m_uses_brush;
     bool m_uses_hover;
 
 public:
-    inline sigc::signal<void, float> &value_changed()
+    inline bool uses_brush() const
     {
-        return m_value_changed;
-    }
-
-    inline bool has_value() const
-    {
-        return m_has_value;
-    }
-
-    inline const std::string &value_name() const
-    {
-        return m_value_name;
-    }
-
-    inline bool uses_brushes() const
-    {
-        return m_uses_brushes;
+        return m_uses_brush;
     }
 
     inline bool uses_hover() const
@@ -150,28 +127,39 @@ public:
     }
 
 public:
-    virtual void set_value(float new_value);
-
-public:
     virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                             const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
-                                                 const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                           const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
-                                                   const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
-                                             const Vector3f &world_cursor);
+
+    virtual std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr primary_move(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
+
+    virtual std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
+    virtual sim::WorldOperationPtr secondary_move(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
 
 };
 
 
-class TerrainBrushTool: public TerraTool
+class TerrainBrushTool: public AbstractTerraTool
 {
 public:
     explicit TerrainBrushTool(ToolBackend &backend);
 
+public:
+    virtual std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
+
+    virtual std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor);
 };
 
 
@@ -181,10 +169,10 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                   const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
-                                     const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
+                                        const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary_move(const Vector2f &viewport_cursor,
+                                          const Vector3f &world_cursor) override;
 
 };
 
@@ -193,11 +181,15 @@ class TerraLevelTool: public TerrainBrushTool
 public:
     explicit TerraLevelTool(ToolBackend &backend);
 
+private:
+    float m_reference_height;
+
 public:
-    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                   const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
-                                           const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
+                                        const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
 
 };
 
@@ -207,8 +199,11 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                   const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
+                                        const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
 
 };
 
@@ -222,12 +217,14 @@ private:
     Vector3f m_source_point;
 
 public:
-    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
-                                         const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                   const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
-                                           const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
+                                        const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
 
 };
 
@@ -237,14 +234,14 @@ public:
     using TerrainBrushTool::TerrainBrushTool;
 
 public:
-    sim::WorldOperationPtr primary(const Vector2f &viewport_cursor,
-                                   const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr secondary(const Vector2f &viewport_cursor,
-                                     const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
+                                        const Vector3f &world_cursor) override;
+    sim::WorldOperationPtr secondary_move(const Vector2f &viewport_cursor,
+                                          const Vector3f &world_cursor) override;
 
 };
 
-class TerraFluidSourceTool: public TerraTool
+class TerraFluidSourceTool: public AbstractTerraTool
 {
 public:
     TerraFluidSourceTool(ToolBackend &backend);
@@ -258,13 +255,14 @@ protected:
 public:
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                     const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
-                                         const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
 
 
 };
 
-class TerraTestingTool: public TerraTool
+class TerraTestingTool: public AbstractTerraTool
 {
 public:
     TerraTestingTool(ToolBackend &backend,
@@ -287,10 +285,12 @@ protected:
 public:
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                     const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr primary_start(const Vector2f &viewport_cursor,
-                                         const Vector3f &world_cursor) override;
-    sim::WorldOperationPtr secondary_start(const Vector2f &viewport_cursor,
-                                           const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
 
 };
 
