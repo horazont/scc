@@ -46,6 +46,24 @@ Application::Application(QWidget *parent) :
 {
     m_ui->setupUi(this);
     m_ui->mdiArea->hide();
+
+    m_action_camera_pan.setText(QCoreApplication::translate("SharedAction", "Pan"));
+    m_action_camera_zoom.setText(QCoreApplication::translate("SharedAction", "Zoom"));
+    m_action_camera_rotate.setText(QCoreApplication::translate("SharedAction", "Rotate"));
+
+    m_shared_actions.action_camera_pan = &m_action_camera_pan;
+    m_shared_actions.action_camera_zoom = &m_action_camera_zoom;
+    m_shared_actions.action_camera_rotate = &m_action_camera_rotate;
+
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Binding", "Camera control"));
+        m_keybindings.add_item(group_name, &m_action_camera_pan);
+        m_mousebindings.add_item(group_name, &m_action_camera_pan);
+        m_keybindings.add_item(group_name, &m_action_camera_zoom);
+        m_mousebindings.add_item(group_name, &m_action_camera_zoom);
+        m_keybindings.add_item(group_name, &m_action_camera_rotate);
+        m_mousebindings.add_item(group_name, &m_action_camera_rotate);
+    }
 }
 
 Application::~Application()

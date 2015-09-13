@@ -47,6 +47,18 @@ class Application;
 class MainMenu;
 class TerraformMode;
 
+
+class SharedActions
+{
+public:
+    MouseAction *action_camera_pan;
+    MouseAction *action_camera_zoom;
+    MouseAction *action_camera_rotate;
+
+};
+
+
+
 class Application : public QMainWindow
 {
     Q_OBJECT
@@ -62,6 +74,12 @@ public:
 
 private:
     Ui::Application *m_ui;
+
+    MouseAction m_action_camera_pan;
+    MouseAction m_action_camera_zoom;
+    MouseAction m_action_camera_rotate;
+
+    SharedActions m_shared_actions;
 
     KeybindingsModel m_keybindings;
     MousebindingsModel m_mousebindings;
@@ -89,9 +107,9 @@ public:
     void show_widget_as_window(QWidget &window, Qt::WindowFlags flags = 0);
     void quit();
 
-    inline Ui::Application &ui()
+    inline const SharedActions &shared_actions()
     {
-        return *m_ui;
+        return m_shared_actions;
     }
 
     inline KeybindingsModel &keybindings()
