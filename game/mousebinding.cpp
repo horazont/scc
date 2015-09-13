@@ -34,11 +34,11 @@ the AUTHORS file.
 
 
 static std::unordered_map<int, QString> button_names({
-                                                             {Qt::LeftButton, QT_TRANSLATE_NOOP("MouseBinding", "Left")},
-                                                             {Qt::MiddleButton, QT_TRANSLATE_NOOP("MouseBinding", "Middle")},
-                                                             {Qt::RightButton, QT_TRANSLATE_NOOP("MouseBinding", "Right")},
-                                                             {Qt::BackButton, QT_TRANSLATE_NOOP("MouseBinding", "Back")},
-                                                             {Qt::ForwardButton, QT_TRANSLATE_NOOP("MouseBinding", "Forward")},
+                                                             {Qt::LeftButton, QT_TRANSLATE_NOOP("MouseBinding", "Left Button")},
+                                                             {Qt::MiddleButton, QT_TRANSLATE_NOOP("MouseBinding", "Middle Button")},
+                                                             {Qt::RightButton, QT_TRANSLATE_NOOP("MouseBinding", "Right Button")},
+                                                             {Qt::BackButton, QT_TRANSLATE_NOOP("MouseBinding", "Back Button")},
+                                                             {Qt::ForwardButton, QT_TRANSLATE_NOOP("MouseBinding", "Forward Button")},
         });
 
 
@@ -59,7 +59,7 @@ MouseBinding::MouseBinding(const Qt::KeyboardModifiers &modifiers,
 
 }
 
-QString MouseBinding::to_string(QKeySequence::SequenceFormat format)
+QString MouseBinding::to_string(QKeySequence::SequenceFormat format) const
 {
     if (!m_valid) {
         return "";
@@ -71,7 +71,7 @@ QString MouseBinding::to_string(QKeySequence::SequenceFormat format)
 
     auto iter = button_names.find(m_button);
     if (iter == button_names.end()) {
-        QString format_str = native ? QCoreApplication::translate("MouseBinding", "Button%1") : QStringLiteral("Button%1");
+        QString format_str = native ? QCoreApplication::translate("MouseBinding", "Button %1") : QStringLiteral("Button %1");
         s += format_str.arg(QString::number((unsigned int)m_button));
     } else {
         s += native ? QCoreApplication::translate("MouseBinding", iter->second.toStdString().c_str()) : iter->second;
@@ -88,6 +88,21 @@ bool MouseBinding::operator==(const MouseBinding &other) const
 
     return (m_modifiers == other.m_modifiers &&
             m_button == other.m_button);
+}
+
+
+MouseAction::MouseAction(QObject *parent):
+    QAction(parent)
+{
+
+}
+
+void MouseAction::set_mouse_binding(const MouseBinding &binding)
+{
+    if (m_binding != binding) {
+        m_binding = binding;
+        emit changed();
+    }
 }
 
 
@@ -114,7 +129,6 @@ MouseBindingEdit::MouseBindingEdit(QWidget *parent):
 
 void MouseBindingEdit::mousePressEvent(QMouseEvent *event)
 {
-    std::cout << event->modifiers() << " " << event->button() << std::endl;
     MouseBinding value(event->modifiers(), event->button());
     set_mouse_binding(value);
     mouseBindingChanged(value);

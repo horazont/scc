@@ -24,6 +24,7 @@ the AUTHORS file.
 #ifndef MOUSEBINDING_H
 #define MOUSEBINDING_H
 
+#include <QAction>
 #include <QKeySequence>
 #include <QLineEdit>
 #include <QVBoxLayout>
@@ -63,7 +64,7 @@ public:
      */
     QString to_string(
             QKeySequence::SequenceFormat format = QKeySequence::PortableText
-            );
+            ) const;
 
     /**
      * Compare two MouseBinding instances.
@@ -91,6 +92,26 @@ public:
     }
 
     static MouseBinding from_string(const QString &str);
+
+};
+
+
+class MouseAction: public QAction
+{
+    Q_OBJECT
+public:
+    explicit MouseAction(QObject *parent = nullptr);
+
+private:
+    MouseBinding m_binding;
+
+public:
+    inline const MouseBinding &mouse_binding() const
+    {
+        return m_binding;
+    }
+
+    void set_mouse_binding(const MouseBinding &mouse_binding);
 
 };
 
