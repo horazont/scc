@@ -26,7 +26,7 @@ vec3 sunlight(
     vec3 diffuse = diffuseF(diffuse_colour);
     vec3 specular =
             specularF(specular_colour, vDotH)
-            * specularD(roughness, nDotH)
+            * specularD_simplesphere(roughness, nDotH, 0.004673436241610738)
             * specularG(roughness, nDotV, nDotL);
 
     return (diffuse + specular) * (nDotL * light_colour * light_power);

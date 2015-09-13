@@ -24,6 +24,15 @@ float specularD(const in float roughness, const in float nDotH)
     return a2 / (3.14159265358979323846 * (d * d));
 }
 
+float specularD_simplesphere(const in float roughness, const in float nDotH, const in float extend)
+{
+    float a = roughness * roughness;
+    float aprime = min(1.f, a + extend);
+    float a2 = aprime * aprime;
+    float d = ((nDotH * nDotH) * (a2 - 1.0)) + 1.0;
+    return a2 / (3.14159265358979323846 * (d * d));
+}
+
 // Specular G - Schlick
 // [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
 float specularG(const in float roughness,

@@ -45,8 +45,8 @@ void main()
     vec3 eyedir = normalize(mats.world_viewpoint - terraindata.world);
     vec3 normal = normalize(terraindata.normal);
 
-    const float metallic = 0.1f;
-    const float roughness = 0.8f;
+    const float metallic = 0.0f;
+    const float roughness = 0.9f;
 
 
     float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;

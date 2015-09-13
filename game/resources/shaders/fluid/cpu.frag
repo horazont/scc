@@ -35,5 +35,5 @@ void main() {
                        mats.sky_colour.xyz, mats.sky_colour.w,
                        reflect(-mats.sun_direction, vec3(0, 0, 1)));
 
-    colour = vec4(result, 1);
+    colour = vec4(result, alpha);
 }
