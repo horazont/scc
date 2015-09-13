@@ -33,6 +33,19 @@ vec3 sunlight(
 }
 
 
+vec3 skylight(
+        const in vec3 n_normal,
+        const in vec3 diffuse_colour,
+        const in vec3 light_colour,
+        const in float light_power,
+        const in vec3 n_lightdir)
+{
+    float nDotL = max(1e-5, dot(n_normal, n_lightdir));
+    vec3 diffuse = diffuseF(diffuse_colour);
+    return diffuse * (nDotL * light_colour * light_power);
+}
+
+
 vec3 lighting(
         const in vec3 n_normal,
         const in vec3 n_eyedir,
@@ -49,8 +62,8 @@ vec3 lighting(
                            diffuse_colour, specular_colour, roughness,
                            mats.sun_colour.xyz, mats.sun_colour.w,
                            mats.sun_direction);
-    result += sunlight(n_normal, n_eyedir, nDotV,
-                       diffuse_colour, specular_colour, 1.f,
+    result += skylight(n_normal,
+                       diffuse_colour,
                        mats.sky_colour.xyz, mats.sky_colour.w,
                        reflect(-mats.sun_direction, vec3(0, 0, 1)));
 
@@ -74,8 +87,8 @@ vec3 transparent_lighting(
                            diffuse_colour * base_colour.w, specular_colour, roughness,
                            mats.sun_colour.xyz, mats.sun_colour.w,
                            mats.sun_direction);
-    result += sunlight(n_normal, n_eyedir, nDotV,
-                       diffuse_colour * base_colour.w, specular_colour, 1.f,
+    result += skylight(n_normal,
+                       diffuse_colour * base_colour.w,
                        mats.sky_colour.xyz, mats.sky_colour.w,
                        reflect(-mats.sun_direction, vec3(0, 0, 1)));
 
