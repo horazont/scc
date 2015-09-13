@@ -54,14 +54,17 @@ enum class TerraToolType
 class ToolBackend
 {
 public:
-    ToolBackend(BrushFrontend &brush_frontend);
+    ToolBackend(BrushFrontend &brush_frontend,
+                const sim::WorldState &world,
+                ffe::scenegraph::OctreeGroup &sgoctree,
+                ffe::PerspectivalCamera &camera);
     virtual ~ToolBackend();
 
 private:
     BrushFrontend &m_brush_frontend;
-    const sim::WorldState *m_world;
-    ffe::scenegraph::OctreeGroup *m_sgnode;
-    ffe::PerspectivalCamera *m_camera;
+    const sim::WorldState &m_world;
+    ffe::scenegraph::OctreeGroup &m_sgnode;
+    ffe::PerspectivalCamera &m_camera;
     Vector2f m_viewport_size;
 
     std::vector<ffe::OctreeRayHitInfo> m_ray_hitset;
@@ -74,27 +77,24 @@ public:
 
     inline const sim::WorldState &world() const
     {
-        return *m_world;
+        return m_world;
     }
 
-    inline ffe::scenegraph::OctreeGroup *sgnode()
+    inline ffe::scenegraph::OctreeGroup &sgnode()
     {
         return m_sgnode;
     }
 
     inline Ray view_ray(const Vector2f &viewport_pos) const
     {
-        return m_camera->ray(viewport_pos, m_viewport_size);
+        return m_camera.ray(viewport_pos, m_viewport_size);
     }
 
     ffe::OctreeObject *hittest_octree_object(
             const Ray &ray,
             const std::function<bool(const ffe::OctreeObject &)> &predicate);
 
-    void set_camera(ffe::PerspectivalCamera &camera);
-    void set_sgnode(ffe::scenegraph::OctreeGroup &sgnode);
     void set_viewport_size(const Vector2f &size);
-    void set_world(const sim::WorldState *world);
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
             const float x, const float y,
@@ -267,24 +267,22 @@ public:
 class TerraTestingTool: public TerraTool
 {
 public:
-    TerraTestingTool(ToolBackend &backend);
+    TerraTestingTool(ToolBackend &backend,
+                     ffe::Material &preview_material,
+                     ffe::Material &road_material);
 
 private:
     ffe::QuadBezier3fDebug *m_debug_node;
     unsigned int m_step;
     QuadBezier3f m_tmp_curve;
-    ffe::Material *m_preview_material;
-    ffe::Material *m_road_material;
+    ffe::Material &m_preview_material;
+    ffe::Material &m_road_material;
 
 protected:
     void add_segment(const QuadBezier3f &curve);
     void add_segmentized();
     std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor,
                                             const Vector3f &world_cursor);
-
-public:
-    void set_preview_material(ffe::Material &material);
-    void set_road_material(ffe::Material &material);
 
 public:
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,

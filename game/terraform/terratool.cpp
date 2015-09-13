@@ -35,9 +35,14 @@ the AUTHORS file.
 #include "ffengine/render/renderpass.hpp"
 
 
-ToolBackend::ToolBackend(BrushFrontend &brush_frontend):
+ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
+                         const sim::WorldState &world,
+                         ffe::scenegraph::OctreeGroup &sgoctree,
+                         ffe::PerspectivalCamera &camera):
     m_brush_frontend(brush_frontend),
-    m_world(nullptr)
+    m_world(world),
+    m_sgnode(sgoctree),
+    m_camera(camera)
 {
 
 }
@@ -50,7 +55,7 @@ ToolBackend::~ToolBackend()
 ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
         const std::function<bool (const ffe::OctreeObject &)> &predicate)
 {
-    m_sgnode->octree().select_nodes_by_ray(ray, m_ray_hitset);
+    m_sgnode.octree().select_nodes_by_ray(ray, m_ray_hitset);
     std::sort(m_ray_hitset.begin(), m_ray_hitset.end());
 
     ffe::OctreeObject *closest_object = nullptr;
@@ -90,31 +95,16 @@ ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
     return closest_object;
 }
 
-void ToolBackend::set_camera(ffe::PerspectivalCamera &camera)
-{
-    m_camera = &camera;
-}
-
-void ToolBackend::set_sgnode(ffe::scenegraph::OctreeGroup &sgnode)
-{
-    m_sgnode = &sgnode;
-}
-
 void ToolBackend::set_viewport_size(const Vector2f &size)
 {
     m_viewport_size = size;
-}
-
-void ToolBackend::set_world(const sim::WorldState *world)
-{
-    m_world = world;
 }
 
 std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
         const float x, const float y,
         const sim::Terrain::HeightField *field)
 {
-    const unsigned int terrain_size = m_world->terrain().size();
+    const unsigned int terrain_size = m_world.terrain().size();
 
     const int terrainx = std::round(x);
     const int terrainy = std::round(y);
@@ -127,7 +117,7 @@ std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
 
     std::shared_lock<std::shared_timed_mutex> lock;
     if (!field) {
-        lock = m_world->terrain().readonly_field(field);
+        lock = m_world.terrain().readonly_field(field);
     }
 
     return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx]);
@@ -189,6 +179,10 @@ sim::WorldOperationPtr TerraTool::secondary(const Vector2f &viewport_cursor, con
 
 sim::WorldOperationPtr TerraRaiseLowerTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::TerraformRaise>(
                 world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
@@ -198,6 +192,10 @@ sim::WorldOperationPtr TerraRaiseLowerTool::primary(const Vector2f &viewport_cur
 
 sim::WorldOperationPtr TerraRaiseLowerTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::TerraformRaise>(
                 world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
@@ -224,6 +222,10 @@ TerraLevelTool::TerraLevelTool(ToolBackend &backend):
 
 sim::WorldOperationPtr TerraLevelTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::TerraformLevel>(
                 world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
@@ -241,6 +243,10 @@ sim::WorldOperationPtr TerraLevelTool::secondary_start(const Vector2f &viewport_
 
 sim::WorldOperationPtr TerraSmoothTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::TerraformSmooth>(
                 world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
@@ -257,6 +263,10 @@ sim::WorldOperationPtr TerraRampTool::primary_start(const Vector2f &viewport_cur
 
 sim::WorldOperationPtr TerraRampTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::TerraformRamp>(
                 world_cursor[eX], world_cursor[eY],
                 m_backend.brush_frontend().brush_size(),
@@ -277,6 +287,10 @@ sim::WorldOperationPtr TerraRampTool::secondary_start(const Vector2f &viewport_c
 
 sim::WorldOperationPtr TerraFluidRaiseTool::primary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::FluidRaise>(
                 world_cursor[eX]-0.5, world_cursor[eY]-0.5,
                 m_backend.brush_frontend().brush_size(),
@@ -286,6 +300,10 @@ sim::WorldOperationPtr TerraFluidRaiseTool::primary(const Vector2f &viewport_cur
 
 sim::WorldOperationPtr TerraFluidRaiseTool::secondary(const Vector2f &viewport_cursor, const Vector3f &world_cursor)
 {
+    if (!m_backend.brush_frontend().curr_brush()) {
+        return nullptr;
+    }
+
     return std::make_unique<sim::ops::FluidRaise>(
                 world_cursor[eX]-0.5, world_cursor[eY]-0.5,
                 m_backend.brush_frontend().brush_size(),
@@ -350,12 +368,14 @@ sim::WorldOperationPtr TerraFluidSourceTool::primary_start(
 
 /* TerraTestingTool::TerraTestingTool */
 
-TerraTestingTool::TerraTestingTool(ToolBackend &backend):
+TerraTestingTool::TerraTestingTool(ToolBackend &backend,
+                                   ffe::Material &preview_material, ffe::Material &road_material):
+
     TerraTool(backend),
     m_debug_node(nullptr),
     m_step(0),
-    m_preview_material(nullptr),
-    m_road_material(nullptr)
+    m_preview_material(preview_material),
+    m_road_material(road_material)
 {
     m_uses_brushes = false;
     m_uses_hover = true;
@@ -363,8 +383,8 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend):
 
 void TerraTestingTool::add_segment(const QuadBezier3f &curve)
 {
-    ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
-    group.emplace<ffe::QuadBezier3fRoadTest>(*m_road_material, 20).set_curve(curve);
+    ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
+    group.emplace<ffe::QuadBezier3fRoadTest>(m_road_material, 20).set_curve(curve);
 }
 
 void TerraTestingTool::add_segmentized()
@@ -445,16 +465,6 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
     return std::make_pair(false, world_cursor);
 }
 
-void TerraTestingTool::set_preview_material(ffe::Material &material)
-{
-    m_preview_material = &material;
-}
-
-void TerraTestingTool::set_road_material(ffe::Material &material)
-{
-    m_road_material = &material;
-}
-
 std::pair<bool, Vector3f> TerraTestingTool::hover(
         const Vector2f &viewport_cursor,
         const Vector3f &world_cursor)
@@ -511,7 +521,7 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_
         Vector3f p;
         std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
 
-        ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
+        ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
 
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
@@ -530,7 +540,7 @@ sim::WorldOperationPtr TerraTestingTool::primary_start(const Vector2f &viewport_
 
         assert(!m_debug_node);
         assert(m_preview_material);
-        m_debug_node = &m_backend.sgnode()->root().emplace<ffe::QuadBezier3fDebug>(*m_preview_material, 20);
+        m_debug_node = &m_backend.sgnode().root().emplace<ffe::QuadBezier3fDebug>(m_preview_material, 20);
         m_tmp_curve = QuadBezier3f(p, p, p);
         m_debug_node->set_curve(m_tmp_curve);
         m_step += 1;
@@ -545,7 +555,7 @@ sim::WorldOperationPtr TerraTestingTool::secondary_start(const Vector2f &viewpor
 {
     if (m_step > 0) {
         assert(m_debug_node);
-        ffe::scenegraph::OctGroup &group = m_backend.sgnode()->root();
+        ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
         auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
         m_step = 0;

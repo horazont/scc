@@ -211,6 +211,7 @@ private:
     std::unique_ptr<sim::Server> m_server;
     sim::Server::SyncSafeLock m_sync_lock;
     std::unique_ptr<ffe::FancyTerrainInterface> m_terrain_interface;
+    std::unique_ptr<ToolBackend> m_tool_backend;
 
     QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_after_gl_sync_conn;
@@ -237,14 +238,13 @@ private:
     BrushFrontend m_brush_frontend;
     bool m_brush_changed;
 
-    ToolBackend m_tool_backend;
-    TerraRaiseLowerTool m_tool_raise_lower;
-    TerraLevelTool m_tool_level;
-    TerraSmoothTool m_tool_smooth;
-    TerraRampTool m_tool_ramp;
-    TerraFluidRaiseTool m_tool_fluid_raise;
-    TerraTestingTool m_tool_testing;
-    TerraFluidSourceTool m_tool_fluid_source;
+    std::unique_ptr<TerraRaiseLowerTool> m_tool_raise_lower;
+    std::unique_ptr<TerraLevelTool> m_tool_level;
+    std::unique_ptr<TerraSmoothTool> m_tool_smooth;
+    std::unique_ptr<TerraRampTool> m_tool_ramp;
+    std::unique_ptr<TerraFluidRaiseTool> m_tool_fluid_raise;
+    std::unique_ptr<TerraTestingTool> m_tool_testing;
+    std::unique_ptr<TerraFluidSourceTool> m_tool_fluid_source;
 
     TerraTool *m_curr_tool;
 
@@ -264,6 +264,7 @@ private:
     void clear_mouse_mode();
     void enter_mouse_mode(MouseMode mode,
                           MouseAction *original_action);
+    void initialise_tools();
     bool may_clear_mouse_mode(MouseMode potential_mode);
 
 protected:

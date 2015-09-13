@@ -500,14 +500,6 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_mouse_world_pos_updated(false),
     m_mouse_world_pos_valid(false),
     m_brush_changed(true),
-    m_tool_backend(m_brush_frontend),
-    m_tool_raise_lower(m_tool_backend),
-    m_tool_level(m_tool_backend),
-    m_tool_smooth(m_tool_backend),
-    m_tool_ramp(m_tool_backend),
-    m_tool_fluid_raise(m_tool_backend),
-    m_tool_testing(m_tool_backend),
-    m_tool_fluid_source(m_tool_backend),
     m_curr_tool(nullptr),
     m_brush_objects(this),
     m_paused(false)
@@ -557,6 +549,10 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
 
     m_brush_objects.append(std::make_unique<ParzenBrush>(), "Parzen");
     m_brush_objects.append(std::make_unique<CircleBrush>(), "Circle");
+
+    m_brush_frontend.set_brush(m_brush_objects.vector()[0]->m_brush.get());
+    m_ui->slider_brush_size->setValue(64);
+    m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
 
     addAction(m_app.shared_actions().action_camera_pan);
     addAction(m_app.shared_actions().action_camera_rotate);
@@ -708,7 +704,9 @@ void TerraformMode::resizeEvent(QResizeEvent *event)
     ApplicationMode::resizeEvent(event);
     const QSize size = m_gl_scene->size() * window()->devicePixelRatio();
     m_viewport_size = ffe::ViewportSize(size.width(), size.height());
-    m_tool_backend.set_viewport_size(m_viewport_size);
+    if (m_tool_backend) {
+        m_tool_backend->set_viewport_size(m_viewport_size);
+    }
 }
 
 void TerraformMode::mouseMoveEvent(QMouseEvent *event)
@@ -880,6 +878,31 @@ void TerraformMode::enter_mouse_mode(MouseMode mode, MouseAction *original_actio
     m_mouse_action = original_action;
 }
 
+void TerraformMode::initialise_tools()
+{
+    m_tool_backend = std::make_unique<ToolBackend>(m_brush_frontend,
+                                                   m_server->state(),
+                                                   m_scene->m_octree_group,
+                                                   m_scene->m_camera);
+
+    // terrain tools
+    m_tool_raise_lower = std::make_unique<TerraRaiseLowerTool>(*m_tool_backend);
+    m_tool_ramp = std::make_unique<TerraRampTool>(*m_tool_backend);
+    m_tool_smooth = std::make_unique<TerraSmoothTool>(*m_tool_backend);
+    m_tool_level = std::make_unique<TerraLevelTool>(*m_tool_backend);
+
+    // fluid tools
+    m_tool_fluid_raise = std::make_unique<TerraFluidRaiseTool>(*m_tool_backend);
+    m_tool_fluid_source = std::make_unique<TerraFluidSourceTool>(*m_tool_backend);
+
+    // testing tools
+    m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
+                                                        m_scene->m_bezier_material,
+                                                        m_scene->m_road_material);
+
+    m_ui->action_terraform_tool_terrain_raise_lower->trigger();
+}
+
 bool TerraformMode::may_clear_mouse_mode(MouseMode potential_mode)
 {
     if (m_mouse_mode != MOUSE_IDLE) {
@@ -1023,12 +1046,6 @@ void TerraformMode::prepare_scene()
 
     TerraformScene &scene = *m_scene;
 
-    m_tool_backend.set_sgnode(scene.m_octree_group);
-    m_tool_backend.set_camera(scene.m_camera);
-
-    m_tool_testing.set_preview_material(scene.m_bezier_material);
-    m_tool_testing.set_road_material(scene.m_road_material);
-
     /*for (const sim::Fluid::Source *source: m_server.state().fluid().sources())
     {
         ffe::FluidSource &rendernode = scene.m_octree_group.root().emplace<ffe::FluidSource>(
@@ -1049,6 +1066,8 @@ void TerraformMode::prepare_scene()
     rendernode->set_radius(5);
     rendernode->set_height(8);
     rendernode->set_capacity(0.3);
+
+    initialise_tools();
 }
 
 void TerraformMode::update_brush()
@@ -1102,53 +1121,26 @@ void TerraformMode::activate(QWidget &parent)
     m_server = std::make_unique<sim::Server>();
     m_terrain_interface = std::make_unique<ffe::FancyTerrainInterface>(m_server->state().terrain(), 61);
     m_server->state().terrain().notify_heightmap_changed();
-
-    m_tool_backend.set_world(&m_server->state());
-
-    switch_to_tool(&m_tool_raise_lower);
-
-    m_brush_frontend.set_brush(&m_test_brush);
-    m_brush_frontend.set_brush_size(32);
-
-    load_brushes();
-
-    m_brush_frontend.set_brush(m_brush_objects.vector()[0]->m_brush.get());
-    m_brush_frontend.set_brush_size(32);
-
-    switch_to_tool(&m_tool_raise_lower);
-
-    m_brush_frontend.set_brush_strength(10.0);
-    apply_tool(Vector2f(), Vector3f(15, 20, 0), false);
-    m_brush_frontend.set_brush_strength(1.0);
-
-    switch_to_tool(&m_tool_level);
-
-    m_tool_level.set_value(0.f);
-    m_brush_frontend.set_brush_strength(5.0);
-    m_brush_frontend.set_brush_size(64);
-    apply_tool(Vector2f(), Vector3f(30, 20, 0), false);
-
-    m_server->enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(10, 20, 5, 1, 0.3));
-    m_server->enqueue_op(std::make_unique<sim::ops::FluidSourceCreate>(80, 20, 5, 8, 0.3));
-
-    m_curr_tool = &m_tool_smooth;
-    m_brush_frontend.set_brush_strength(1.0);
-    m_brush_frontend.set_brush_size(4);
-    apply_tool(Vector2f(), Vector3f(100, 100, 0), false);
-
-    m_ui->slider_brush_size->setValue(64);
-    m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
-
-    m_ui->action_terraform_tool_fluid_edit_sources->trigger();
 }
 
 void TerraformMode::deactivate()
 {
+    if (m_tools.checkedAction()) {
+        m_tools.checkedAction()->toggle();
+    }
+
     disconnect(m_after_gl_sync_conn);
     disconnect(m_advance_conn);
     disconnect(m_before_gl_sync_conn);
 
-    m_tool_backend.set_world(nullptr);
+    m_tool_fluid_raise = nullptr;
+    m_tool_fluid_source = nullptr;
+    m_tool_level = nullptr;
+    m_tool_raise_lower = nullptr;
+    m_tool_ramp = nullptr;
+    m_tool_smooth = nullptr;
+    m_tool_testing = nullptr;
+    m_tool_backend = nullptr;
     m_server = nullptr;
     m_terrain_interface = nullptr;
     m_scene = nullptr;
@@ -1172,27 +1164,27 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
 
 void TerraformMode::on_action_terraform_tool_terrain_raise_lower_triggered()
 {
-    switch_to_tool(&m_tool_raise_lower);
+    switch_to_tool(m_tool_raise_lower.get());
 }
 
 void TerraformMode::on_action_terraform_tool_terrain_flatten_triggered()
 {
-    switch_to_tool(&m_tool_level);
+    switch_to_tool(m_tool_level.get());
 }
 
 void TerraformMode::on_action_terraform_tool_terrain_smooth_triggered()
 {
-    switch_to_tool(&m_tool_smooth);
+    switch_to_tool(m_tool_smooth.get());
 }
 
 void TerraformMode::on_action_terraform_tool_terrain_ramp_triggered()
 {
-    switch_to_tool(&m_tool_ramp);
+    switch_to_tool(m_tool_ramp.get());
 }
 
 void TerraformMode::on_action_terraform_tool_fluid_raise_lower_triggered()
 {
-    switch_to_tool(&m_tool_fluid_raise);
+    switch_to_tool(m_tool_fluid_raise.get());
 }
 
 void TerraformMode::on_slider_brush_size_valueChanged(int value)
@@ -1220,12 +1212,12 @@ void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
 
 void TerraformMode::on_action_terraform_tool_test_triggered()
 {
-    switch_to_tool(&m_tool_testing);
+    switch_to_tool(m_tool_testing.get());
 }
 
 void TerraformMode::on_action_terraform_tool_fluid_edit_sources_triggered()
 {
-    switch_to_tool(&m_tool_fluid_source);
+    switch_to_tool(m_tool_fluid_source.get());
 }
 
 void TerraformMode::on_camera_pan_triggered()
