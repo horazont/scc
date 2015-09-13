@@ -45,6 +45,7 @@ the AUTHORS file.
 #include "ffengine/sim/server.hpp"
 
 #include "mode.hpp"
+#include "mousebinding.hpp"
 
 #include "terraform/brush.hpp"
 #include "terraform/terratool.hpp"
@@ -204,6 +205,7 @@ public:
 private:
     Ui::TerraformMode *m_ui;
     QActionGroup m_tools;
+    MouseActionDispatcher m_mouse_dispatcher;
 
     std::unique_ptr<TerraformScene> m_scene;
     std::unique_ptr<sim::Server> m_server;
@@ -220,6 +222,7 @@ private:
     Vector2f m_mouse_pos_win;
 
     MouseMode m_mouse_mode;
+    MouseAction *m_mouse_action;
 
     Vector3f m_drag_point;
     Vector3f m_drag_camera_pos;
@@ -256,6 +259,12 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+
+private:
+    void clear_mouse_mode();
+    void enter_mouse_mode(MouseMode mode,
+                          MouseAction *original_action);
+    bool may_clear_mouse_mode(MouseMode potential_mode);
 
 protected:
     void apply_tool(const Vector2f &viewport_pos,
@@ -296,6 +305,13 @@ private slots:
     void on_brush_list_clicked(const QModelIndex &index);
     void on_action_terraform_tool_test_triggered();
     void on_action_terraform_tool_fluid_edit_sources_triggered();
+
+private:
+    void on_camera_pan_triggered();
+    void on_camera_rotate_triggered();
+    void on_tool_primary_triggered();
+    void on_tool_secondary_triggered();
+
 };
 
 #endif

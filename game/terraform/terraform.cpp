@@ -557,6 +557,30 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
 
     m_brush_objects.append(std::make_unique<ParzenBrush>(), "Parzen");
     m_brush_objects.append(std::make_unique<CircleBrush>(), "Circle");
+
+    addAction(m_app.shared_actions().action_camera_pan);
+    addAction(m_app.shared_actions().action_camera_rotate);
+    addAction(m_app.shared_actions().action_camera_zoom);
+    addAction(m_app.shared_actions().action_tool_primary);
+    addAction(m_app.shared_actions().action_tool_secondary);
+
+    m_mouse_dispatcher.actions().emplace_back(m_app.shared_actions().action_camera_pan);
+    m_mouse_dispatcher.actions().emplace_back(m_app.shared_actions().action_camera_rotate);
+    m_mouse_dispatcher.actions().emplace_back(m_app.shared_actions().action_camera_zoom);
+    m_mouse_dispatcher.actions().emplace_back(m_app.shared_actions().action_tool_primary);
+    m_mouse_dispatcher.actions().emplace_back(m_app.shared_actions().action_tool_secondary);
+
+    connect(m_app.shared_actions().action_camera_pan, &MouseAction::triggered,
+            this, &TerraformMode::on_camera_pan_triggered);
+    connect(m_app.shared_actions().action_camera_rotate, &MouseAction::triggered,
+            this, &TerraformMode::on_camera_rotate_triggered);
+    /*connect(m_app.shared_actions().action_camera_zoom, &MouseAction::triggered,
+            this, &TerraformMode::on_camera_zoom_triggered);*/
+
+    connect(m_app.shared_actions().action_tool_primary, &MouseAction::triggered,
+            this, &TerraformMode::on_tool_primary_triggered);
+    connect(m_app.shared_actions().action_tool_secondary, &MouseAction::triggered,
+            this, &TerraformMode::on_tool_secondary_triggered);
 }
 
 TerraformMode::~TerraformMode()
@@ -566,6 +590,14 @@ TerraformMode::~TerraformMode()
 
 void TerraformMode::keyPressEvent(QKeyEvent *event)
 {
+    if (m_mouse_action != nullptr) {
+        if (event->key() == Qt::Key_Escape)
+        {
+            clear_mouse_mode();
+        }
+        return;
+    }
+
     switch (event->key()) {
     case Qt::Key_Space:
     {
@@ -728,12 +760,18 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
 
 void TerraformMode::mousePressEvent(QMouseEvent *event)
 {
+    m_mouse_pos_win = Vector2f(event->pos().x(), event->pos().y());
+    m_mouse_world_pos_updated = false;
+
     if (m_mouse_mode != MOUSE_IDLE) {
         return;
     }
 
-    m_mouse_pos_win = Vector2f(event->pos().x(), event->pos().y());
-    m_mouse_world_pos_updated = false;
+    if (m_mouse_dispatcher.dispatch(event)) {
+        return;
+    }
+
+    return;
 
     switch (event->button())
     {
@@ -757,12 +795,6 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
     case Qt::MiddleButton:
     {
         if (event->modifiers() & Qt::ShiftModifier) {
-            ensure_mouse_world_pos();
-            if (m_mouse_world_pos_valid) {
-                m_drag_point = m_mouse_world_pos;
-                m_drag_camera_pos = m_scene->m_camera.controller().pos();
-                m_mouse_mode = MOUSE_DRAG;
-            }
         } else {
             m_mouse_mode = MOUSE_ROTATE;
         }
@@ -792,6 +824,16 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
 
 void TerraformMode::mouseReleaseEvent(QMouseEvent *event)
 {
+    if (m_mouse_action != nullptr) {
+        if (m_mouse_action->mouse_binding().is_valid() &&
+                event->button() == m_mouse_action->mouse_binding().button())
+        {
+            clear_mouse_mode();
+        }
+        return;
+    }
+    return;
+
     switch (m_mouse_mode)
     {
     case MOUSE_PAINT:
@@ -822,6 +864,31 @@ void TerraformMode::wheelEvent(QWheelEvent *event)
     m_scene->m_camera.controller().set_distance(
                 m_scene->m_camera.controller().distance()-event->angleDelta().y()/10.
                 );
+}
+
+void TerraformMode::clear_mouse_mode()
+{
+    releaseMouse();
+    m_mouse_mode = MOUSE_IDLE;
+    m_mouse_action = nullptr;
+}
+
+void TerraformMode::enter_mouse_mode(MouseMode mode, MouseAction *original_action)
+{
+    grabMouse();
+    m_mouse_mode = mode;
+    m_mouse_action = original_action;
+}
+
+bool TerraformMode::may_clear_mouse_mode(MouseMode potential_mode)
+{
+    if (m_mouse_mode != MOUSE_IDLE) {
+        if (m_mouse_mode == potential_mode) {
+            clear_mouse_mode();
+        }
+        return true;
+    }
+    return false;
 }
 
 void TerraformMode::apply_tool(const Vector2f &viewport_pos,
@@ -1159,4 +1226,63 @@ void TerraformMode::on_action_terraform_tool_test_triggered()
 void TerraformMode::on_action_terraform_tool_fluid_edit_sources_triggered()
 {
     switch_to_tool(&m_tool_fluid_source);
+}
+
+void TerraformMode::on_camera_pan_triggered()
+{
+    if (!m_scene) {
+        return;
+    }
+
+    if (may_clear_mouse_mode(MOUSE_DRAG)) {
+        return;
+    }
+
+    ensure_mouse_world_pos();
+    if (m_mouse_world_pos_valid) {
+        m_drag_point = m_mouse_world_pos;
+        m_drag_camera_pos = m_scene->m_camera.controller().pos();
+        enter_mouse_mode(MOUSE_DRAG, m_app.shared_actions().action_camera_pan);
+    }
+}
+
+void TerraformMode::on_camera_rotate_triggered()
+{
+    if (!m_scene) {
+        return;
+    }
+
+    if (may_clear_mouse_mode(MOUSE_ROTATE)) {
+        return;
+    }
+
+    enter_mouse_mode(MOUSE_ROTATE, m_app.shared_actions().action_camera_rotate);
+}
+
+void TerraformMode::on_tool_primary_triggered()
+{
+    if (!m_scene) {
+        return;
+    }
+
+    if (may_clear_mouse_mode(MOUSE_PAINT)) {
+        return;
+    }
+
+    m_paint_secondary = false;
+    enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_primary);
+}
+
+void TerraformMode::on_tool_secondary_triggered()
+{
+    if (!m_scene) {
+        return;
+    }
+
+    if (may_clear_mouse_mode(MOUSE_PAINT)) {
+        return;
+    }
+
+    m_paint_secondary = true;
+    enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_secondary);
 }

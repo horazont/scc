@@ -202,3 +202,26 @@ QDataStream &operator>>(QDataStream &s, MouseBinding &binding)
     binding = MouseBinding((Qt::KeyboardModifiers)modifiers, (Qt::MouseButton)button);
     return s;
 }
+
+
+bool MouseActionDispatcher::dispatch(QMouseEvent *event) const
+{
+    for (MouseAction *action: m_actions) {
+        if (!action->isEnabled()) {
+            continue;
+        }
+
+        if (!action->mouse_binding().is_valid()) {
+            continue;
+        }
+
+        if (action->mouse_binding().modifiers() == event->modifiers() &&
+                action->mouse_binding().button() == event->button())
+        {
+            emit action->trigger();
+            return true;
+        }
+    }
+
+    return false;
+}

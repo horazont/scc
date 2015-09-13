@@ -146,6 +146,22 @@ public:
 };
 
 
+class MouseActionDispatcher
+{
+private:
+    std::vector<MouseAction*> m_actions;
+
+public:
+    std::vector<MouseAction*> &actions()
+    {
+        return m_actions;
+    }
+
+    bool dispatch(QMouseEvent *event) const;
+
+};
+
+
 QDataStream &operator<<(QDataStream &s, const MouseBinding &binding);
 QDataStream &operator>>(QDataStream &s, MouseBinding &binding);
 

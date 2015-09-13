@@ -40,20 +40,43 @@ static io::Logger &logger = io::logging().get_logger("app");
 Application::Application(QWidget *parent) :
     QMainWindow(parent),
     m_ui(new Ui::Application),
-    m_main_menu(new MainMenu(*this)),
-    m_map_editor(new TerraformMode(*this)),
+    m_main_menu(),
+    m_map_editor(),
     m_curr_mode(nullptr)
 {
     m_ui->setupUi(this);
     m_ui->mdiArea->hide();
 
     m_action_camera_pan.setText(QCoreApplication::translate("SharedAction", "Pan"));
+    m_action_camera_pan.set_mouse_binding(MouseBinding(Qt::ShiftModifier, Qt::MiddleButton));
+    m_action_camera_pan.setShortcut(QKeySequence("G"));
+    m_action_camera_pan.setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    m_action_camera_pan.setAutoRepeat(false);
+
     m_action_camera_zoom.setText(QCoreApplication::translate("SharedAction", "Zoom"));
+    m_action_camera_zoom.setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    m_action_camera_zoom.setAutoRepeat(false);
+
     m_action_camera_rotate.setText(QCoreApplication::translate("SharedAction", "Rotate"));
+    m_action_camera_rotate.set_mouse_binding(MouseBinding(Qt::NoModifier, Qt::MiddleButton));
+    m_action_camera_rotate.setShortcut(QKeySequence("R"));
+    m_action_camera_rotate.setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    m_action_camera_rotate.setAutoRepeat(false);
+
+    m_action_tool_primary.setText(QCoreApplication::translate("SharedAction", "Primary feature"));
+    m_action_tool_primary.set_mouse_binding(MouseBinding(Qt::NoModifier, Qt::LeftButton));
+    m_action_tool_primary.setAutoRepeat(false);
+
+    m_action_tool_secondary.setText(QCoreApplication::translate("SharedAction", "Secondary feature"));
+    m_action_tool_secondary.set_mouse_binding(MouseBinding(Qt::NoModifier, Qt::RightButton));
+    m_action_tool_secondary.setAutoRepeat(false);
 
     m_shared_actions.action_camera_pan = &m_action_camera_pan;
     m_shared_actions.action_camera_zoom = &m_action_camera_zoom;
     m_shared_actions.action_camera_rotate = &m_action_camera_rotate;
+
+    m_shared_actions.action_tool_primary = &m_action_tool_primary;
+    m_shared_actions.action_tool_secondary = &m_action_tool_secondary;
 
     {
         std::string group_name(QT_TRANSLATE_NOOP("Binding", "Camera control"));
@@ -64,6 +87,15 @@ Application::Application(QWidget *parent) :
         m_keybindings.add_item(group_name, &m_action_camera_rotate);
         m_mousebindings.add_item(group_name, &m_action_camera_rotate);
     }
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Binding", "Brush/Object tools"));
+        m_keybindings.add_item(group_name, &m_action_tool_primary);
+        m_mousebindings.add_item(group_name, &m_action_tool_primary);
+        m_keybindings.add_item(group_name, &m_action_tool_secondary);
+        m_mousebindings.add_item(group_name, &m_action_tool_secondary);
+    }
+
+    initialise_modes();
 }
 
 Application::~Application()
@@ -85,6 +117,12 @@ void Application::enter_mode(ApplicationMode *mode)
         logger.log(io::LOG_DEBUG, "activating new mode");
         m_curr_mode->activate(*m_ui->modeParent);
     }
+}
+
+void Application::initialise_modes()
+{
+    m_main_menu = std::make_unique<MainMenu>(*this);
+    m_map_editor = std::make_unique<TerraformMode>(*this);
 }
 
 void Application::subdialog_done(QMdiSubWindow *wnd)

@@ -54,6 +54,8 @@ public:
     MouseAction *action_camera_pan;
     MouseAction *action_camera_zoom;
     MouseAction *action_camera_rotate;
+    MouseAction *action_tool_primary;
+    MouseAction *action_tool_secondary;
 
 };
 
@@ -78,6 +80,8 @@ private:
     MouseAction m_action_camera_pan;
     MouseAction m_action_camera_zoom;
     MouseAction m_action_camera_rotate;
+    MouseAction m_action_tool_primary;
+    MouseAction m_action_tool_secondary;
 
     SharedActions m_shared_actions;
 
@@ -92,9 +96,10 @@ private:
 
 private:
     void enter_mode(ApplicationMode *mode);
-    void subdialog_done(QMdiSubWindow *wnd);
+    void initialise_modes();
     void mdi_window_closed();
     void mdi_window_opened();
+    void subdialog_done(QMdiSubWindow *wnd);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
