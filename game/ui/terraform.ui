@@ -570,12 +570,12 @@
     <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="action_terraform_tool_terrain_flatten">
+  <action name="action_terraform_tool_terrain_level">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Flatten</string>
+    <string>Level</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to flatten the terrain.&lt;/p&gt;&lt;p&gt;Use the secondary action to select a reference height or control the height using the slider at the left side of the screen. The primary action will flatten the terrain under the brush to the reference height.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

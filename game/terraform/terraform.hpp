@@ -297,7 +297,7 @@ signals:
 
 private slots:
     void on_action_terraform_tool_terrain_raise_lower_triggered();
-    void on_action_terraform_tool_terrain_flatten_triggered();
+    void on_action_terraform_tool_terrain_level_triggered();
     void on_action_terraform_tool_terrain_smooth_triggered();
     void on_action_terraform_tool_terrain_ramp_triggered();
     void on_action_terraform_tool_fluid_raise_lower_triggered();

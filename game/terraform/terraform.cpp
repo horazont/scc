@@ -509,7 +509,7 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
 
     {
         std::string group_name(QT_TRANSLATE_NOOP("Bindings", "Map editor: Terraforming"));
-        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_flatten);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_level);
         m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_raise_lower);
         m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_ramp);
         m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_smooth);
@@ -526,7 +526,7 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     }
 
     m_ui->toolbtn_terrain_raise_lower->setDefaultAction(m_ui->action_terraform_tool_terrain_raise_lower);
-    m_ui->toolbtn_terrain_flatten->setDefaultAction(m_ui->action_terraform_tool_terrain_flatten);
+    m_ui->toolbtn_terrain_flatten->setDefaultAction(m_ui->action_terraform_tool_terrain_level);
     m_ui->toolbtn_terrain_smooth->setDefaultAction(m_ui->action_terraform_tool_terrain_smooth);
     m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->action_terraform_tool_terrain_ramp);
     m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->action_terraform_tool_fluid_raise_lower);
@@ -538,7 +538,7 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_tools.addAction(m_ui->action_terraform_tool_test);
     m_tools.addAction(m_ui->action_terraform_tool_terrain_ramp);
     m_tools.addAction(m_ui->action_terraform_tool_terrain_smooth);
-    m_tools.addAction(m_ui->action_terraform_tool_terrain_flatten);
+    m_tools.addAction(m_ui->action_terraform_tool_terrain_level);
     m_tools.addAction(m_ui->action_terraform_tool_terrain_raise_lower);
 
     m_ui->tabWidget->tabBar()->setDrawBase(false);
@@ -1079,7 +1079,7 @@ void TerraformMode::on_action_terraform_tool_terrain_raise_lower_triggered()
     switch_to_tool(m_tool_raise_lower.get());
 }
 
-void TerraformMode::on_action_terraform_tool_terrain_flatten_triggered()
+void TerraformMode::on_action_terraform_tool_terrain_level_triggered()
 {
     switch_to_tool(m_tool_level.get());
 }
