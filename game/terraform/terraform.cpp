@@ -965,20 +965,6 @@ void TerraformMode::prepare_scene()
         rendernode.update_from_source(source);
     }*/
 
-    ffe::FluidSource *rendernode = &scene.m_octree_group.root().emplace<ffe::FluidSource>(
-                scene.m_fluid_source_material);
-    rendernode->set_base(Vector2f(10, 20));
-    rendernode->set_radius(5);
-    rendernode->set_height(1);
-    rendernode->set_capacity(0.3);
-
-    rendernode = &scene.m_octree_group.root().emplace<ffe::FluidSource>(
-                scene.m_fluid_source_material);
-    rendernode->set_base(Vector2f(80, 20));
-    rendernode->set_radius(5);
-    rendernode->set_height(8);
-    rendernode->set_capacity(0.3);
-
     initialise_tools();
 }
 
