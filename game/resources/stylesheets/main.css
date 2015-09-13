@@ -1,5 +1,5 @@
 QFrame {
-background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.5);
 }
 
 QLabel {
@@ -34,25 +34,30 @@ QTabWidget > QStackedWidget > QWidget {
     background: transparent;
 }
 
-QListView::item:selected {
-	background: white;
+QAbstractItemView::item:selected {
+    background: white;
     color: black;
 }
 
-QListView::item:selected:active {
-	background: white;
+QAbstractItemView::item:selected:active {
+    background: white;
     color: black;
 }
 
-QListView::text:selected {
-	background: white;
+QAbstractItemView::text:selected {
+    background: white;
     color: black;
 }
 
-QListView {
-	selection-background-color: lightblue;
-	selection-color: black;
-	show-decoration-selected: 0;
+QAbstractItemView {
+    selection-background-color: lightblue;
+    selection-color: black;
+    show-decoration-selected: 0;
+}
+
+QHeaderView {
+    background: white;
+    color: black;
 }
 
 QAbstractButton {
