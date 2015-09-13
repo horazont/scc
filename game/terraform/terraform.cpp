@@ -1101,13 +1101,14 @@ void TerraformMode::on_slider_brush_size_valueChanged(int value)
         return;
     }
     m_brush_frontend.set_brush_size(value);
+    m_ui->brush_size_label->setNum(value);
 }
 
 void TerraformMode::on_slider_brush_strength_valueChanged(int value)
 {
-    m_brush_frontend.set_brush_strength(
-                (float)value / (float)m_ui->slider_brush_strength->maximum()
-                );
+    const float scaled_value = (float)value / (float)m_ui->slider_brush_strength->maximum();
+    m_brush_frontend.set_brush_strength(scaled_value);
+    m_ui->brush_intensity_label->setText(QString::asprintf("%.3f", scaled_value));
 }
 
 void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
