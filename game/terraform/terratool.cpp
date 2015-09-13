@@ -392,16 +392,23 @@ std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
 
 std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
         const Vector2f &viewport_cursor,
-        const Vector3f&)
+        const Vector3f &world_cursor)
 {
     ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
 
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
         m_selected_source = obj;
+        return std::make_pair(false, nullptr);
+    } else {
+        return std::make_pair(false, std::make_unique<sim::ops::FluidSourceCreate>(
+                                  world_cursor[eX], world_cursor[eY],
+                                  5.f,
+                                  world_cursor[eZ] + 2.f,
+                                  1.f));
     }
 
-    return std::make_pair(false, nullptr);
+
 }
 
 
