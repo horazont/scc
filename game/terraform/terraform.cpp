@@ -1082,6 +1082,7 @@ void TerraformMode::on_action_terraform_tool_terrain_raise_lower_triggered()
 void TerraformMode::on_action_terraform_tool_terrain_level_triggered()
 {
     switch_to_tool(m_tool_level.get());
+    on_tool_level_reference_height_changed(m_tool_level->reference_height());
 }
 
 void TerraformMode::on_action_terraform_tool_terrain_smooth_triggered()

@@ -198,6 +198,11 @@ signals:
     void reference_height_changed(float new_reference_height);
 
 public:
+    inline float reference_height() const
+    {
+        return m_reference_height;
+    }
+
     void set_reference_height(float value);
 
 };
