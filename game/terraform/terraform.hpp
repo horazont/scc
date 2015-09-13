@@ -198,7 +198,7 @@ class TerraformMode: public ApplicationMode
     Q_PROPERTY(BrushList* brush_list_model READ brush_list_model NOTIFY brush_list_model_changed())
 
 public:
-    TerraformMode(QWidget *parent = nullptr);
+    TerraformMode(Application &app, QWidget *parent = nullptr);
     ~TerraformMode() override;
 
 private:
@@ -275,7 +275,7 @@ public slots:
     void before_gl_sync();
 
 public:
-    void activate(Application &app, QWidget &parent) override;
+    void activate(QWidget &parent) override;
     void deactivate() override;
 
 public:
@@ -286,16 +286,16 @@ signals:
     void brush_list_model_changed();
 
 private slots:
-    void on_tool_terrain_raise_lower_triggered();
-    void on_tool_terrain_flatten_triggered();
-    void on_tool_terrain_smooth_triggered();
-    void on_tool_terrain_ramp_triggered();
-    void on_tool_fluid_raise_lower_triggered();
+    void on_action_terraform_tool_terrain_raise_lower_triggered();
+    void on_action_terraform_tool_terrain_flatten_triggered();
+    void on_action_terraform_tool_terrain_smooth_triggered();
+    void on_action_terraform_tool_terrain_ramp_triggered();
+    void on_action_terraform_tool_fluid_raise_lower_triggered();
     void on_slider_brush_size_valueChanged(int value);
     void on_slider_brush_strength_valueChanged(int value);
     void on_brush_list_clicked(const QModelIndex &index);
-    void on_tool_testing_triggered();
-    void on_tool_fluid_source_triggered();
+    void on_action_terraform_tool_test_triggered();
+    void on_action_terraform_tool_fluid_edit_sources_triggered();
 };
 
 #endif

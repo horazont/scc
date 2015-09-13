@@ -31,6 +31,7 @@ the AUTHORS file.
 #include <QStyleFactory>
 
 #include "application.hpp"
+#include "mainmenu.hpp"
 #include "terraform/terraform.hpp"
 
 #include "ffengine/io/log.hpp"
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
 
     Application app;
     app.show();
-    app.enter_mode(std::make_unique<TerraformMode>());
+    app.enter_mode(std::make_unique<MainMenu>(app));
     io::logging().log(io::LOG_INFO) << "Main window created" << io::submit;
     io::logging().log(io::LOG_INFO) << "Ready to roll out!" << io::submit;
 

@@ -27,11 +27,26 @@ the AUTHORS file.
 #include "application.hpp"
 #include "terraform/terraform.hpp"
 
-MainMenu::MainMenu(QWidget *parent) :
-    ApplicationMode(parent),
+MainMenu::MainMenu(Application &app, QWidget *parent) :
+    ApplicationMode(app, parent),
     m_ui(new Ui::MainMenu)
 {
     m_ui->setupUi(this);
+
+    m_ui->btn_singleplayer->set_action(m_ui->action_mainmenu_singleplayer);
+    m_ui->btn_multiplayer->set_action(m_ui->action_mainmenu_multiplayer);
+    m_ui->btn_map_editor->set_action(m_ui->action_mainmenu_map_editor);
+    m_ui->btn_settings->set_action(m_ui->action_mainmenu_settings);
+    m_ui->btn_quit->set_action(m_ui->action_mainmenu_quit);
+
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Bindings", "Main menu"));
+        m_app.keybindings().add_item(group_name, m_ui->action_mainmenu_map_editor);
+        m_app.keybindings().add_item(group_name, m_ui->action_mainmenu_multiplayer);
+        m_app.keybindings().add_item(group_name, m_ui->action_mainmenu_quit);
+        m_app.keybindings().add_item(group_name, m_ui->action_mainmenu_singleplayer);
+        m_app.keybindings().add_item(group_name, m_ui->action_mainmenu_settings);
+    }
 }
 
 MainMenu::~MainMenu()
@@ -39,8 +54,18 @@ MainMenu::~MainMenu()
     delete m_ui;
 }
 
-void MainMenu::on_pushButton_clicked()
+void MainMenu::on_action_mainmenu_map_editor_triggered()
 {
-    m_app->enter_mode(std::make_unique<TerraformMode>());
+    m_app.enter_mode(std::make_unique<TerraformMode>(m_app));
     // MainMenu is deleted here!
+}
+
+void MainMenu::on_action_mainmenu_quit_triggered()
+{
+    m_app.quit();
+}
+
+void MainMenu::on_action_mainmenu_settings_triggered()
+{
+    m_app.show_preferences_dialog();
 }

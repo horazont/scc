@@ -29,6 +29,8 @@ the AUTHORS file.
 #include <QMdiSubWindow>
 #include <QResizeEvent>
 
+#include "preferencesdialog.hpp"
+
 
 static io::Logger &logger = io::logging().get_logger("app");
 
@@ -37,7 +39,17 @@ Application::Application(QWidget *parent) :
     m_ui(new Ui::Application)
 {
     m_ui->setupUi(this);
-    show_dialog(*(new QColorDialog(this)));
+    m_ui->mdiArea->hide();
+
+    /*m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_edit_sources);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_ocean_level);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_fluid_raise_lower);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_flatten);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_raise_lower);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_ramp);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_terrain_smooth);
+    m_terraform_tool_actions.addAction(m_ui->action_terraform_tool_test);*/
+
 }
 
 Application::~Application()
@@ -62,6 +74,9 @@ void Application::mdi_window_closed()
 {
     if (m_ui->mdiArea->subWindowList().size() == 0) {
         m_ui->mdiArea->hide();
+        if (m_curr_mode) {
+            m_curr_mode->setFocus();
+        }
     }
 }
 
@@ -91,7 +106,7 @@ void Application::enter_mode(std::unique_ptr<ApplicationMode> &&mode)
     m_curr_mode = std::move(mode);
     if (m_curr_mode) {
         logger.log(io::LOG_DEBUG, "activating new mode");
-        m_curr_mode->activate(*this, *m_ui->modeParent);
+        m_curr_mode->activate(*m_ui->modeParent);
     }
 }
 
@@ -102,10 +117,27 @@ OpenGLScene &Application::scene()
 
 void Application::show_dialog(QDialog &window)
 {
+    const unsigned int w = window.width();
+    const unsigned int h = window.height();
+
+    const unsigned int x = std::round(float(width()) / 2. - float(w) / 2.);
+    const unsigned int y = std::round(float(height()) / 2. - float(h) / 2.);
+
     QMdiSubWindow *wnd = m_ui->mdiArea->addSubWindow(&window, window.windowFlags());
+    wnd->setGeometry(x, y, w, h);
     QMetaObject::Connection conn = connect(&window, &QDialog::finished,
                                            this, [this, wnd](int){ subdialog_done(wnd); });
     m_mdi_connections[wnd] = conn;
     window.open();
     mdi_window_opened();
+}
+
+void Application::show_preferences_dialog()
+{
+    show_dialog(*(new PreferencesDialog(m_keybindings, m_mousebindings)));
+}
+
+void Application::quit()
+{
+    close();
 }

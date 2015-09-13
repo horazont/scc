@@ -521,81 +521,113 @@
     </widget>
    </item>
   </layout>
-  <action name="tool_terrain_raise_lower">
+  <action name="action_terraform_tool_terrain_raise_lower">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>R/L</string>
+    <string>Raise/Lower</string>
    </property>
    <property name="toolTip">
-    <string>Switch to raise/lower terrain tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to raise or lower the terrain.&lt;/p&gt;&lt;p&gt;The primary action raises the terrain while the secondary action lowers the terrain. Both actions only affect the terrain under the brush.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_terrain_flatten">
+  <action name="action_terraform_tool_terrain_flatten">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Flt</string>
+    <string>Flatten</string>
    </property>
    <property name="toolTip">
-    <string>Switch to flatten terrain tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to flatten the terrain.&lt;/p&gt;&lt;p&gt;Use the secondary action to select a reference height or control the height using the slider at the left side of the screen. The primary action will flatten the terrain under the brush to the reference height.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_terrain_smooth">
+  <action name="action_terraform_tool_terrain_smooth">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Smth</string>
+    <string>Smoothen</string>
    </property>
    <property name="toolTip">
-    <string>Switch to smoothen terrain tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to smooth the terrain.&lt;/p&gt;&lt;p&gt;The primary action smoothes the terrain under the brush. The secondary action has no effect.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_terrain_ramp">
+  <action name="action_terraform_tool_terrain_ramp">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Rmp</string>
+    <string>Make ramp</string>
    </property>
    <property name="toolTip">
-    <string>Switch to ramp terrain tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to create a ramp.&lt;/p&gt;&lt;p&gt;Use the secondary action to select a reference point. Draw a brush stroke from another point to the reference point using the primary action to create a ramp from the starting point to the reference point.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_fluid_raise_lower">
+  <action name="action_terraform_tool_fluid_raise_lower">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>FR/L</string>
+    <string>Raise/Lower</string>
    </property>
    <property name="toolTip">
-    <string>Switch to raise/lower fluid tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A brush tool to add and remove fluid.&lt;/p&gt;&lt;p&gt;The primary action adds fluid under the brush, while the secondary action removes fluid.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_testing">
+  <action name="action_terraform_tool_fluid_edit_sources">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>T</string>
+    <string>Edit sources</string>
    </property>
    <property name="toolTip">
-    <string>Switch to testing tool</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;An object tool to manipulate fluid sources.&lt;/p&gt;&lt;p&gt;Use the primary action to select existing fluid sources or add a new fluid source under the pointer. Use the secondary action to remove a fluid source under the pointer. Use the primary action together with dragging to manipulate parameters of the fluid source, or use the supplied sliders to the left.&lt;/p&gt;&lt;p&gt;Fluid sources are only shown while this tool is active.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
-  <action name="tool_fluid_source">
+  <action name="action_terraform_tool_fluid_ocean_level">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Src</string>
+    <string>Ocean level</string>
    </property>
    <property name="toolTip">
-    <string>Manipulate, add and remove fluid sources</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Control the ocean level.&lt;/p&gt;&lt;p&gt;Use the primary action and drag to move the ocean level plane or use the slider in the controls to the left to control the ocean level.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
+   </property>
+  </action>
+  <action name="action_terraform_tool_test">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Testing tool</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
  </widget>

@@ -488,8 +488,8 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
 }
 
 
-TerraformMode::TerraformMode(QWidget *parent):
-    ApplicationMode(parent),
+TerraformMode::TerraformMode(Application &app, QWidget *parent):
+    ApplicationMode(app, parent),
     m_ui(new Ui::TerraformMode),
     m_tools(nullptr),
     m_server(),
@@ -514,21 +514,40 @@ TerraformMode::TerraformMode(QWidget *parent):
 {
     m_ui->setupUi(this);
     setMouseTracking(true);
-    m_ui->toolbtn_terrain_raise_lower->setDefaultAction(m_ui->tool_terrain_raise_lower);
-    m_ui->toolbtn_terrain_flatten->setDefaultAction(m_ui->tool_terrain_flatten);
-    m_ui->toolbtn_terrain_smooth->setDefaultAction(m_ui->tool_terrain_smooth);
-    m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->tool_terrain_ramp);
-    m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->tool_fluid_raise_lower);
-    m_ui->toolbtn_testing->setDefaultAction(m_ui->tool_testing);
-    m_ui->toolbtn_fluid_source->setDefaultAction(m_ui->tool_fluid_source);
 
-    m_tools.addAction(m_ui->tool_fluid_source);
-    m_tools.addAction(m_ui->tool_fluid_raise_lower);
-    m_tools.addAction(m_ui->tool_testing);
-    m_tools.addAction(m_ui->tool_terrain_ramp);
-    m_tools.addAction(m_ui->tool_terrain_smooth);
-    m_tools.addAction(m_ui->tool_terrain_flatten);
-    m_tools.addAction(m_ui->tool_terrain_raise_lower);
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Bindings", "Map editor: Terraforming"));
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_flatten);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_raise_lower);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_ramp);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_terrain_smooth);
+    }
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Bindings", "Map editor: Fluid"));
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_fluid_edit_sources);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_fluid_ocean_level);
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_fluid_raise_lower);
+    }
+    {
+        std::string group_name(QT_TRANSLATE_NOOP("Bindings", "Map editor: Testing"));
+        m_app.keybindings().add_item(group_name, m_ui->action_terraform_tool_test);
+    }
+
+    m_ui->toolbtn_terrain_raise_lower->setDefaultAction(m_ui->action_terraform_tool_terrain_raise_lower);
+    m_ui->toolbtn_terrain_flatten->setDefaultAction(m_ui->action_terraform_tool_terrain_flatten);
+    m_ui->toolbtn_terrain_smooth->setDefaultAction(m_ui->action_terraform_tool_terrain_smooth);
+    m_ui->toolbtn_terrain_ramp->setDefaultAction(m_ui->action_terraform_tool_terrain_ramp);
+    m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->action_terraform_tool_fluid_raise_lower);
+    m_ui->toolbtn_testing->setDefaultAction(m_ui->action_terraform_tool_test);
+    m_ui->toolbtn_fluid_source->setDefaultAction(m_ui->action_terraform_tool_fluid_edit_sources);
+
+    m_tools.addAction(m_ui->action_terraform_tool_fluid_edit_sources);
+    m_tools.addAction(m_ui->action_terraform_tool_fluid_raise_lower);
+    m_tools.addAction(m_ui->action_terraform_tool_test);
+    m_tools.addAction(m_ui->action_terraform_tool_terrain_ramp);
+    m_tools.addAction(m_ui->action_terraform_tool_terrain_smooth);
+    m_tools.addAction(m_ui->action_terraform_tool_terrain_flatten);
+    m_tools.addAction(m_ui->action_terraform_tool_fluid_raise_lower);
 
     m_ui->tabWidget->tabBar()->setDrawBase(false);
 
@@ -594,7 +613,7 @@ TerraformMode::TerraformMode(QWidget *parent):
     m_ui->slider_brush_size->setValue(64);
     m_ui->slider_brush_strength->setValue(m_ui->slider_brush_strength->maximum());
 
-    m_ui->tool_fluid_source->trigger();
+    m_ui->action_terraform_tool_fluid_edit_sources->trigger();
 }
 
 TerraformMode::~TerraformMode()
@@ -1057,9 +1076,9 @@ void TerraformMode::update_brush()
     }
 }
 
-void TerraformMode::activate(Application &app, QWidget &parent)
+void TerraformMode::activate(QWidget &parent)
 {
-    ApplicationMode::activate(app, parent);
+    ApplicationMode::activate(parent);
     m_advance_conn = connect(m_gl_scene, &OpenGLScene::advance,
                              this, &TerraformMode::advance,
                              Qt::DirectConnection);
@@ -1094,27 +1113,27 @@ std::tuple<Vector3f, bool> TerraformMode::hittest(const Vector2f viewport)
     return m_terrain_interface.hittest(ray);
 }
 
-void TerraformMode::on_tool_terrain_raise_lower_triggered()
+void TerraformMode::on_action_terraform_tool_terrain_raise_lower_triggered()
 {
     switch_to_tool(&m_tool_raise_lower);
 }
 
-void TerraformMode::on_tool_terrain_flatten_triggered()
+void TerraformMode::on_action_terraform_tool_terrain_flatten_triggered()
 {
     switch_to_tool(&m_tool_level);
 }
 
-void TerraformMode::on_tool_terrain_smooth_triggered()
+void TerraformMode::on_action_terraform_tool_terrain_smooth_triggered()
 {
     switch_to_tool(&m_tool_smooth);
 }
 
-void TerraformMode::on_tool_terrain_ramp_triggered()
+void TerraformMode::on_action_terraform_tool_terrain_ramp_triggered()
 {
     switch_to_tool(&m_tool_ramp);
 }
 
-void TerraformMode::on_tool_fluid_raise_lower_triggered()
+void TerraformMode::on_action_terraform_tool_fluid_raise_lower_triggered()
 {
     switch_to_tool(&m_tool_fluid_raise);
 }
@@ -1142,12 +1161,12 @@ void TerraformMode::on_brush_list_clicked(const QModelIndex &index)
     m_brush_changed = true;
 }
 
-void TerraformMode::on_tool_testing_triggered()
+void TerraformMode::on_action_terraform_tool_test_triggered()
 {
     switch_to_tool(&m_tool_testing);
 }
 
-void TerraformMode::on_tool_fluid_source_triggered()
+void TerraformMode::on_action_terraform_tool_fluid_edit_sources_triggered()
 {
     switch_to_tool(&m_tool_fluid_source);
 }

@@ -23,15 +23,12 @@ the AUTHORS file.
 **********************************************************************/
 #include "mode.hpp"
 
-#include "ffengine/io/log.hpp"
-static io::Logger &app_logger = io::logging().get_logger("app");
-
 #include "application.hpp"
 
 
-ApplicationMode::ApplicationMode(QWidget *parent):
+ApplicationMode::ApplicationMode(Application &app, QWidget *parent):
     QWidget(parent),
-    m_app(nullptr),
+    m_app(app),
     m_gl_scene(nullptr)
 {
 }
@@ -41,10 +38,9 @@ ApplicationMode::~ApplicationMode()
 
 }
 
-void ApplicationMode::activate(Application &app, QWidget &parent)
+void ApplicationMode::activate(QWidget &parent)
 {
-    m_app = &app;
-    m_gl_scene = &app.scene();
+    m_gl_scene = &m_app.scene();
     setParent(&parent);
     setGeometry(0, 0, parent.width(), parent.height());
     setVisible(true);
@@ -54,5 +50,4 @@ void ApplicationMode::deactivate()
 {
     setParent(nullptr);
     m_gl_scene = nullptr;
-    m_app = nullptr;
 }

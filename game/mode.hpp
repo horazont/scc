@@ -36,16 +36,15 @@ class ApplicationMode: public QWidget
 {
     Q_OBJECT
 public:
-    ApplicationMode(QWidget *parent = nullptr);
+    ApplicationMode(Application &app, QWidget *parent = nullptr);
     virtual ~ApplicationMode();
 
 protected:
-    Application *m_app;
+    Application &m_app;
     OpenGLScene *m_gl_scene;
 
 public:
-    virtual void activate(Application &app,
-                          QWidget &parent);
+    virtual void activate(QWidget &parent);
     virtual void deactivate();
 };
 

@@ -27,6 +27,8 @@ the AUTHORS file.
 #include "fixups.hpp"
 
 #include <memory>
+
+#include <QActionGroup>
 #include <QMainWindow>
 #include <QMetaObject>
 #include <QMdiSubWindow>
@@ -35,6 +37,7 @@ the AUTHORS file.
 
 #include "mode.hpp"
 #include "openglscene.hpp"
+#include "bindings.hpp"
 
 
 namespace Ui {
@@ -57,6 +60,9 @@ public:
 private:
     Ui::Application *m_ui;
 
+    KeybindingsModel m_keybindings;
+    MousebindingsModel m_mousebindings;
+
     std::unique_ptr<ApplicationMode> m_curr_mode;
     std::unordered_map<QMdiSubWindow*, QMetaObject::Connection> m_mdi_connections;
 
@@ -72,7 +78,24 @@ public:
     void enter_mode(std::unique_ptr<ApplicationMode> &&mode);
     OpenGLScene &scene();
     void show_dialog(QDialog &window);
+    void show_preferences_dialog();
     void show_widget_as_window(QWidget &window, Qt::WindowFlags flags = 0);
+    void quit();
+
+    inline Ui::Application &ui()
+    {
+        return *m_ui;
+    }
+
+    inline KeybindingsModel &keybindings()
+    {
+        return m_keybindings;
+    }
+
+    inline MousebindingsModel &mousebindings()
+    {
+        return m_mousebindings;
+    }
 
 };
 
