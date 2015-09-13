@@ -17,6 +17,7 @@ set(GAME_SRC
   openglscene.cpp
   preferencesdialog.cpp
   mousebinding.cpp
+  actionbutton.cpp
   bindings.cpp
   terraform/brush.cpp
   terraform/terraform.cpp
