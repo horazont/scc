@@ -241,8 +241,17 @@ sim::WorldOperationPtr TerraLevelTool::primary_move(
 std::pair<bool, sim::WorldOperationPtr> TerraLevelTool::secondary_start(
         const Vector2f &, const Vector3f &world_cursor)
 {
-    m_reference_height = world_cursor[eZ];
+    set_reference_height(world_cursor[eZ]);
     return std::make_pair(false, nullptr);
+}
+
+void TerraLevelTool::set_reference_height(float value)
+{
+    if (m_reference_height == value) {
+        return;
+    }
+    m_reference_height = value;
+    Q_EMIT(reference_height_changed(value));
 }
 
 

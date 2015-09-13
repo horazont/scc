@@ -149,6 +149,7 @@ public:
 
 class TerrainBrushTool: public AbstractTerraTool
 {
+    Q_OBJECT
 public:
     explicit TerrainBrushTool(ToolBackend &backend);
 
@@ -165,6 +166,7 @@ public:
 
 class TerraRaiseLowerTool: public TerrainBrushTool
 {
+    Q_OBJECT
 public:
     using TerrainBrushTool::TerrainBrushTool;
 
@@ -178,6 +180,7 @@ public:
 
 class TerraLevelTool: public TerrainBrushTool
 {
+    Q_OBJECT
 public:
     explicit TerraLevelTool(ToolBackend &backend);
 
@@ -191,10 +194,17 @@ public:
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 
+signals:
+    void reference_height_changed(float new_reference_height);
+
+public:
+    void set_reference_height(float value);
+
 };
 
 class TerraSmoothTool: public TerrainBrushTool
 {
+    Q_OBJECT
 public:
     using TerrainBrushTool::TerrainBrushTool;
 
@@ -209,6 +219,7 @@ public:
 
 class TerraRampTool: public TerrainBrushTool
 {
+    Q_OBJECT
 public:
     using TerrainBrushTool::TerrainBrushTool;
 
@@ -230,6 +241,7 @@ public:
 
 class TerraFluidRaiseTool: public TerrainBrushTool
 {
+    Q_OBJECT
 public:
     using TerrainBrushTool::TerrainBrushTool;
 
@@ -243,6 +255,7 @@ public:
 
 class TerraFluidSourceTool: public AbstractTerraTool
 {
+    Q_OBJECT
 public:
     TerraFluidSourceTool(ToolBackend &backend);
 
@@ -264,6 +277,7 @@ public:
 
 class TerraTestingTool: public AbstractTerraTool
 {
+    Q_OBJECT
 public:
     TerraTestingTool(ToolBackend &backend,
                      ffe::Material &preview_material,

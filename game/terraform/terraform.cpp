@@ -798,6 +798,8 @@ void TerraformMode::initialise_tools()
     m_tool_ramp = std::make_unique<TerraRampTool>(*m_tool_backend);
     m_tool_smooth = std::make_unique<TerraSmoothTool>(*m_tool_backend);
     m_tool_level = std::make_unique<TerraLevelTool>(*m_tool_backend);
+    connect(m_tool_level.get(), &TerraLevelTool::reference_height_changed,
+            this, &TerraformMode::on_tool_level_reference_height_changed);
 
     // fluid tools
     m_tool_fluid_raise = std::make_unique<TerraFluidRaiseTool>(*m_tool_backend);
@@ -852,6 +854,8 @@ void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
 
     any_settings = any_settings || m_curr_tool->uses_brush();
     m_ui->brush_settings->setVisible(m_curr_tool->uses_brush());
+
+    m_ui->level_tool_settings->setVisible(m_curr_tool == m_tool_level.get());
 
     m_ui->tool_settings_frame->setVisible(any_settings);
 }
@@ -1218,4 +1222,20 @@ void TerraformMode::on_tool_secondary_triggered()
             m_server->enqueue_op(std::move(op));
         }
     }
+}
+
+void TerraformMode::on_tool_level_reference_height_changed(float new_value)
+{
+    m_ui->level_tool_reference_height_slider->setValue(std::round(new_value * 100.f));
+}
+
+void TerraformMode::on_level_tool_reference_height_slider_valueChanged(int value)
+{
+    if (!m_curr_tool || m_curr_tool != m_tool_level.get()) {
+        return;
+    }
+
+    const float scaled_value = float(value) / 100.f;
+    m_tool_level->set_reference_height(scaled_value);
+    m_ui->level_tool_reference_height_label->setText(QString::asprintf("%.2f", scaled_value));
 }
