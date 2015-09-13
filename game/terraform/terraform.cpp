@@ -593,25 +593,6 @@ void TerraformMode::keyPressEvent(QKeyEvent *event)
         }
         return;
     }
-
-    switch (event->key()) {
-    case Qt::Key_Space:
-    {
-        m_paused = !m_paused;
-        break;
-    }
-    case Qt::Key_R:
-    {
-        if (m_scene) {
-            logger.logf(io::LOG_INFO, "re-balancing octree on user request");
-            timelog_clock::time_point t0 = timelog_clock::now();
-            timelog_clock::time_point t1;
-            m_scene->m_octree_group.octree().rebalance();
-            t1 = timelog_clock::now();
-            logger.logf(io::LOG_INFO, "rebalance() took %.2f ms", ms_cast(t1-t0).count());
-        }
-    }
-    }
 }
 
 void TerraformMode::advance(ffe::TimeInterval dt)
@@ -765,59 +746,7 @@ void TerraformMode::mousePressEvent(QMouseEvent *event)
         return;
     }
 
-    if (m_mouse_dispatcher.dispatch(event)) {
-        return;
-    }
-
-    return;
-
-    switch (event->button())
-    {
-    case Qt::RightButton:
-    case Qt::LeftButton:
-    {
-        m_paint_secondary = (event->button() == Qt::RightButton);
-        m_mouse_mode = MOUSE_PAINT;
-        ensure_mouse_world_pos();
-        if (m_mouse_world_pos_valid) {
-            if (m_paint_secondary) {
-                m_curr_tool->secondary_start(m_mouse_pos_win,
-                                             m_mouse_world_pos);
-            } else {
-                m_curr_tool->primary_start(m_mouse_pos_win,
-                                           m_mouse_world_pos);
-            }
-        }
-        break;
-    }
-    case Qt::MiddleButton:
-    {
-        if (event->modifiers() & Qt::ShiftModifier) {
-        } else {
-            m_mouse_mode = MOUSE_ROTATE;
-        }
-        break;
-    }
-    default:;
-    }
-
-    /* if (event->button() == Qt::MiddleButton) {
-    } else if (event->button() == Qt::LeftButton) {
-        Vector3f pos;
-        bool hit;
-        std::tie(pos, hit) = hittest(m_hover_pos);
-        if (hit) {
-            std::cout << pos << std::endl;
-            const int x = round(pos[eX]);
-            const int y = round(pos[eY]);
-            std::cout << x << ", " << y << std::endl;
-            if (x >= 0 && x < m_terrain.size() &&
-                    y >= 0 && y < m_terrain.size())
-            {
-                apply_tool(x, y);
-            }
-        }
-    }*/
+    m_mouse_dispatcher.dispatch(event);
 }
 
 void TerraformMode::mouseReleaseEvent(QMouseEvent *event)
@@ -829,27 +758,6 @@ void TerraformMode::mouseReleaseEvent(QMouseEvent *event)
             clear_mouse_mode();
         }
         return;
-    }
-    return;
-
-    switch (m_mouse_mode)
-    {
-    case MOUSE_PAINT:
-    {
-        if (event->button() & (Qt::RightButton | Qt::LeftButton)) {
-            m_mouse_mode = MOUSE_IDLE;
-        }
-        break;
-    }
-    case MOUSE_DRAG:
-    case MOUSE_ROTATE:
-    {
-        if (event->button() == Qt::MiddleButton) {
-            m_mouse_mode = MOUSE_IDLE;
-        }
-        break;
-    }
-    default:;
     }
 }
 
