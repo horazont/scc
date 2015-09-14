@@ -38,11 +38,15 @@ the AUTHORS file.
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
                          const sim::WorldState &world,
                          ffe::scenegraph::OctreeGroup &sgoctree,
-                         ffe::PerspectivalCamera &camera):
+                         ffe::PerspectivalCamera &camera,
+                         std::mutex &queue_mutex,
+                         std::vector<std::function<void()> > &queue_vector):
     m_brush_frontend(brush_frontend),
     m_world(world),
     m_sgnode(sgoctree),
-    m_camera(camera)
+    m_camera(camera),
+    m_queue_mutex(queue_mutex),
+    m_queue(queue_vector)
 {
 
 }
@@ -129,6 +133,16 @@ AbstractTerraTool::AbstractTerraTool(ToolBackend &backend):
     m_backend(backend),
     m_uses_brush(false),
     m_uses_hover(false)
+{
+
+}
+
+void AbstractTerraTool::activate()
+{
+
+}
+
+void AbstractTerraTool::deactivate()
 {
 
 }
@@ -353,12 +367,23 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary_move(
 
 /* TerraFluidSourceTool */
 
-TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend):
+TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend,
+                                           ffe::FluidSourceMaterial &material):
     AbstractTerraTool(backend),
-    m_selected_source(nullptr)
+    m_material(material),
+    m_selected_source(nullptr),
+    m_visualisation_group(nullptr)
 {
     m_uses_hover = true;
     m_uses_brush = false;
+}
+
+void TerraFluidSourceTool::add_source(const sim::Fluid::Source *source)
+{
+    ffe::FluidSource *vis = &m_visualisation_group->emplace<ffe::FluidSource>(m_material);
+    vis->set_source(source);
+    vis->update_from_source();
+    m_source_visualisations[source] = vis;
 }
 
 ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
@@ -368,6 +393,71 @@ ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewpo
     return static_cast<ffe::FluidSource*>(
                 m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::FluidSource*>(&obj)); })
                 );
+}
+
+void TerraFluidSourceTool::on_fluid_source_added(sim::Fluid::Source *source)
+{
+    if (!m_fluid_source_added_connection) {
+        return;
+    }
+    add_source(source);
+}
+
+void TerraFluidSourceTool::on_fluid_source_removed(sim::Fluid::Source *source)
+{
+    auto iter = m_source_visualisations.find(source);
+    if (iter == m_source_visualisations.end()) {
+        return;
+    }
+
+    remove_visualisation(iter->second);
+    if (m_selected_source == iter->second) {
+        m_selected_source = nullptr;
+    }
+    m_source_visualisations.erase(iter);
+}
+
+void TerraFluidSourceTool::remove_visualisation(ffe::FluidSource *vis)
+{
+    auto iter = std::find_if(m_visualisation_group->begin(),
+                             m_visualisation_group->end(),
+                             [vis](const ffe::scenegraph::OctNode &item){ return &item == vis; });
+    m_visualisation_group->erase(iter);
+}
+
+void TerraFluidSourceTool::activate()
+{
+    m_visualisation_group = &m_backend.sgnode().root().emplace<ffe::scenegraph::OctGroup>();
+
+    for (sim::Fluid::Source *source: m_backend.world().fluid().sources())
+    {
+        add_source(source);
+    }
+
+    m_fluid_source_added_connection = m_backend.connect_to_signal(
+                m_backend.world().fluid().source_added(),
+                std::bind(&TerraFluidSourceTool::on_fluid_source_added,
+                          this,
+                          std::placeholders::_1));
+
+    m_fluid_source_removed_connection = m_backend.connect_to_signal(
+                m_backend.world().fluid().source_removed(),
+                std::bind(&TerraFluidSourceTool::on_fluid_source_removed,
+                          this,
+                          std::placeholders::_1));
+}
+
+void TerraFluidSourceTool::deactivate()
+{
+    m_fluid_source_added_connection = nullptr;
+    m_fluid_source_removed_connection = nullptr;
+    ffe::scenegraph::OctGroup &parent = m_backend.sgnode().root();
+    auto iter = std::find_if(parent.begin(),
+                             parent.end(),
+                             [this](const ffe::scenegraph::OctNode &item){return &item == m_visualisation_group;});
+    parent.erase(iter);
+    m_visualisation_group = nullptr;
+    m_source_visualisations.clear();
 }
 
 std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
@@ -409,6 +499,22 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
     }
 
 
+}
+
+std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
+        const Vector2f &viewport_cursor,
+        const Vector3f &world_cursor)
+{
+    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+
+    if (obj) {
+        if (obj == m_selected_source) {
+            m_selected_source = nullptr;
+        }
+        if (obj->source()) {
+            return std::make_pair(false, std::make_unique<sim::ops::FluidSourceDestroy>(obj->source()->object_id()));
+        }
+    }
 }
 
 

@@ -30,6 +30,7 @@ the AUTHORS file.
 
 #include "ffengine/math/curve.hpp"
 
+#include "ffengine/sim/signals.hpp"
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
 
@@ -40,6 +41,7 @@ the AUTHORS file.
 namespace ffe {
 
 class FluidSource;
+class FluidSourceMaterial;
 class QuadBezier3fDebug;
 class Material;
 
@@ -57,7 +59,9 @@ public:
     ToolBackend(BrushFrontend &brush_frontend,
                 const sim::WorldState &world,
                 ffe::scenegraph::OctreeGroup &sgoctree,
-                ffe::PerspectivalCamera &camera);
+                ffe::PerspectivalCamera &camera,
+                std::mutex &queue_mutex,
+                std::vector<std::function<void()> > &queue_vector);
     virtual ~ToolBackend();
 
 private:
@@ -65,6 +69,8 @@ private:
     const sim::WorldState &m_world;
     ffe::scenegraph::OctreeGroup &m_sgnode;
     ffe::PerspectivalCamera &m_camera;
+    std::mutex &m_queue_mutex;
+    std::vector<std::function<void()> > &m_queue;
     Vector2f m_viewport_size;
 
     std::vector<ffe::OctreeRayHitInfo> m_ray_hitset;
@@ -100,6 +106,13 @@ public:
             const float x, const float y,
             const sim::Terrain::HeightField *field = nullptr);
 
+    template <typename callable_t, typename... arg_ts>
+    inline sig11::connection_guard<void(arg_ts...)> connect_to_signal(
+            sig11::signal<void(arg_ts...)> &signal,
+            callable_t &&receiver)
+    {
+        return sim::connect_queued_locked(signal, receiver, m_queue, m_queue_mutex);
+    }
 };
 
 
@@ -127,6 +140,9 @@ public:
     }
 
 public:
+    virtual void activate();
+    virtual void deactivate();
+
     virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                             const Vector3f &world_cursor);
 
@@ -262,18 +278,36 @@ class TerraFluidSourceTool: public AbstractTerraTool
 {
     Q_OBJECT
 public:
-    TerraFluidSourceTool(ToolBackend &backend);
+    TerraFluidSourceTool(ToolBackend &backend,
+                         ffe::FluidSourceMaterial &material);
 
 private:
+    ffe::FluidSourceMaterial &m_material;
     ffe::FluidSource *m_selected_source;
 
+    ffe::scenegraph::OctGroup *m_visualisation_group;
+
+    sig11::connection_guard<void(sim::Fluid::Source*)> m_fluid_source_added_connection;
+    sig11::connection_guard<void(sim::Fluid::Source*)> m_fluid_source_removed_connection;
+
+    std::unordered_map<const sim::Fluid::Source*, ffe::FluidSource*> m_source_visualisations;
+
 protected:
+    void add_source(const sim::Fluid::Source *source);
     ffe::FluidSource *find_fluid_source(const Vector2f &viewport_cursor);
+    void on_fluid_source_added(sim::Fluid::Source *source);
+    void on_fluid_source_removed(sim::Fluid::Source *source);
+    void remove_visualisation(ffe::FluidSource *vis);
 
 public:
+    void activate() override;
+    void deactivate() override;
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                     const Vector3f &world_cursor) override;
     std::pair<bool, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
+    std::pair<bool, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 

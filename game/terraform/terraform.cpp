@@ -632,6 +632,16 @@ void TerraformMode::before_gl_sync()
 
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
+    m_sync_lock = m_server->sync_safe_point();
+
+    {
+        std::lock_guard<std::mutex> guard(m_sim_callback_queue_mutex);
+        for (auto &cb: m_sim_callback_queue) {
+            cb();
+        }
+        m_sim_callback_queue.clear();
+    }
+
     if (m_curr_tool) {
         if (m_curr_tool->uses_brush()) {
             update_brush();
@@ -671,8 +681,6 @@ void TerraformMode::before_gl_sync()
                              (*field)[(unsigned int)(pos[eY])*m_terrain.size()+(unsigned int)(pos[eX])]
                     ));
     }*/
-
-    m_sync_lock = m_server->sync_safe_point();
 
     m_scene->m_camera.sync();
     m_scene->m_scenegraph.sync();
@@ -791,7 +799,12 @@ void TerraformMode::initialise_tools()
     m_tool_backend = std::make_unique<ToolBackend>(m_brush_frontend,
                                                    m_server->state(),
                                                    m_scene->m_octree_group,
-                                                   m_scene->m_camera);
+                                                   m_scene->m_camera,
+                                                   m_sim_callback_queue_mutex,
+                                                   m_sim_callback_queue);
+
+    const QSize size = window()->size() * window()->devicePixelRatio();
+    m_tool_backend->set_viewport_size(Vector2f(size.width(), size.height()));
 
     // terrain tools
     m_tool_raise_lower = std::make_unique<TerraRaiseLowerTool>(*m_tool_backend);
@@ -803,7 +816,9 @@ void TerraformMode::initialise_tools()
 
     // fluid tools
     m_tool_fluid_raise = std::make_unique<TerraFluidRaiseTool>(*m_tool_backend);
-    m_tool_fluid_source = std::make_unique<TerraFluidSourceTool>(*m_tool_backend);
+    m_tool_fluid_source = std::make_unique<TerraFluidSourceTool>(
+                *m_tool_backend,
+                m_scene->m_fluid_source_material);
 
     // testing tools
     m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
@@ -848,6 +863,12 @@ void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
         return;
     }
 
+    auto lock = m_server->sync_safe_point();
+
+    if (m_curr_tool) {
+        m_curr_tool->deactivate();
+    }
+
     m_curr_tool = new_tool;
 
     bool any_settings = false;
@@ -858,6 +879,10 @@ void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
     m_ui->level_tool_settings->setVisible(m_curr_tool == m_tool_level.get());
 
     m_ui->tool_settings_frame->setVisible(any_settings);
+
+    if (m_curr_tool) {
+        m_curr_tool->activate();
+    }
 }
 
 void collect_octree_aabbs(std::vector<AABB> &dest, const ffe::OctreeNode &node)

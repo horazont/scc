@@ -217,6 +217,9 @@ private:
     QMetaObject::Connection m_after_gl_sync_conn;
     QMetaObject::Connection m_before_gl_sync_conn;
 
+    std::mutex m_sim_callback_queue_mutex;
+    std::vector<std::function<void()> > m_sim_callback_queue;
+
     float m_t;
 
     ffe::ViewportSize m_viewport_size;
