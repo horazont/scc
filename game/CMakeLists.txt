@@ -126,6 +126,8 @@ include_directories(${PROTOBUF_INCLUDE_DIRS})
 PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS brush.proto)
 
 add_executable(game ${GAME_SRC} ${GAME_HEADERS} ${PROTO_SRCS} ${PROTO_HDRS} ${GAME_UI_HDRS})
+setup_scc_target(game)
+
 target_link_libraries(game Qt5::Widgets)
 target_link_libraries(game ffengine-core)
 target_link_libraries(game ffengine-render)
@@ -135,4 +137,5 @@ target_link_libraries(game ${PROTOBUF_LIBRARIES})
 target_link_libraries(game ${OPENGL_LIBRARIES})
 target_link_libraries(game ${GLEW_LIBRARIES})
 target_link_libraries(game "atomic")
+
 add_dependencies(game game-resources)
