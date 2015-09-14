@@ -981,7 +981,7 @@ void TerraformMode::prepare_scene()
                           std::placeholders::_1)
                 );
 
-    TerraformScene &scene = *m_scene;
+    // TerraformScene &scene = *m_scene;
 
     /*for (const sim::Fluid::Source *source: m_server.state().fluid().sources())
     {

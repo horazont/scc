@@ -503,7 +503,7 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
 
 std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
         const Vector2f &viewport_cursor,
-        const Vector3f &world_cursor)
+        const Vector3f &)
 {
     ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
 
@@ -515,6 +515,8 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
             return std::make_pair(false, std::make_unique<sim::ops::FluidSourceDestroy>(obj->source()->object_id()));
         }
     }
+
+    return std::make_pair(false, nullptr);
 }
 
 

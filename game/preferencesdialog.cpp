@@ -28,8 +28,8 @@ the AUTHORS file.
 
 QWidget *KeybindingsDelegate::createEditor(
         QWidget *parent,
-        const QStyleOptionViewItem &option,
-        const QModelIndex &index) const
+        const QStyleOptionViewItem &,
+        const QModelIndex &) const
 {
     QWidget *editor = new QKeySequenceEdit(parent);
     return editor;
@@ -83,8 +83,8 @@ QSize KeybindingsDelegate::sizeHint(const QStyleOptionViewItem &option, const QM
 
 QWidget *MousebindingsDelegate::createEditor(
         QWidget *parent,
-        const QStyleOptionViewItem &option,
-        const QModelIndex &index) const
+        const QStyleOptionViewItem &,
+        const QModelIndex &) const
 {
     QWidget *editor = new MouseBindingEdit(parent);
     return editor;
