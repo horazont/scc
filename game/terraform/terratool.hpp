@@ -287,16 +287,16 @@ private:
 
     ffe::scenegraph::OctGroup *m_visualisation_group;
 
-    sig11::connection_guard<void(sim::Fluid::Source*)> m_fluid_source_added_connection;
-    sig11::connection_guard<void(sim::Fluid::Source*)> m_fluid_source_removed_connection;
+    sim::WorldState::FluidSourceSignal::guard_t m_fluid_source_added_connection;
+    sim::WorldState::FluidSourceSignal::guard_t m_fluid_source_removed_connection;
 
-    std::unordered_map<const sim::Fluid::Source*, ffe::FluidSource*> m_source_visualisations;
+    std::unordered_map<sim::Object::ID, ffe::FluidSource*> m_source_visualisations;
 
 protected:
     void add_source(const sim::Fluid::Source *source);
     ffe::FluidSource *find_fluid_source(const Vector2f &viewport_cursor);
-    void on_fluid_source_added(sim::Fluid::Source *source);
-    void on_fluid_source_removed(sim::Fluid::Source *source);
+    void on_fluid_source_added(sim::object_ptr<sim::Fluid::Source> source);
+    void on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source);
     void remove_visualisation(ffe::FluidSource *vis);
 
 public:

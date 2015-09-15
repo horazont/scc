@@ -383,7 +383,7 @@ void TerraFluidSourceTool::add_source(const sim::Fluid::Source *source)
     ffe::FluidSource *vis = &m_visualisation_group->emplace<ffe::FluidSource>(m_material);
     vis->set_source(source);
     vis->update_from_source();
-    m_source_visualisations[source] = vis;
+    m_source_visualisations[source->object_id()] = vis;
 }
 
 ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
@@ -395,17 +395,20 @@ ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewpo
                 );
 }
 
-void TerraFluidSourceTool::on_fluid_source_added(sim::Fluid::Source *source)
+void TerraFluidSourceTool::on_fluid_source_added(sim::object_ptr<sim::Fluid::Source> source)
 {
     if (!m_fluid_source_added_connection) {
         return;
     }
-    add_source(source);
+    if (!source) {
+        return;
+    }
+    add_source(source.get());
 }
 
-void TerraFluidSourceTool::on_fluid_source_removed(sim::Fluid::Source *source)
+void TerraFluidSourceTool::on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source)
 {
-    auto iter = m_source_visualisations.find(source);
+    auto iter = m_source_visualisations.find(source.object_id());
     if (iter == m_source_visualisations.end()) {
         return;
     }
@@ -435,13 +438,13 @@ void TerraFluidSourceTool::activate()
     }
 
     m_fluid_source_added_connection = m_backend.connect_to_signal(
-                m_backend.world().fluid().source_added(),
+                m_backend.world().fluid_source_added(),
                 std::bind(&TerraFluidSourceTool::on_fluid_source_added,
                           this,
                           std::placeholders::_1));
 
     m_fluid_source_removed_connection = m_backend.connect_to_signal(
-                m_backend.world().fluid().source_removed(),
+                m_backend.world().fluid_source_removed(),
                 std::bind(&TerraFluidSourceTool::on_fluid_source_removed,
                           this,
                           std::placeholders::_1));
