@@ -15,9 +15,14 @@ out vec4 colour;
 
 void main()
 {
+    vec3 n_normal = normalize(fnormal);
     vec3 n_eyedir = normalize(mats.world_viewpoint - world);
 
-    vec4 base_colour = vec4(0.2, 0.8, 1.0, capacity * 0.9 + 0.05);
 
-    colour = add_colour + vec4(transparent_lighting(normalize(fnormal), n_eyedir, base_colour, 0.f, 1.f), base_colour.a);
+    float factor = abs(1 - dot(n_eyedir, n_normal));
+    float alpha = (capacity * 0.9 + 0.05) * factor;
+
+    vec4 base_colour = vec4(0.2, 0.8, 1.0, factor);
+
+    colour = add_colour + vec4(transparent_lighting(n_normal, n_eyedir, base_colour, 0.f, 1.f), base_colour.a);
 }
