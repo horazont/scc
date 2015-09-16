@@ -61,6 +61,7 @@ class ToolBackend
 public:
     ToolBackend(BrushFrontend &brush_frontend,
                 const sim::WorldState &world,
+                ffe::scenegraph::Group &sgroot,
                 ffe::scenegraph::OctreeGroup &sgoctree,
                 ffe::PerspectivalCamera &camera,
                 std::mutex &queue_mutex,
@@ -70,7 +71,8 @@ public:
 private:
     BrushFrontend &m_brush_frontend;
     const sim::WorldState &m_world;
-    ffe::scenegraph::OctreeGroup &m_sgnode;
+    ffe::scenegraph::Group &m_sgroot;
+    ffe::scenegraph::OctreeGroup &m_sgoctree;
     ffe::PerspectivalCamera &m_camera;
     std::mutex &m_queue_mutex;
     std::vector<std::function<void()> > &m_queue;
@@ -99,9 +101,14 @@ public:
         return m_viewport_size;
     }
 
-    inline ffe::scenegraph::OctreeGroup &sgnode()
+    inline ffe::scenegraph::Group &sgroot()
     {
-        return m_sgnode;
+        return m_sgroot;
+    }
+
+    inline ffe::scenegraph::OctreeGroup &sgoctree()
+    {
+        return m_sgoctree;
     }
 
     inline Ray view_ray(const Vector2f &viewport_pos) const
@@ -322,15 +329,18 @@ class TerraFluidSourceTool: public AbstractTerraTool
     Q_OBJECT
 public:
     TerraFluidSourceTool(ToolBackend &backend,
-                         ffe::FluidSourceMaterial &material);
+                         ffe::FluidSourceMaterial &material,
+                         ffe::Material &drag_plane_material);
 
 private:
     ffe::FluidSourceMaterial &m_material;
+    ffe::Material &m_drag_plane_material;
     ffe::FluidSource *m_selected_source;
 
     ffe::scenegraph::OctGroup *m_visualisation_group;
 
     sim::WorldState::FluidSourceSignal::guard_t m_fluid_source_added_connection;
+    sim::WorldState::FluidSourceSignal::guard_t m_fluid_source_changed_connection;
     sim::WorldState::FluidSourceSignal::guard_t m_fluid_source_removed_connection;
 
     std::unordered_map<sim::Object::ID, ffe::FluidSource*> m_source_visualisations;
@@ -339,6 +349,7 @@ protected:
     void add_source(const sim::Fluid::Source *source);
     ffe::FluidSource *find_fluid_source(const Vector2f &viewport_cursor);
     void on_fluid_source_added(sim::object_ptr<sim::Fluid::Source> source);
+    void on_fluid_source_changed(sim::object_ptr<sim::Fluid::Source> source);
     void on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source);
     void remove_visualisation(ffe::FluidSource *vis);
 

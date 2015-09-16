@@ -38,13 +38,15 @@ the AUTHORS file.
 
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
                          const sim::WorldState &world,
+                         ffe::scenegraph::Group &sgroot,
                          ffe::scenegraph::OctreeGroup &sgoctree,
                          ffe::PerspectivalCamera &camera,
                          std::mutex &queue_mutex,
                          std::vector<std::function<void()> > &queue_vector):
     m_brush_frontend(brush_frontend),
     m_world(world),
-    m_sgnode(sgoctree),
+    m_sgroot(sgroot),
+    m_sgoctree(sgoctree),
     m_camera(camera),
     m_queue_mutex(queue_mutex),
     m_queue(queue_vector)
@@ -60,7 +62,7 @@ ToolBackend::~ToolBackend()
 ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
         const std::function<bool (const ffe::OctreeObject &)> &predicate)
 {
-    m_sgnode.octree().select_nodes_by_ray(ray, m_ray_hitset);
+    m_sgoctree.octree().select_nodes_by_ray(ray, m_ray_hitset);
     std::sort(m_ray_hitset.begin(), m_ray_hitset.end());
 
     ffe::OctreeObject *closest_object = nullptr;
@@ -436,12 +438,66 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary_move(
 }
 
 
+/* FluidSourceDrag */
+
+class FluidSourceDrag: public VisualPlaneToolDrag
+{
+public:
+    FluidSourceDrag(const ffe::PerspectivalCamera &camera,
+                    const Vector2f &viewport_size,
+                    ffe::scenegraph::Group &sgparent,
+                    ffe::Material &plane_material,
+                    sim::object_ptr<sim::Fluid::Source> &&source,
+                    const unsigned int terrain_size):
+        VisualPlaneToolDrag(Plane(Vector3f(source->m_pos, source->m_absolute_height), Vector3f(0, 0, 1)),
+                            camera, viewport_size, sgparent,
+                            plane_material,
+                            std::bind(&FluidSourceDrag::plane_drag,
+                                      this,
+                                      std::placeholders::_1,
+                                      std::placeholders::_2)),
+        m_source(std::move(source)),
+        m_terrain_size(terrain_size)
+    {
+
+    }
+
+private:
+    sim::object_ptr<sim::Fluid::Source> m_source;
+    unsigned int m_terrain_size;
+
+private:
+    sim::WorldOperationPtr plane_drag(const Vector2f &,
+                                      const Vector3f &world_pos)
+    {
+        if (!m_source) {
+            return nullptr;
+        }
+
+        Vector2f pos(world_pos[eX], world_pos[eY]);
+        pos[eX] = clamp(pos[eX], 0.f, float(m_terrain_size));
+        pos[eY] = clamp(pos[eY], 0.f, float(m_terrain_size));
+
+        if (m_source->m_pos == pos) {
+            return nullptr;
+        }
+
+
+        return std::make_unique<sim::ops::FluidSourceMove>(
+                    m_source.object_id(), pos[eX], pos[eY]);
+    }
+
+};
+
+
 /* TerraFluidSourceTool */
 
 TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend,
-                                           ffe::FluidSourceMaterial &material):
+                                           ffe::FluidSourceMaterial &material,
+                                           ffe::Material &drag_plane_material):
     AbstractTerraTool(backend),
     m_material(material),
+    m_drag_plane_material(drag_plane_material),
     m_selected_source(nullptr),
     m_visualisation_group(nullptr)
 {
@@ -477,6 +533,22 @@ void TerraFluidSourceTool::on_fluid_source_added(sim::object_ptr<sim::Fluid::Sou
     add_source(source.get());
 }
 
+void TerraFluidSourceTool::on_fluid_source_changed(sim::object_ptr<sim::Fluid::Source> source)
+{
+    if (!m_fluid_source_added_connection) {
+        return;
+    }
+    if (!source) {
+        return;
+    }
+    auto iter = m_source_visualisations.find(source.object_id());
+    if (iter == m_source_visualisations.end()) {
+        return;
+    }
+
+    iter->second->update_from_source();
+}
+
 void TerraFluidSourceTool::on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source)
 {
     auto iter = m_source_visualisations.find(source.object_id());
@@ -501,7 +573,7 @@ void TerraFluidSourceTool::remove_visualisation(ffe::FluidSource *vis)
 
 void TerraFluidSourceTool::activate()
 {
-    m_visualisation_group = &m_backend.sgnode().root().emplace<ffe::scenegraph::OctGroup>();
+    m_visualisation_group = &m_backend.sgoctree().root().emplace<ffe::scenegraph::OctGroup>();
 
     for (sim::Fluid::Source *source: m_backend.world().fluid().sources())
     {
@@ -511,6 +583,12 @@ void TerraFluidSourceTool::activate()
     m_fluid_source_added_connection = m_backend.connect_to_signal(
                 m_backend.world().fluid_source_added(),
                 std::bind(&TerraFluidSourceTool::on_fluid_source_added,
+                          this,
+                          std::placeholders::_1));
+
+    m_fluid_source_changed_connection = m_backend.connect_to_signal(
+                m_backend.world().fluid_source_changed(),
+                std::bind(&TerraFluidSourceTool::on_fluid_source_changed,
                           this,
                           std::placeholders::_1));
 
@@ -524,8 +602,9 @@ void TerraFluidSourceTool::activate()
 void TerraFluidSourceTool::deactivate()
 {
     m_fluid_source_added_connection = nullptr;
+    m_fluid_source_changed_connection = nullptr;
     m_fluid_source_removed_connection = nullptr;
-    ffe::scenegraph::OctGroup &parent = m_backend.sgnode().root();
+    ffe::scenegraph::OctGroup &parent = m_backend.sgoctree().root();
     auto iter = std::find_if(parent.begin(),
                              parent.end(),
                              [this](const ffe::scenegraph::OctNode &item){return &item == m_visualisation_group;});
@@ -563,7 +642,13 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
         m_selected_source = obj;
-        return std::make_pair(nullptr, nullptr);
+        return std::make_pair(std::make_unique<FluidSourceDrag>(m_backend.camera(),
+                                                                m_backend.viewport_size(),
+                                                                m_backend.sgroot(),
+                                                                m_drag_plane_material,
+                                                                std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
+                                                                m_backend.world().terrain().size()),
+                              nullptr);
     } else {
         return std::make_pair(nullptr,
                               std::make_unique<sim::ops::FluidSourceCreate>(
@@ -613,7 +698,7 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend,
 
 void TerraTestingTool::add_segment(const QuadBezier3f &curve)
 {
-    ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
+    ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
     group.emplace<ffe::QuadBezier3fRoadTest>(m_road_material, 20).set_curve(curve);
 }
 
@@ -753,7 +838,7 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(
         Vector3f p;
         std::tie(valid, p) = snapped_point(viewport_cursor, world_cursor);
 
-        ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
+        ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
 
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
@@ -772,7 +857,7 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(
 
         assert(!m_debug_node);
         assert(m_preview_material);
-        m_debug_node = &m_backend.sgnode().root().emplace<ffe::QuadBezier3fDebug>(m_preview_material, 20);
+        m_debug_node = &m_backend.sgoctree().root().emplace<ffe::QuadBezier3fDebug>(m_preview_material, 20);
         m_tmp_curve = QuadBezier3f(p, p, p);
         m_debug_node->set_curve(m_tmp_curve);
         m_step += 1;
@@ -789,7 +874,7 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::secondary_start
 {
     if (m_step > 0) {
         assert(m_debug_node);
-        ffe::scenegraph::OctGroup &group = m_backend.sgnode().root();
+        ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
         auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
         m_step = 0;

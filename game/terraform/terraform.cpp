@@ -864,6 +864,7 @@ void TerraformMode::initialise_tools()
 {
     m_tool_backend = std::make_unique<ToolBackend>(m_brush_frontend,
                                                    m_server->state(),
+                                                   m_scene->m_scenegraph.root(),
                                                    m_scene->m_octree_group,
                                                    m_scene->m_camera,
                                                    m_sim_callback_queue_mutex,
@@ -884,7 +885,8 @@ void TerraformMode::initialise_tools()
     m_tool_fluid_raise = std::make_unique<TerraFluidRaiseTool>(*m_tool_backend);
     m_tool_fluid_source = std::make_unique<TerraFluidSourceTool>(
                 *m_tool_backend,
-                m_scene->m_fluid_source_material);
+                m_scene->m_fluid_source_material,
+                m_scene->m_fancy_drag_plane_material);
 
     // testing tools
     m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
