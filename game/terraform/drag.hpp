@@ -37,7 +37,17 @@ the AUTHORS file.
 class AbstractToolDrag
 {
 public:
+    explicit AbstractToolDrag(bool continuous);
     virtual ~AbstractToolDrag();
+
+private:
+    bool m_continuous;
+
+public:
+    inline bool is_continuous() const
+    {
+        return m_continuous;
+    }
 
 public:
     virtual sim::WorldOperationPtr done(const Vector2f &viewport_pos) = 0;
@@ -53,7 +63,9 @@ public:
     using DoneCallback = std::function<sim::WorldOperationPtr(const Vector2f&)>;
 
 public:
-    explicit CustomToolDrag(DragCallback &&drag_cb, DoneCallback &&done_cb = nullptr);
+    explicit CustomToolDrag(DragCallback &&drag_cb,
+                            DoneCallback &&done_cb = nullptr,
+                            bool continuous = false);
 
 private:
     DragCallback m_drag_cb;
@@ -78,7 +90,8 @@ public:
                   const ffe::PerspectivalCamera &camera,
                   const Vector2f &viewport_size,
                   DragCallback &&drag_cb,
-                  DoneCallback &&done_cb = nullptr);
+                  DoneCallback &&done_cb = nullptr,
+                  bool continuous = false);
 
 private:
     const Plane m_plane;

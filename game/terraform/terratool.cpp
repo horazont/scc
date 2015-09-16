@@ -175,6 +175,7 @@ TerrainToolDrag::TerrainToolDrag(const sim::Terrain &terrain,
                                  const Vector2f &viewport_size,
                                  TerrainToolDrag::DragCallback &&drag_cb,
                                  TerrainToolDrag::DoneCallback &&done_cb):
+    AbstractToolDrag(true),
     m_terrain(terrain),
     m_camera(camera),
     m_viewport_size(viewport_size),

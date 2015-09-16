@@ -488,6 +488,36 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
 }
 
 
+/* CameraDrag */
+
+CameraDrag::CameraDrag(ffe::PerspectivalCamera &camera, const Vector2f &viewport_size,
+                       const Vector3f &start_world_pos):
+    PlaneToolDrag(Plane(start_world_pos, Vector3f(0, 0, 1)),
+                  camera,
+                  viewport_size,
+                  std::bind(&CameraDrag::plane_drag,
+                            this,
+                            std::placeholders::_1,
+                            std::placeholders::_2)),
+    m_camera(camera),
+    m_drag_point(start_world_pos),
+    m_drag_camera_pos(camera.controller().pos())
+{
+
+}
+
+sim::WorldOperationPtr CameraDrag::plane_drag(const Vector2f &,
+                                              const Vector3f &world_pos)
+{
+    const Vector3f moved = m_drag_point - world_pos;
+    m_camera.controller().set_pos(m_drag_camera_pos + moved);
+    m_drag_camera_pos = m_camera.controller().pos();
+    return nullptr;
+}
+
+
+/* TerraformMode */
+
 TerraformMode::TerraformMode(Application &app, QWidget *parent):
     ApplicationMode(app, parent),
     m_ui(new Ui::TerraformMode),
@@ -602,7 +632,7 @@ void TerraformMode::advance(ffe::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
     }
-    if (m_mouse_mode == MOUSE_TOOL_DRAG) {
+    if (m_mouse_mode == MOUSE_TOOL_DRAG && m_drag->is_continuous()) {
         sim::WorldOperationPtr op(m_drag->drag(m_mouse_pos_win));
         if (op) {
             m_server->enqueue_op(std::move(op));
@@ -718,27 +748,16 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
                     m_scene->m_camera.controller().rot() + Vector2f(dist[eY], dist[eX])*0.002);
         break;
     }
-    case MOUSE_PAN:
+    case MOUSE_TOOL_DRAG:
     {
-        const Ray viewray = m_scene->m_camera.ray(m_mouse_pos_win,
-                                                  m_viewport_size);
-        PlaneSide side;
-        float t;
-        std::tie(t, side) = isect_plane_ray(
-                    Plane(m_drag_point[eZ], Vector3f(0, 0, 1)),
-                    viewray);
-        if (side != PlaneSide::BOTH) {
-            m_mouse_mode = MOUSE_IDLE;
+        if (m_drag->is_continuous()) {
             break;
         }
 
-        const Vector3f now_at = viewray.origin + viewray.direction*t;
-        const Vector3f moved = m_drag_point - now_at;
-        m_scene->m_camera.controller().set_pos(m_drag_camera_pos + moved);
-        m_drag_camera_pos = m_scene->m_camera.controller().pos();
-        m_mouse_world_pos = now_at;
-        m_mouse_world_pos_updated = true;
-        // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(now_at);
+        sim::WorldOperationPtr op(m_drag->drag(m_mouse_pos_win));
+        if (op) {
+            m_server->enqueue_op(std::move(op));
+        }
         break;
     }
     default:;
@@ -1138,15 +1157,16 @@ void TerraformMode::on_camera_pan_triggered()
         return;
     }
 
-    if (may_clear_mouse_mode(MOUSE_PAN)) {
+    if (may_clear_mouse_mode(MOUSE_TOOL_DRAG)) {
         return;
     }
 
     ensure_mouse_world_pos();
     if (m_mouse_world_pos_valid) {
-        m_drag_point = m_mouse_world_pos;
-        m_drag_camera_pos = m_scene->m_camera.controller().pos();
-        enter_mouse_mode(MOUSE_PAN, m_app.shared_actions().action_camera_pan);
+        m_drag = std::make_unique<CameraDrag>(m_scene->m_camera,
+                                              m_tool_backend->viewport_size(),
+                                              m_mouse_world_pos);
+        enter_mouse_mode(MOUSE_TOOL_DRAG, m_app.shared_actions().action_camera_pan);
     }
 }
 

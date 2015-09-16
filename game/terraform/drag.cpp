@@ -28,6 +28,12 @@ the AUTHORS file.
 
 /* AbstractToolDrag */
 
+AbstractToolDrag::AbstractToolDrag(bool continuous):
+    m_continuous(continuous)
+{
+
+}
+
 AbstractToolDrag::~AbstractToolDrag()
 {
 
@@ -40,7 +46,9 @@ PlaneToolDrag::PlaneToolDrag(const Plane &plane,
                              const ffe::PerspectivalCamera &camera,
                              const Vector2f &viewport_size,
                              PlaneToolDrag::DragCallback &&drag_cb,
-                             PlaneToolDrag::DoneCallback &&done_cb):
+                             PlaneToolDrag::DoneCallback &&done_cb,
+                             bool continuous):
+    AbstractToolDrag(continuous),
     m_plane(plane),
     m_camera(camera),
     m_viewport_size(viewport_size),
@@ -65,13 +73,13 @@ Vector3f PlaneToolDrag::raycast(const Vector2f &viewport_pos) const
 
 sim::WorldOperationPtr PlaneToolDrag::done(const Vector2f &viewport_pos)
 {
-    return m_drag_cb(viewport_pos, raycast(viewport_pos));
-}
-
-sim::WorldOperationPtr PlaneToolDrag::drag(const Vector2f &viewport_pos)
-{
     if (!m_done_cb) {
         return nullptr;
     }
     return m_done_cb(viewport_pos, raycast(viewport_pos));
+}
+
+sim::WorldOperationPtr PlaneToolDrag::drag(const Vector2f &viewport_pos)
+{
+    return m_drag_cb(viewport_pos, raycast(viewport_pos));
 }

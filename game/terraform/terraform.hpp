@@ -106,7 +106,6 @@ enum MouseMode
 {
     MOUSE_IDLE,
     MOUSE_TOOL_DRAG,
-    MOUSE_PAN,
     MOUSE_ROTATE
 };
 
@@ -192,6 +191,25 @@ class TerraformMode;
 }
 
 
+class CameraDrag: public PlaneToolDrag
+{
+public:
+    CameraDrag(ffe::PerspectivalCamera &camera,
+               const Vector2f &viewport_size,
+               const Vector3f &start_world_pos);
+
+private:
+    ffe::PerspectivalCamera &m_camera;
+    Vector3f m_drag_point;
+    Vector3f m_drag_camera_pos;
+
+private:
+    sim::WorldOperationPtr plane_drag(const Vector2f &viewport_pos,
+                                      const Vector3f &world_pos);
+
+};
+
+
 class TerraformMode: public ApplicationMode
 {
     Q_OBJECT
@@ -227,9 +245,6 @@ private:
 
     MouseMode m_mouse_mode;
     MouseAction *m_mouse_action;
-
-    Vector3f m_drag_point;
-    Vector3f m_drag_camera_pos;
 
     ToolDragPtr m_drag;
 
