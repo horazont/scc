@@ -20,6 +20,7 @@ set(GAME_SRC
   actionbutton.cpp
   bindings.cpp
   terraform/brush.cpp
+  terraform/drag.cpp
   terraform/terraform.cpp
   terraform/terratool.cpp
   )

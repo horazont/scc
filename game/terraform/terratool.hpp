@@ -37,6 +37,7 @@ the AUTHORS file.
 #include "ffengine/render/scenegraph.hpp"
 
 #include "terraform/brush.hpp"
+#include "terraform/drag.hpp"
 
 namespace ffe {
 
@@ -46,6 +47,8 @@ class QuadBezier3fDebug;
 class Material;
 
 }
+
+using ToolDragPtr = std::unique_ptr<AbstractToolDrag>;
 
 enum class TerraToolType
 {
@@ -84,6 +87,16 @@ public:
     inline const sim::WorldState &world() const
     {
         return m_world;
+    }
+
+    inline const ffe::PerspectivalCamera &camera() const
+    {
+        return m_camera;
+    }
+
+    inline const Vector2f &viewport_size() const
+    {
+        return m_viewport_size;
     }
 
     inline ffe::scenegraph::OctreeGroup &sgnode()
@@ -146,19 +159,43 @@ public:
     virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                             const Vector3f &world_cursor);
 
-    virtual std::pair<bool, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr primary_move(
+    virtual std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
 
-    virtual std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    virtual std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
-    virtual sim::WorldOperationPtr secondary_move(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor);
+
+};
+
+
+class TerrainToolDrag: public AbstractToolDrag
+{
+public:
+    using DragCallback = std::function<sim::WorldOperationPtr(const Vector2f&, const Vector3f&)>;
+    using DoneCallback = std::function<sim::WorldOperationPtr(const Vector2f&, const Vector3f&)>;
+
+public:
+    TerrainToolDrag(const sim::Terrain &terrain,
+                    const ffe::PerspectivalCamera &camera,
+                    const Vector2f &viewport_size,
+                    DragCallback &&drag_cb,
+                    DoneCallback &&done_cb = nullptr);
+
+private:
+    const sim::Terrain &m_terrain;
+    const ffe::PerspectivalCamera &m_camera;
+    const Vector2f &m_viewport_size;
+    DragCallback m_drag_cb;
+    DoneCallback m_done_cb;
+
+private:
+    Vector3f raycast(const Vector2f &viewport_pos);
+
+public:
+    sim::WorldOperationPtr done(const Vector2f &viewport_pos) override;
+    sim::WorldOperationPtr drag(const Vector2f &viewport_pos) override;
 
 };
 
@@ -170,11 +207,17 @@ public:
     explicit TerrainBrushTool(ToolBackend &backend);
 
 public:
-    virtual std::pair<bool, sim::WorldOperationPtr> primary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
+    virtual sim::WorldOperationPtr primary_move(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
 
-    virtual std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
+            const Vector2f &viewport_cursor,
+            const Vector3f &world_cursor) override;
+    virtual sim::WorldOperationPtr secondary_move(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
 };
@@ -206,7 +249,7 @@ private:
 public:
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 
@@ -232,7 +275,7 @@ public:
 public:
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 
@@ -249,12 +292,12 @@ private:
     Vector3f m_source_point;
 
 public:
-    std::pair<bool, sim::WorldOperationPtr> primary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 
@@ -304,10 +347,10 @@ public:
     void deactivate() override;
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                     const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> primary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 
@@ -338,10 +381,10 @@ protected:
 public:
     std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
                                     const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> primary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
-    std::pair<bool, sim::WorldOperationPtr> secondary_start(
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor) override;
 

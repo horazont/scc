@@ -31,6 +31,7 @@ the AUTHORS file.
 #include "ffengine/sim/world_ops.hpp"
 
 #include "ffengine/render/curve.hpp"
+#include "ffengine/render/fancyterraindata.hpp"
 #include "ffengine/render/fluidsource.hpp"
 #include "ffengine/render/renderpass.hpp"
 
@@ -154,29 +155,66 @@ std::pair<bool, Vector3f> AbstractTerraTool::hover(
     return std::make_pair(true, world_cursor);
 }
 
-std::pair<bool, sim::WorldOperationPtr> AbstractTerraTool::primary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> AbstractTerraTool::primary_start(
         const Vector2f &, const Vector3f &)
 {
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
-sim::WorldOperationPtr AbstractTerraTool::primary_move(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> AbstractTerraTool::secondary_start(
         const Vector2f &, const Vector3f &)
 {
-    return nullptr;
+    return std::make_pair(nullptr, nullptr);
 }
 
-std::pair<bool, sim::WorldOperationPtr> AbstractTerraTool::secondary_start(
-        const Vector2f &, const Vector3f &)
+
+/* TerrainToolDrag */
+
+TerrainToolDrag::TerrainToolDrag(const sim::Terrain &terrain,
+                                 const ffe::PerspectivalCamera &camera,
+                                 const Vector2f &viewport_size,
+                                 TerrainToolDrag::DragCallback &&drag_cb,
+                                 TerrainToolDrag::DoneCallback &&done_cb):
+    m_terrain(terrain),
+    m_camera(camera),
+    m_viewport_size(viewport_size),
+    m_drag_cb(std::move(drag_cb)),
+    m_done_cb(std::move(done_cb))
 {
-    return std::make_pair(false, nullptr);
+
 }
 
-sim::WorldOperationPtr AbstractTerraTool::secondary_move(
-        const Vector2f &, const Vector3f &)
+Vector3f TerrainToolDrag::raycast(const Vector2f &viewport_pos)
 {
-    return nullptr;
+    const Ray ray(m_camera.ray(viewport_pos, m_viewport_size));
+    Vector3f pos;
+    bool hit;
+    {
+        const sim::Terrain::HeightField *field;
+        auto lock = m_terrain.readonly_field(field);
+        std::tie(pos, hit) = ffe::isect_terrain_ray(ray, m_terrain.size(), *field);
+    }
+
+    if (hit) {
+        return pos;
+    }
+
+    return Vector3f(NAN, NAN, NAN);
 }
+
+sim::WorldOperationPtr TerrainToolDrag::done(const Vector2f &viewport_pos)
+{
+    if (!m_done_cb) {
+        return nullptr;
+    }
+    return m_done_cb(viewport_pos, raycast(viewport_pos));
+}
+
+sim::WorldOperationPtr TerrainToolDrag::drag(const Vector2f &viewport_pos)
+{
+    return m_drag_cb(viewport_pos, raycast(viewport_pos));
+}
+
 
 /* TerrainBrushTool */
 
@@ -187,16 +225,48 @@ TerrainBrushTool::TerrainBrushTool(ToolBackend &backend):
     m_uses_hover = true;
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerrainBrushTool::primary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerrainBrushTool::primary_start(
         const Vector2f &, const Vector3f &)
 {
-    return std::make_pair(true, nullptr);
+    return std::make_pair(std::make_unique<TerrainToolDrag>(
+                              m_backend.world().terrain(),
+                              m_backend.camera(),
+                              m_backend.viewport_size(),
+                              std::bind(&TerrainBrushTool::primary_move,
+                                        this,
+                                        std::placeholders::_1,
+                                        std::placeholders::_2),
+                              nullptr),
+                          nullptr);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerrainBrushTool::secondary_start(
+sim::WorldOperationPtr TerrainBrushTool::primary_move(
+        const Vector2f &,
+        const Vector3f &)
+{
+    return nullptr;
+}
+
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerrainBrushTool::secondary_start(
         const Vector2f &, const Vector3f &)
 {
-    return std::make_pair(true, nullptr);
+    return std::make_pair(std::make_unique<TerrainToolDrag>(
+                              m_backend.world().terrain(),
+                              m_backend.camera(),
+                              m_backend.viewport_size(),
+                              std::bind(&TerrainBrushTool::secondary_move,
+                                        this,
+                                        std::placeholders::_1,
+                                        std::placeholders::_2),
+                              nullptr),
+                          nullptr);
+}
+
+sim::WorldOperationPtr TerrainBrushTool::secondary_move(
+        const Vector2f &,
+        const Vector3f &)
+{
+    return nullptr;
 }
 
 
@@ -252,11 +322,11 @@ sim::WorldOperationPtr TerraLevelTool::primary_move(
                 m_reference_height);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraLevelTool::secondary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraLevelTool::secondary_start(
         const Vector2f &, const Vector3f &world_cursor)
 {
     set_reference_height(world_cursor[eZ]);
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
 void TerraLevelTool::set_reference_height(float value)
@@ -286,22 +356,22 @@ sim::WorldOperationPtr TerraSmoothTool::primary_move(
                 m_backend.brush_frontend().brush_strength());
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraSmoothTool::secondary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraSmoothTool::secondary_start(
         const Vector2f &,
         const Vector3f &)
 {
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
 
 /* TerraRampTool */
 
-std::pair<bool, sim::WorldOperationPtr> TerraRampTool::primary_start(
-        const Vector2f &,
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraRampTool::primary_start(
+        const Vector2f &viewport_pos,
         const Vector3f &world_cursor)
 {
     m_source_point = world_cursor;
-    return std::make_pair(true, nullptr);
+    return TerrainBrushTool::primary_start(viewport_pos, world_cursor);
 }
 
 sim::WorldOperationPtr TerraRampTool::primary_move(
@@ -323,12 +393,12 @@ sim::WorldOperationPtr TerraRampTool::primary_move(
                 m_destination_point[eZ]);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraRampTool::secondary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraRampTool::secondary_start(
         const Vector2f &,
         const Vector3f &world_cursor)
 {
     m_destination_point = world_cursor;
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
 
@@ -483,7 +553,7 @@ std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
     return std::make_pair(false, world_cursor);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
         const Vector2f &viewport_cursor,
         const Vector3f &world_cursor)
 {
@@ -492,9 +562,10 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
         m_selected_source = obj;
-        return std::make_pair(false, nullptr);
+        return std::make_pair(nullptr, nullptr);
     } else {
-        return std::make_pair(false, std::make_unique<sim::ops::FluidSourceCreate>(
+        return std::make_pair(nullptr,
+                              std::make_unique<sim::ops::FluidSourceCreate>(
                                   world_cursor[eX], world_cursor[eY],
                                   5.f,
                                   world_cursor[eZ] + 2.f,
@@ -504,7 +575,7 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
 
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
         const Vector2f &viewport_cursor,
         const Vector3f &)
 {
@@ -515,11 +586,11 @@ std::pair<bool, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
             m_selected_source = nullptr;
         }
         if (obj->source()) {
-            return std::make_pair(false, std::make_unique<sim::ops::FluidSourceDestroy>(obj->source()->object_id()));
+            return std::make_pair(nullptr, std::make_unique<sim::ops::FluidSourceDestroy>(obj->source()->object_id()));
         }
     }
 
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
 
@@ -661,7 +732,7 @@ std::pair<bool, Vector3f> TerraTestingTool::hover(
     return AbstractTerraTool::hover(viewport_cursor, world_cursor);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::primary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(
         const Vector2f &viewport_cursor,
         const Vector3f &world_cursor)
 {
@@ -708,10 +779,10 @@ std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::primary_start(
     }
     }
 
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }
 
-std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::secondary_start(
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::secondary_start(
         const Vector2f &,
         const Vector3f &)
 {
@@ -723,5 +794,5 @@ std::pair<bool, sim::WorldOperationPtr> TerraTestingTool::secondary_start(
         m_step = 0;
         m_debug_node = nullptr;
     }
-    return std::make_pair(false, nullptr);
+    return std::make_pair(nullptr, nullptr);
 }

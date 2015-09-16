@@ -496,7 +496,8 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_terrain_interface(nullptr),
     m_t(100),
     m_mouse_mode(MOUSE_IDLE),
-    m_paint_secondary(false),
+    m_mouse_action(nullptr),
+    m_drag(nullptr),
     m_mouse_world_pos_updated(false),
     m_mouse_world_pos_valid(false),
     m_brush_changed(true),
@@ -601,10 +602,10 @@ void TerraformMode::advance(ffe::TimeInterval dt)
         m_scene->m_camera.advance(dt);
         m_scene->m_scenegraph.advance(dt);
     }
-    if (m_mouse_mode == MOUSE_PAINT) {
-        ensure_mouse_world_pos();
-        if (m_mouse_world_pos_valid) {
-            apply_tool(m_mouse_pos_win, m_mouse_world_pos, m_paint_secondary);
+    if (m_mouse_mode == MOUSE_TOOL_DRAG) {
+        sim::WorldOperationPtr op(m_drag->drag(m_mouse_pos_win));
+        if (op) {
+            m_server->enqueue_op(std::move(op));
         }
         // terrain under mouse probably changed
         m_mouse_world_pos_updated = false;
@@ -717,7 +718,7 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
                     m_scene->m_camera.controller().rot() + Vector2f(dist[eY], dist[eX])*0.002);
         break;
     }
-    case MOUSE_DRAG:
+    case MOUSE_PAN:
     {
         const Ray viewray = m_scene->m_camera.ray(m_mouse_pos_win,
                                                   m_viewport_size);
@@ -783,6 +784,10 @@ void TerraformMode::wheelEvent(QWheelEvent *event)
 void TerraformMode::clear_mouse_mode()
 {
     releaseMouse();
+    if (m_mouse_mode == MOUSE_TOOL_DRAG) {
+        m_drag->done(m_mouse_pos_win);
+        m_drag = nullptr;
+    }
     m_mouse_mode = MOUSE_IDLE;
     m_mouse_action = nullptr;
 }
@@ -837,24 +842,6 @@ bool TerraformMode::may_clear_mouse_mode(MouseMode potential_mode)
         return true;
     }
     return false;
-}
-
-void TerraformMode::apply_tool(const Vector2f &viewport_pos,
-                               const Vector3f &world_pos,
-                               bool secondary)
-{
-    if (m_curr_tool) {
-        auto lock = m_server->sync_safe_point();
-        sim::WorldOperationPtr op(nullptr);
-        if (secondary) {
-            op = m_curr_tool->secondary_move(viewport_pos, world_pos);
-        } else {
-            op = m_curr_tool->primary_move(viewport_pos, world_pos);
-        }
-        if (op) {
-            m_server->enqueue_op(std::move(op));
-        }
-    }
 }
 
 void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
@@ -1151,7 +1138,7 @@ void TerraformMode::on_camera_pan_triggered()
         return;
     }
 
-    if (may_clear_mouse_mode(MOUSE_DRAG)) {
+    if (may_clear_mouse_mode(MOUSE_PAN)) {
         return;
     }
 
@@ -1159,7 +1146,7 @@ void TerraformMode::on_camera_pan_triggered()
     if (m_mouse_world_pos_valid) {
         m_drag_point = m_mouse_world_pos;
         m_drag_camera_pos = m_scene->m_camera.controller().pos();
-        enter_mouse_mode(MOUSE_DRAG, m_app.shared_actions().action_camera_pan);
+        enter_mouse_mode(MOUSE_PAN, m_app.shared_actions().action_camera_pan);
     }
 }
 
@@ -1182,7 +1169,7 @@ void TerraformMode::on_tool_primary_triggered()
         return;
     }
 
-    if (may_clear_mouse_mode(MOUSE_PAINT)) {
+    if (may_clear_mouse_mode(MOUSE_TOOL_DRAG)) {
         return;
     }
 
@@ -1190,19 +1177,19 @@ void TerraformMode::on_tool_primary_triggered()
         return;
     }
 
-    bool keep_going = false;
+    ToolDragPtr drag = nullptr;
     sim::WorldOperationPtr op;
     {
         auto lock = m_server->sync_safe_point();
-        std::tie(keep_going, op) = m_curr_tool->primary_start(m_mouse_pos_win, m_mouse_world_pos);
-        if (keep_going) {
-            m_paint_secondary = false;
-            enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_primary);
-        }
-        std::cout << "keep going: " << keep_going << std::endl;
-        if (op) {
-            m_server->enqueue_op(std::move(op));
-        }
+        std::tie(drag, op) = m_curr_tool->primary_start(m_mouse_pos_win, m_mouse_world_pos);
+    }
+
+    if (drag) {
+        m_drag = std::move(drag);
+        enter_mouse_mode(MOUSE_TOOL_DRAG, m_app.shared_actions().action_tool_primary);
+    }
+    if (op) {
+        m_server->enqueue_op(std::move(op));
     }
 }
 
@@ -1212,7 +1199,7 @@ void TerraformMode::on_tool_secondary_triggered()
         return;
     }
 
-    if (may_clear_mouse_mode(MOUSE_PAINT)) {
+    if (may_clear_mouse_mode(MOUSE_TOOL_DRAG)) {
         return;
     }
 
@@ -1220,19 +1207,19 @@ void TerraformMode::on_tool_secondary_triggered()
         return;
     }
 
-    bool keep_going = false;
-    sim::WorldOperationPtr op;
+    ToolDragPtr drag = nullptr;
+    sim::WorldOperationPtr op = nullptr;
     {
         auto lock = m_server->sync_safe_point();
-        std::tie(keep_going, op) = m_curr_tool->secondary_start(m_mouse_pos_win, m_mouse_world_pos);
-        if (keep_going) {
-            m_paint_secondary = true;
-            enter_mouse_mode(MOUSE_PAINT, m_app.shared_actions().action_tool_secondary);
-        }
-        std::cout << "keep going: " << keep_going << std::endl;
-        if (op) {
-            m_server->enqueue_op(std::move(op));
-        }
+        std::tie(drag, op) = m_curr_tool->secondary_start(m_mouse_pos_win, m_mouse_world_pos);
+    }
+
+    if (drag) {
+        m_drag = std::move(drag);
+        enter_mouse_mode(MOUSE_TOOL_DRAG, m_app.shared_actions().action_tool_secondary);
+    }
+    if (op) {
+        m_server->enqueue_op(std::move(op));
     }
 }
 

@@ -105,8 +105,8 @@ public:
 enum MouseMode
 {
     MOUSE_IDLE,
-    MOUSE_PAINT,
-    MOUSE_DRAG,
+    MOUSE_TOOL_DRAG,
+    MOUSE_PAN,
     MOUSE_ROTATE
 };
 
@@ -231,7 +231,7 @@ private:
     Vector3f m_drag_point;
     Vector3f m_drag_camera_pos;
 
-    bool m_paint_secondary;
+    ToolDragPtr m_drag;
 
     bool m_mouse_world_pos_updated;
     bool m_mouse_world_pos_valid;
@@ -271,9 +271,6 @@ private:
     bool may_clear_mouse_mode(MouseMode potential_mode);
 
 protected:
-    void apply_tool(const Vector2f &viewport_pos,
-                    const Vector3f &world_pos,
-                    bool secondary);
     void switch_to_tool(AbstractTerraTool *new_tool);
     void collect_aabbs(std::vector<AABB> &dest);
     void ensure_mouse_world_pos();
