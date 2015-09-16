@@ -102,7 +102,7 @@ private:
     DragCallback m_drag_cb;
     DoneCallback m_done_cb;
 
-private:
+protected:
     Vector3f raycast(const Vector2f &viewport_pos) const;
 
 public:

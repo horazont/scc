@@ -116,7 +116,7 @@ public:
         return m_camera.ray(viewport_pos, m_viewport_size);
     }
 
-    ffe::OctreeObject *hittest_octree_object(
+    std::pair<ffe::OctreeObject*, float> hittest_octree_object(
             const Ray &ray,
             const std::function<bool(const ffe::OctreeObject &)> &predicate);
 
@@ -328,6 +328,13 @@ class TerraFluidSourceTool: public AbstractTerraTool
 {
     Q_OBJECT
 public:
+    enum Control
+    {
+        HEIGHT = 0,
+        POSITION = 1
+    };
+
+public:
     TerraFluidSourceTool(ToolBackend &backend,
                          ffe::FluidSourceMaterial &material,
                          ffe::Material &drag_plane_material);
@@ -347,7 +354,7 @@ private:
 
 protected:
     void add_source(const sim::Fluid::Source *source);
-    ffe::FluidSource *find_fluid_source(const Vector2f &viewport_cursor);
+    std::pair<ffe::FluidSource*, Control> find_fluid_source(const Vector2f &viewport_cursor);
     void on_fluid_source_added(sim::object_ptr<sim::Fluid::Source> source);
     void on_fluid_source_changed(sim::object_ptr<sim::Fluid::Source> source);
     void on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source);

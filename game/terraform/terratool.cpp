@@ -59,7 +59,7 @@ ToolBackend::~ToolBackend()
 
 }
 
-ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
+std::pair<ffe::OctreeObject *, float> ToolBackend::hittest_octree_object(const Ray &ray,
         const std::function<bool (const ffe::OctreeObject &)> &predicate)
 {
     m_sgoctree.octree().select_nodes_by_ray(ray, m_ray_hitset);
@@ -93,13 +93,14 @@ ffe::OctreeObject *ToolBackend::hittest_octree_object(const Ray &ray,
 
             if (tmin < closest) {
                 closest_object = obj;
+                closest = tmin;
             }
         }
     }
 
     m_ray_hitset.clear();
 
-    return closest_object;
+    return std::make_pair(closest_object, closest);
 }
 
 void ToolBackend::set_viewport_size(const Vector2f &size)
@@ -440,22 +441,21 @@ sim::WorldOperationPtr TerraFluidRaiseTool::secondary_move(
 
 /* FluidSourceDrag */
 
-class FluidSourceDrag: public VisualPlaneToolDrag
+class FluidSourceDrag: public TerrainToolDrag
 {
 public:
-    FluidSourceDrag(const ffe::PerspectivalCamera &camera,
-                    const Vector2f &viewport_size,
-                    ffe::scenegraph::Group &sgparent,
+    FluidSourceDrag(ToolBackend &backend,
                     ffe::Material &plane_material,
                     sim::object_ptr<sim::Fluid::Source> &&source,
                     const unsigned int terrain_size):
-        VisualPlaneToolDrag(Plane(Vector3f(source->m_pos, source->m_absolute_height), Vector3f(0, 0, 1)),
-                            camera, viewport_size, sgparent,
-                            plane_material,
-                            std::bind(&FluidSourceDrag::plane_drag,
-                                      this,
-                                      std::placeholders::_1,
-                                      std::placeholders::_2)),
+        TerrainToolDrag(backend.world().terrain(),
+                        backend.camera(),
+                        backend.viewport_size(),
+                        std::bind(&FluidSourceDrag::plane_drag,
+                                  this,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2)),
+        m_backend(backend),
         m_source(std::move(source)),
         m_terrain_size(terrain_size)
     {
@@ -463,6 +463,7 @@ public:
     }
 
 private:
+    ToolBackend m_backend;
     sim::object_ptr<sim::Fluid::Source> m_source;
     unsigned int m_terrain_size;
 
@@ -474,17 +475,96 @@ private:
             return nullptr;
         }
 
-        Vector2f pos(world_pos[eX], world_pos[eY]);
-        pos[eX] = clamp(pos[eX], 0.f, float(m_terrain_size));
-        pos[eY] = clamp(pos[eY], 0.f, float(m_terrain_size));
-
-        if (m_source->m_pos == pos) {
+        if (m_source->m_pos == Vector2f(world_pos)) {
             return nullptr;
         }
 
+        bool _;
+        float curr_terrain_height;
+        {
+            const sim::Terrain::HeightField *field;
+            auto lock = m_backend.world().terrain().readonly_field(field);
+            std::tie(_, curr_terrain_height) = m_backend.lookup_height(
+                        m_source->m_pos[eX],
+                        m_source->m_pos[eY],
+                        field);
+        }
 
         return std::make_unique<sim::ops::FluidSourceMove>(
-                    m_source.object_id(), pos[eX], pos[eY]);
+                    m_source.object_id(), world_pos[eX], world_pos[eY],
+                    m_source->m_absolute_height - curr_terrain_height
+                    + world_pos[eZ]);
+    }
+
+};
+
+
+/* FluidSourceResize */
+
+class FluidSourceResize: public VisualPlaneToolDrag
+{
+public:
+    FluidSourceResize(ToolBackend &backend,
+                      const Vector3f &plane_normal,
+                      const Vector2f &viewport_cursor,
+                      ffe::Material &plane_material,
+                      sim::object_ptr<sim::Fluid::Source> &&source,
+                      const unsigned int terrain_size):
+        VisualPlaneToolDrag(Plane(Vector3f(source->m_pos, 0), plane_normal),
+                            backend.camera(),
+                            backend.viewport_size(),
+                            backend.sgroot(),
+                            plane_material,
+                            std::bind(&FluidSourceResize::plane_drag,
+                                      this,
+                                      std::placeholders::_1,
+                                      std::placeholders::_2)),
+        m_backend(backend),
+        m_source(std::move(source)),
+        m_terrain_size(terrain_size),
+        m_original_height(m_source->m_absolute_height),
+        m_original_pos(raycast(viewport_cursor))
+    {
+
+    }
+
+private:
+    ToolBackend m_backend;
+    sim::object_ptr<sim::Fluid::Source> m_source;
+    unsigned int m_terrain_size;
+    float m_original_height;
+    Vector3f m_original_pos;
+
+private:
+    sim::WorldOperationPtr plane_drag(const Vector2f &,
+                                      const Vector3f &world_pos)
+    {
+        if (!m_source) {
+            return nullptr;
+        }
+
+        bool _;
+        float curr_terrain_height;
+        {
+            const sim::Terrain::HeightField *field;
+            auto lock = m_backend.world().terrain().readonly_field(field);
+            std::tie(_, curr_terrain_height) = m_backend.lookup_height(
+                        m_source->m_pos[eX],
+                        m_source->m_pos[eY],
+                        field);
+        }
+
+        float new_height = std::max(m_original_height + world_pos[eZ] - m_original_pos[eZ], curr_terrain_height);
+
+        if (m_source->m_absolute_height == new_height) {
+            return nullptr;
+        }
+
+        return std::make_unique<sim::ops::FluidSourceMove>(
+                    m_source.object_id(),
+                    m_source->m_pos[eX],
+                    m_source->m_pos[eY],
+                    new_height);
     }
 
 };
@@ -513,13 +593,37 @@ void TerraFluidSourceTool::add_source(const sim::Fluid::Source *source)
     m_source_visualisations[source->object_id()] = vis;
 }
 
-ffe::FluidSource *TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
+std::pair<ffe::FluidSource *, TerraFluidSourceTool::Control> TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
 {
     const Ray r = m_backend.view_ray(viewport_cursor);
 
-    return static_cast<ffe::FluidSource*>(
-                m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::FluidSource*>(&obj)); })
-                );
+    ffe::OctreeObject *hit;
+    float t;
+
+    std::tie(hit, t) = m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::FluidSource*>(&obj)); });
+
+    if (hit) {
+        ffe::FluidSource *source_vis = static_cast<ffe::FluidSource*>(hit);
+        const sim::Fluid::Source *source = source_vis->source();
+        const Vector3f pos = r.origin + r.direction*t;
+        const Vector3f center_pos = Vector3f(source->m_pos, pos[eZ]);
+
+        const Vector3f from_center = pos - center_pos;
+
+        Control ctrl;
+        if (from_center.length() < source->m_radius / 3.f) {
+            std::cout << "too central" << std::endl;
+            ctrl = POSITION;
+        } else {
+            const Vector3f viewdir = (-r.direction).normalized();
+            float angle = from_center.normalized() * viewdir;
+            std::cout << from_center.normalized() << " " << angle << " " << viewdir << std::endl;
+            ctrl = (angle > 0.5 ? HEIGHT : POSITION);
+        }
+        return std::make_pair(source_vis, ctrl);
+    }
+
+    return std::make_pair(nullptr, HEIGHT);
 }
 
 void TerraFluidSourceTool::on_fluid_source_added(sim::object_ptr<sim::Fluid::Source> source)
@@ -621,7 +725,9 @@ std::pair<bool, Vector3f> TerraFluidSourceTool::hover(
         m_selected_source->set_ui_state(ffe::UI_STATE_SELECTED);
     }
 
-    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+    ffe::FluidSource *obj;
+    Control control;
+    std::tie(obj, control) = find_fluid_source(viewport_cursor);
 
     if (obj) {
         if (obj != m_selected_source) {
@@ -637,18 +743,38 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
         const Vector2f &viewport_cursor,
         const Vector3f &world_cursor)
 {
-    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+    ffe::FluidSource *obj;
+    Control control;
+    std::tie(obj, control) = find_fluid_source(viewport_cursor);
 
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
         m_selected_source = obj;
-        return std::make_pair(std::make_unique<FluidSourceDrag>(m_backend.camera(),
-                                                                m_backend.viewport_size(),
-                                                                m_backend.sgroot(),
-                                                                m_drag_plane_material,
-                                                                std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
-                                                                m_backend.world().terrain().size()),
-                              nullptr);
+        switch (control)
+        {
+        case HEIGHT:
+        {
+            Vector3f plane_normal(-m_backend.view_ray(viewport_cursor).direction);
+            plane_normal[eZ] = 0;
+            plane_normal.normalize();
+            return std::make_pair(std::make_unique<FluidSourceResize>(m_backend,
+                                                                      plane_normal,
+                                                                      viewport_cursor,
+                                                                      m_drag_plane_material,
+                                                                      std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
+                                                                      m_backend.world().terrain().size()),
+                                  nullptr);
+        }
+        case POSITION:
+        {
+            return std::make_pair(std::make_unique<FluidSourceDrag>(m_backend,
+                                                                    m_drag_plane_material,
+                                                                    std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
+                                                                    m_backend.world().terrain().size()),
+                                  nullptr);
+        }
+        }
+
     } else {
         return std::make_pair(nullptr,
                               std::make_unique<sim::ops::FluidSourceCreate>(
@@ -659,13 +785,16 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
     }
 
 
+    return std::make_pair(nullptr, nullptr);
 }
 
 std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_start(
         const Vector2f &viewport_cursor,
         const Vector3f &)
 {
-    ffe::FluidSource *obj = find_fluid_source(viewport_cursor);
+    ffe::FluidSource *obj;
+    Control _;
+    std::tie(obj, _) = find_fluid_source(viewport_cursor);
 
     if (obj) {
         if (obj == m_selected_source) {
@@ -769,10 +898,11 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
 {
     const Ray r = m_backend.view_ray(viewport_cursor);
 
-    ffe::QuadBezier3fRoadTest *obj = static_cast<ffe::QuadBezier3fRoadTest*>(
-                m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::QuadBezier3fRoadTest*>(&obj)); })
-                );
+    ffe::OctreeObject *abstract_obj;
+    float t;
+    std::tie(abstract_obj, t) = m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::QuadBezier3fRoadTest*>(&obj)); });
 
+    ffe::QuadBezier3fRoadTest *obj = static_cast<ffe::QuadBezier3fRoadTest*>(abstract_obj);
     if (obj) {
         return std::make_pair(true, obj->curve().p3);
     }
