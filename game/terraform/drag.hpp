@@ -32,6 +32,8 @@ the AUTHORS file.
 #include "ffengine/sim/world_ops.hpp"
 
 #include "ffengine/render/camera.hpp"
+#include "ffengine/render/scenegraph.hpp"
+#include "ffengine/render/plane.hpp"
 
 
 class AbstractToolDrag
@@ -106,6 +108,32 @@ private:
 public:
     sim::WorldOperationPtr done(const Vector2f &viewport_pos) override;
     sim::WorldOperationPtr drag(const Vector2f &viewport_pos) override;
+
+};
+
+
+class VisualPlaneToolDrag: public PlaneToolDrag
+{
+public:
+    VisualPlaneToolDrag(const Plane &plane,
+                        const ffe::PerspectivalCamera &camera,
+                        const Vector2f &viewport_size,
+                        ffe::scenegraph::Group &sgparent,
+                        ffe::Material &plane_material,
+                        DragCallback &&drag_cb,
+                        DoneCallback &&done_cb = nullptr,
+                        bool continuous = false);
+    ~VisualPlaneToolDrag() override;
+
+private:
+    ffe::scenegraph::Group &m_sgparent;
+    ffe::PlaneNode *m_plane;
+
+private:
+    void delete_plane();
+
+public:
+    sim::WorldOperationPtr done(const Vector2f &viewport_pos) override;
 
 };
 

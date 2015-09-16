@@ -83,6 +83,11 @@ struct TerraformScene
     ffe::FullTerrainNode &m_full_terrain;
     ffe::FancyTerrainNode &m_terrain_geometry;
 
+    ffe::VBO m_drag_plane_vbo;
+    ffe::IBO m_drag_plane_ibo;
+
+    ffe::Material &m_fancy_drag_plane_material;
+
     ffe::Material &m_overlay_material;
     ffe::Material &m_bezier_material;
     ffe::Material &m_road_material;

@@ -29,5 +29,9 @@
         <file>shaders/lib/sunlight.frag</file>
         <file>shaders/terraform/fluidsource.frag</file>
         <file>shaders/terraform/fluidsource.vert</file>
+        <file>shaders/terraform/drag_plane.vert</file>
+        <file>shaders/lib/unproject.glsl</file>
+        <file>shaders/lib/inv_matrix_block.glsl</file>
+        <file>shaders/terraform/fancy_drag_plane.frag</file>
     </qresource>
 </RCC>

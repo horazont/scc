@@ -83,3 +83,44 @@ sim::WorldOperationPtr PlaneToolDrag::drag(const Vector2f &viewport_pos)
 {
     return m_drag_cb(viewport_pos, raycast(viewport_pos));
 }
+
+
+VisualPlaneToolDrag::VisualPlaneToolDrag(const Plane &plane,
+                                         const ffe::PerspectivalCamera &camera,
+                                         const Vector2f &viewport_size,
+                                         ffe::scenegraph::Group &sgparent,
+                                         ffe::Material &plane_material,
+                                         PlaneToolDrag::DragCallback &&drag_cb,
+                                         PlaneToolDrag::DoneCallback &&done_cb,
+                                         bool continuous):
+    PlaneToolDrag(plane, camera, viewport_size,
+                  std::move(drag_cb), std::move(done_cb),
+                  continuous),
+    m_sgparent(sgparent),
+    m_plane(&sgparent.emplace<ffe::PlaneNode>(plane, plane_material))
+{
+
+}
+
+VisualPlaneToolDrag::~VisualPlaneToolDrag()
+{
+    if (m_plane) {
+        delete_plane();
+    }
+}
+
+void VisualPlaneToolDrag::delete_plane()
+{
+    auto iter = std::find_if(m_sgparent.begin(),
+                             m_sgparent.end(),
+                             [this](const ffe::scenegraph::Node &node){ return &node == m_plane; });
+    assert(iter != m_sgparent.end());
+    m_sgparent.erase(iter);
+    m_plane = nullptr;
+}
+
+sim::WorldOperationPtr VisualPlaneToolDrag::done(const Vector2f &viewport_pos)
+{
+    delete_plane();
+    return PlaneToolDrag::done(viewport_pos);
+}

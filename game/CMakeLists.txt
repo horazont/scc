@@ -48,6 +48,8 @@ set(GAME_TEXTURE_RESOURCES
 
 set(GAME_SHADER_RESOURCES
   resources/shaders/generic/normal_debug.frag
+  resources/shaders/terraform/drag_plane.vert
+  resources/shaders/terraform/fancy_drag_plane.frag
   resources/shaders/terraform/fluidsource.frag
   resources/shaders/terraform/fluidsource.vert
   resources/shaders/terrain/normal_debug.geom
@@ -75,7 +77,9 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/lib/universal_shader.frag
   resources/shaders/lib/cubehelix.frag
   resources/shaders/lib/matrix_block.glsl
+  resources/shaders/lib/inv_matrix_block.glsl
   resources/shaders/lib/sunlight.frag
+  resources/shaders/lib/unproject.glsl
   )
 
 set(GAME_BRUSH_RESOURCES

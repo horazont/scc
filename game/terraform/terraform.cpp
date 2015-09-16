@@ -128,6 +128,11 @@ TerraformScene::TerraformScene(
                        terrain_interface.grid_size())),
     m_terrain_geometry(m_full_terrain.emplace<ffe::FancyTerrainNode>(
                            terrain_interface, m_resources, m_solid_pass)),
+    m_drag_plane_vbo(ffe::VBOFormat({ffe::VBOAttribute(3), ffe::VBOAttribute(3)})),
+    m_fancy_drag_plane_material(m_resources.emplace<ffe::Material>(
+                                   "test_drag_plane",
+                                   m_drag_plane_vbo,
+                                   m_drag_plane_ibo)),
     m_overlay_material(m_resources.manage<ffe::Material>(
                            "brush_overlay",
                            std::move(ffe::Material::shared_with(m_terrain_geometry.material())))),
@@ -152,6 +157,13 @@ TerraformScene::TerraformScene(
     m_scenegraph.set_sun_direction(Vector3f(1, 1, 4).normalized());
     m_scenegraph.set_sky_colour(Vector4f(0.95, 0.99, 1.0, 1.0));
 
+    m_prewater_colour.bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    m_prewater_depth.bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_solid_pass.set_clear_mask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     m_solid_pass.set_clear_colour(Vector4f(0.5, 0.4, 0.3, 1.0));
@@ -209,6 +221,35 @@ TerraformScene::TerraformScene(
                                           state.fluid(),
                                           m_transparent_pass,
                                           m_water_pass);
+
+    /* drag plane materials */
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_fancy_drag_plane_material.make_pass_material(m_water_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/drag_plane.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/fancy_drag_plane.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_fancy_drag_plane_material.declare_attribute("position", 0);
+        m_fancy_drag_plane_material.declare_attribute("normal", 1);
+
+        success = success && m_fancy_drag_plane_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link AABB material");
+        }
+
+        m_fancy_drag_plane_material.attach_texture("scene_depth", &m_prewater_depth);
+        m_fancy_drag_plane_material.attach_texture("scene_colour", &m_prewater_colour);
+    }
 
     /* testing materials */
 
@@ -490,7 +531,8 @@ void BrushList::append(const gamedata::PixelBrushDef &brush)
 
 /* CameraDrag */
 
-CameraDrag::CameraDrag(ffe::PerspectivalCamera &camera, const Vector2f &viewport_size,
+CameraDrag::CameraDrag(ffe::PerspectivalCamera &camera,
+                       const Vector2f &viewport_size,
                        const Vector3f &start_world_pos):
     PlaneToolDrag(Plane(start_world_pos, Vector3f(0, 0, 1)),
                   camera,
