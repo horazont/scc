@@ -989,10 +989,12 @@ void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
 
     any_settings =
             m_curr_tool->uses_brush()
-            || (m_curr_tool == m_tool_fluid_source.get());
+            || (m_curr_tool == m_tool_fluid_source.get())
+            || (m_curr_tool == m_tool_fluid_ocean_level.get());
     m_ui->brush_settings->setVisible(m_curr_tool->uses_brush());
     m_ui->level_tool_settings->setVisible(m_curr_tool == m_tool_level.get());
     m_ui->fluid_source_settings->setVisible(m_curr_tool == m_tool_fluid_source.get());
+    m_ui->fluid_ocean_level_settings->setVisible(m_curr_tool == m_tool_fluid_ocean_level.get());
 
     m_ui->tool_settings_frame->setVisible(any_settings);
 
@@ -1390,4 +1392,9 @@ void TerraformMode::on_tool_fluid_source_selected_capacity_changed(float new_val
     }
 
     m_ui->fluid_source_capacity_slider->setValue(std::round(new_value * 100.f));
+}
+
+void TerraformMode::on_fluid_ocean_level_reset_fluid_clicked()
+{
+    m_server->enqueue_op(std::make_unique<sim::ops::FluidReset>());
 }

@@ -330,6 +330,8 @@ private slots:
     void on_fluid_source_capacity_slider_valueChanged(int value);
     void on_action_terraform_tool_fluid_ocean_level_triggered();
 
+    void on_fluid_ocean_level_reset_fluid_clicked();
+
 private:
     void on_camera_pan_triggered();
     void on_camera_rotate_triggered();
