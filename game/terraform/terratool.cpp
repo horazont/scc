@@ -938,6 +938,129 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_s
 }
 
 
+/* FluidOceanLevelMove */
+
+class FluidOceanLevelMove: public PlaneToolDrag
+{
+public:
+    FluidOceanLevelMove(ToolBackend &backend,
+                        const Vector3f &plane_origin,
+                        const Vector3f &plane_normal,
+                        const Vector2f &viewport_cursor,
+                        ffe::Material &plane_material,
+                        const float initial_level):
+        PlaneToolDrag(Plane(plane_origin, plane_normal),
+                      backend.camera(),
+                      backend.viewport_size(),
+                      std::bind(&FluidOceanLevelMove::plane_drag,
+                                this,
+                                std::placeholders::_1,
+                                std::placeholders::_2)),
+        m_backend(backend),
+        m_plane(&backend.sgroot().emplace<ffe::PlaneNode>(Plane(Vector3f(0, 0, initial_level), Vector3f(0, 0, 1)), plane_material)),
+        m_original_height(initial_level),
+        m_original_pos(raycast(viewport_cursor))
+    {
+        set_cursor(Qt::SizeVerCursor);
+    }
+
+    ~FluidOceanLevelMove()
+    {
+        delete_plane();
+    }
+
+private:
+    ToolBackend m_backend;
+    ffe::PlaneNode *m_plane;
+    float m_original_height;
+    Vector3f m_original_pos;
+
+private:
+    void delete_plane()
+    {
+        if (!m_plane) {
+            return;
+        }
+
+        ffe::scenegraph::Group &group = m_backend.sgroot();
+
+        auto iter = std::find_if(group.begin(),
+                                 group.end(),
+                                 [this](const ffe::scenegraph::Node &node){ return &node == m_plane; });
+        assert(iter != group.end());
+        group.erase(iter);
+        m_plane = nullptr;
+    }
+
+private:
+    sim::WorldOperationPtr plane_drag(const Vector2f &,
+                                      const Vector3f &world_pos)
+    {
+        float new_height = m_original_height - m_original_pos[eZ] + world_pos[eZ];
+
+        std::cout << new_height << std::endl;
+
+        if (new_height < (sim::Terrain::min_height - 1) || new_height > sim::Terrain::max_height) {
+            return nullptr;
+        }
+
+        m_plane->set_plane(Plane(Vector3f(0, 0, new_height), Vector3f(0, 0, 1)));
+
+        return std::make_unique<sim::ops::FluidOceanLevelSetHeight>(new_height);
+    }
+
+public:
+    sim::WorldOperationPtr done(const Vector2f &viewport_pos) override
+    {
+        delete_plane();
+        return PlaneToolDrag::done(viewport_pos);
+    }
+
+};
+
+
+/* TerraFluidOceanLevelTool */
+
+TerraFluidOceanLevelTool::TerraFluidOceanLevelTool(ToolBackend &backend,
+                                                   ffe::Material &drag_plane_material):
+    AbstractTerraTool(backend),
+    m_drag_plane_material(drag_plane_material)
+{
+    m_uses_hover = true;
+}
+
+HoverState TerraFluidOceanLevelTool::hover(const Vector2f &)
+{
+    return HoverState(Qt::SizeVerCursor);
+}
+
+std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidOceanLevelTool::primary_start(
+        const Vector2f &viewport_cursor)
+{
+    const Ray &ray = m_backend.view_ray(viewport_cursor);
+    const float curr_level = m_backend.world().fluid().ocean_level();
+    float t;
+    PlaneSide side;
+    std::tie(t, side) = isect_plane_ray(Plane(Vector3f(0, 0, curr_level),
+                                              Vector3f(0, 0, 1)),
+                                        ray);
+    const Vector3f plane_origin(ray.origin + ray.direction*t);
+
+
+    Vector3f plane_normal(-ray.direction);
+    plane_normal[eZ] = 0;
+    plane_normal.normalize();
+    return std::make_pair(
+                std::make_unique<FluidOceanLevelMove>(m_backend,
+                                                      plane_origin,
+                                                      plane_normal,
+                                                      viewport_cursor,
+                                                      m_drag_plane_material,
+                                                      curr_level),
+                nullptr);
+}
+
+
 /* TerraTestingTool::TerraTestingTool */
 
 TerraTestingTool::TerraTestingTool(ToolBackend &backend,

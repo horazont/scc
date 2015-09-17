@@ -97,6 +97,8 @@ sim::WorldOperationPtr PlaneToolDrag::drag(const Vector2f &viewport_pos)
 }
 
 
+/* VisualPlaneToolDrag */
+
 VisualPlaneToolDrag::VisualPlaneToolDrag(const Plane &plane,
                                          const ffe::PerspectivalCamera &camera,
                                          const Vector2f &viewport_size,

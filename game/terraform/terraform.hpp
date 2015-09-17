@@ -264,6 +264,8 @@ private:
     std::unique_ptr<TerraFluidRaiseTool> m_tool_fluid_raise;
     std::unique_ptr<TerraTestingTool> m_tool_testing;
     std::unique_ptr<TerraFluidSourceTool> m_tool_fluid_source;
+    std::unique_ptr<TerraFluidOceanLevelTool> m_tool_fluid_ocean_level;
+
 
     AbstractTerraTool *m_curr_tool;
 
@@ -326,6 +328,7 @@ private slots:
     void on_action_terraform_tool_fluid_edit_sources_triggered();
     void on_level_tool_reference_height_slider_valueChanged(int value);
     void on_fluid_source_capacity_slider_valueChanged(int value);
+    void on_action_terraform_tool_fluid_ocean_level_triggered();
 
 private:
     void on_camera_pan_triggered();

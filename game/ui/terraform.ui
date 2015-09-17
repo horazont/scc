@@ -195,6 +195,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QToolButton" name="toolbtn_fluid_ocean_level">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -355,7 +362,7 @@
    <item row="2" column="0">
     <widget class="QWidget" name="tool_settings_frame" native="true">
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="3" column="0">
+      <item row="2" column="0">
        <widget class="QGroupBox" name="brush_settings">
         <property name="title">
          <string>Brush settings</string>

@@ -636,6 +636,7 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_ui->toolbtn_fluid_raise_lower->setDefaultAction(m_ui->action_terraform_tool_fluid_raise_lower);
     m_ui->toolbtn_testing->setDefaultAction(m_ui->action_terraform_tool_test);
     m_ui->toolbtn_fluid_source->setDefaultAction(m_ui->action_terraform_tool_fluid_edit_sources);
+    m_ui->toolbtn_fluid_ocean_level->setDefaultAction(m_ui->action_terraform_tool_fluid_ocean_level);
 
     m_tools.addAction(m_ui->action_terraform_tool_fluid_edit_sources);
     m_tools.addAction(m_ui->action_terraform_tool_fluid_raise_lower);
@@ -644,6 +645,7 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_tools.addAction(m_ui->action_terraform_tool_terrain_smooth);
     m_tools.addAction(m_ui->action_terraform_tool_terrain_level);
     m_tools.addAction(m_ui->action_terraform_tool_terrain_raise_lower);
+    m_tools.addAction(m_ui->action_terraform_tool_fluid_ocean_level);
 
     m_ui->tabWidget->tabBar()->setDrawBase(false);
 
@@ -946,6 +948,9 @@ void TerraformMode::initialise_tools()
                 m_scene->m_terrain_drag_plane_material);
     connect(m_tool_fluid_source.get(), &TerraFluidSourceTool::selected_capacity_changed,
             this, &TerraformMode::on_tool_fluid_source_selected_capacity_changed);
+    m_tool_fluid_ocean_level = std::make_unique<TerraFluidOceanLevelTool>(
+                *m_tool_backend,
+                m_scene->m_terrain_drag_plane_material);
 
     // testing tools
     m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
@@ -1272,6 +1277,11 @@ void TerraformMode::on_fluid_source_capacity_slider_valueChanged(int value)
     }
 
     m_server->enqueue_op(m_tool_fluid_source->set_selected_capacity(scaled_value));
+}
+
+void TerraformMode::on_action_terraform_tool_fluid_ocean_level_triggered()
+{
+    switch_to_tool(m_tool_fluid_ocean_level.get());
 }
 
 void TerraformMode::on_camera_pan_triggered()

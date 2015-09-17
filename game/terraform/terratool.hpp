@@ -333,6 +333,7 @@ public:
 
 };
 
+
 class TerraFluidSourceTool: public AbstractTerraTool
 {
     Q_OBJECT
@@ -392,8 +393,26 @@ public:
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
             const Vector2f &viewport_cursor) override;
 
+};
+
+
+class TerraFluidOceanLevelTool: public AbstractTerraTool
+{
+    Q_OBJECT
+public:
+    TerraFluidOceanLevelTool(ToolBackend &backend,
+                             ffe::Material &drag_plane_material);
+
+private:
+    ffe::Material &m_drag_plane_material;
+
+public:
+    HoverState hover(const Vector2f &viewport_cursor) override;
+    std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
+            const Vector2f &viewport_cursor) override;
 
 };
+
 
 class TerraTestingTool: public AbstractTerraTool
 {
