@@ -129,7 +129,7 @@ std::pair<ffe::OctreeObject *, float> ToolBackend::hittest_octree_object(const R
 
 std::tuple<Vector3f, bool> ToolBackend::hittest_terrain(const Ray &ray)
 {
-    const sim::Terrain::HeightField *field;
+    const sim::Terrain::Field *field;
     auto lock = m_world.terrain().readonly_field(field);
     return ffe::isect_terrain_ray(ray, m_world.terrain().size(), *field);
 }
@@ -141,7 +141,7 @@ void ToolBackend::set_viewport_size(const Vector2f &size)
 
 std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
         const float x, const float y,
-        const sim::Terrain::HeightField *field)
+        const sim::Terrain::Field *field)
 {
     const unsigned int terrain_size = m_world.terrain().size();
 
@@ -159,7 +159,7 @@ std::pair<bool, sim::Terrain::height_t> ToolBackend::lookup_height(
         lock = m_world.terrain().readonly_field(field);
     }
 
-    return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx]);
+    return std::make_pair(true, (*field)[terrainy*terrain_size+terrainx][sim::Terrain::HEIGHT_ATTR]);
 }
 
 /* AbstractTerraTool */
@@ -221,7 +221,7 @@ Vector3f TerrainToolDrag::raycast(const Vector2f &viewport_pos)
     Vector3f pos;
     bool hit;
     {
-        const sim::Terrain::HeightField *field;
+        const sim::Terrain::Field *field;
         auto lock = m_terrain.readonly_field(field);
         std::tie(pos, hit) = ffe::isect_terrain_ray(ray, m_terrain.size(), *field);
     }
@@ -596,7 +596,7 @@ private:
         bool _;
         float curr_terrain_height;
         {
-            const sim::Terrain::HeightField *field;
+            const sim::Terrain::Field *field;
             auto lock = m_backend.world().terrain().readonly_field(field);
             std::tie(_, curr_terrain_height) = m_backend.lookup_height(
                         m_source->m_pos[eX],

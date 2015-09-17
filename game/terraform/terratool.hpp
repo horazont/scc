@@ -142,7 +142,7 @@ public:
 
     std::pair<bool, sim::Terrain::height_t> lookup_height(
             const float x, const float y,
-            const sim::Terrain::HeightField *field = nullptr);
+            const sim::Terrain::Field *field = nullptr);
 
     template <typename callable_t, typename... arg_ts>
     inline sig11::connection_guard<void(arg_ts...)> connect_to_signal(
