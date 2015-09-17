@@ -483,8 +483,7 @@ class FluidSourceDrag: public TerrainToolDrag
 {
 public:
     FluidSourceDrag(ToolBackend &backend,
-                    ffe::Material &plane_material,
-                    sim::object_ptr<sim::Fluid::Source> &&source,
+                    const sim::object_ptr<sim::Fluid::Source> &source,
                     const unsigned int terrain_size):
         TerrainToolDrag(backend.world().terrain(),
                         backend.camera(),
@@ -521,21 +520,8 @@ private:
             return nullptr;
         }
 
-        bool _;
-        float curr_terrain_height;
-        {
-            const sim::Terrain::HeightField *field;
-            auto lock = m_backend.world().terrain().readonly_field(field);
-            std::tie(_, curr_terrain_height) = m_backend.lookup_height(
-                        m_source->m_pos[eX],
-                        m_source->m_pos[eY],
-                        field);
-        }
-
         return std::make_unique<sim::ops::FluidSourceMove>(
-                    m_source.object_id(), world_pos[eX], world_pos[eY],
-                    m_source->m_absolute_height - curr_terrain_height
-                    + world_pos[eZ]);
+                    m_source.object_id(), world_pos[eX], world_pos[eY]);
     }
 
 };
@@ -550,7 +536,7 @@ public:
                       const Vector3f &plane_normal,
                       const Vector2f &viewport_cursor,
                       ffe::Material &plane_material,
-                      sim::object_ptr<sim::Fluid::Source> &&source,
+                      const sim::object_ptr<sim::Fluid::Source> &source,
                       const unsigned int terrain_size):
         VisualPlaneToolDrag(Plane(Vector3f(source->m_pos, 0), plane_normal),
                             backend.camera(),
@@ -602,10 +588,8 @@ private:
             return nullptr;
         }
 
-        return std::make_unique<sim::ops::FluidSourceMove>(
+        return std::make_unique<sim::ops::FluidSourceSetHeight>(
                     m_source.object_id(),
-                    m_source->m_pos[eX],
-                    m_source->m_pos[eY],
                     new_height);
     }
 
@@ -620,7 +604,9 @@ TerraFluidSourceTool::TerraFluidSourceTool(ToolBackend &backend,
     AbstractTerraTool(backend),
     m_material(material),
     m_drag_plane_material(drag_plane_material),
-    m_selected_source(nullptr),
+    m_selected_source_vis(nullptr),
+    m_selected_height(0.f),
+    m_selected_capacity(1.f),
     m_visualisation_group(nullptr)
 {
     m_uses_hover = true;
@@ -633,6 +619,10 @@ void TerraFluidSourceTool::add_source(const sim::Fluid::Source *source)
     vis->set_source(source);
     vis->update_from_source();
     m_source_visualisations[source->object_id()] = vis;
+
+    if (!m_selected_source) {
+        select_source(vis, m_backend.world().objects().share<sim::Fluid::Source>(source->object_id()));
+    }
 }
 
 std::pair<ffe::FluidSource *, TerraFluidSourceTool::Control> TerraFluidSourceTool::find_fluid_source(const Vector2f &viewport_cursor)
@@ -693,6 +683,17 @@ void TerraFluidSourceTool::on_fluid_source_changed(sim::object_ptr<sim::Fluid::S
     }
 
     iter->second->update_from_source();
+
+    if (m_selected_source.object_id() == source.object_id()) {
+        if (m_selected_height != source->m_absolute_height) {
+            m_selected_height = source->m_absolute_height;
+            Q_EMIT(selected_height_changed(m_selected_height));
+        }
+        if (m_selected_capacity != source->m_capacity) {
+            m_selected_capacity = source->m_capacity;
+            Q_EMIT(selected_capacity_changed(m_selected_capacity));
+        }
+    }
 }
 
 void TerraFluidSourceTool::on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source)
@@ -703,8 +704,8 @@ void TerraFluidSourceTool::on_fluid_source_removed(sim::object_ptr<sim::Fluid::S
     }
 
     remove_visualisation(iter->second);
-    if (m_selected_source == iter->second) {
-        m_selected_source = nullptr;
+    if (m_selected_source_vis == iter->second) {
+        select_source(nullptr, nullptr);
     }
     m_source_visualisations.erase(iter);
 }
@@ -715,6 +716,42 @@ void TerraFluidSourceTool::remove_visualisation(ffe::FluidSource *vis)
                              m_visualisation_group->end(),
                              [vis](const ffe::scenegraph::OctNode &item){ return &item == vis; });
     m_visualisation_group->erase(iter);
+}
+
+void TerraFluidSourceTool::select_source(
+        ffe::FluidSource *vis,
+        sim::object_ptr<sim::Fluid::Source> &&ptr)
+{
+    m_selected_source_vis = vis;
+    m_selected_source = std::move(ptr);
+
+    if (m_selected_source) {
+        Q_EMIT(selection_changed(true));
+        m_selected_height = m_selected_source->m_absolute_height;
+        Q_EMIT(selected_height_changed(m_selected_height));
+        m_selected_capacity = m_selected_source->m_capacity;
+        Q_EMIT(selected_capacity_changed(m_selected_height));
+    } else {
+        Q_EMIT(selection_changed(false));
+    }
+}
+
+sim::WorldOperationPtr TerraFluidSourceTool::set_selected_capacity(float value)
+{
+    if (!m_selected_source) {
+        return nullptr;
+    }
+
+    return std::make_unique<sim::ops::FluidSourceSetCapacity>(m_selected_source.object_id(), value);
+}
+
+sim::WorldOperationPtr TerraFluidSourceTool::set_selected_height(float value)
+{
+    if (!m_selected_source) {
+        return nullptr;
+    }
+
+    return std::make_unique<sim::ops::FluidSourceSetHeight>(m_selected_source.object_id(), value);
 }
 
 void TerraFluidSourceTool::activate()
@@ -743,6 +780,8 @@ void TerraFluidSourceTool::activate()
                 std::bind(&TerraFluidSourceTool::on_fluid_source_removed,
                           this,
                           std::placeholders::_1));
+
+    Q_EMIT(selected_capacity_changed(m_selected_capacity));
 }
 
 void TerraFluidSourceTool::deactivate()
@@ -750,6 +789,8 @@ void TerraFluidSourceTool::deactivate()
     m_fluid_source_added_connection = nullptr;
     m_fluid_source_changed_connection = nullptr;
     m_fluid_source_removed_connection = nullptr;
+    m_selected_source = nullptr;
+    m_selected_source_vis = nullptr;
     ffe::scenegraph::OctGroup &parent = m_backend.sgoctree().root();
     auto iter = std::find_if(parent.begin(),
                              parent.end(),
@@ -761,8 +802,8 @@ void TerraFluidSourceTool::deactivate()
 
 HoverState TerraFluidSourceTool::hover(const Vector2f &viewport_cursor)
 {
-    if (m_selected_source) {
-        m_selected_source->set_ui_state(ffe::UI_STATE_SELECTED);
+    if (m_selected_source_vis) {
+        m_selected_source_vis->set_ui_state(ffe::UI_STATE_SELECTED);
     }
 
     ffe::FluidSource *obj;
@@ -770,7 +811,7 @@ HoverState TerraFluidSourceTool::hover(const Vector2f &viewport_cursor)
     std::tie(obj, control) = find_fluid_source(viewport_cursor);
 
     if (obj) {
-        if (obj != m_selected_source) {
+        if (obj != m_selected_source_vis) {
             obj->set_ui_state(ffe::UI_STATE_HOVER);
             return HoverState(Qt::PointingHandCursor);
         }
@@ -799,10 +840,11 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
 
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
-        if (obj != m_selected_source) {
-            m_selected_source = obj;
+        if (obj != m_selected_source_vis) {
+            select_source(obj, m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id()));
             return std::make_pair(nullptr, nullptr);
         }
+
         switch (control)
         {
         case HEIGHT:
@@ -814,15 +856,14 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
                                                                       plane_normal,
                                                                       viewport_cursor,
                                                                       m_drag_plane_material,
-                                                                      std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
+                                                                      m_selected_source,
                                                                       m_backend.world().terrain().size()),
                                   nullptr);
         }
         case POSITION:
         {
             return std::make_pair(std::make_unique<FluidSourceDrag>(m_backend,
-                                                                    m_drag_plane_material,
-                                                                    std::move(m_backend.world().objects().share<sim::Fluid::Source>(obj->source()->object_id())),
+                                                                    m_selected_source,
                                                                     m_backend.world().terrain().size()),
                                   nullptr);
         }
@@ -834,12 +875,14 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
         std::tie(world_pos, valid) = m_backend.hittest_terrain(m_backend.view_ray(viewport_cursor));
 
         if (valid) {
+            // clear selection so that new source will be selected automatically
+            select_source(nullptr, nullptr);
             return std::make_pair(nullptr,
                                   std::make_unique<sim::ops::FluidSourceCreate>(
                                       world_pos[eX], world_pos[eY],
                                       5.f,
                                       world_pos[eZ] + 2.f,
-                                      1.f));
+                                      m_selected_capacity));
         }
     }
 
@@ -855,9 +898,6 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::secondary_s
     std::tie(obj, _) = find_fluid_source(viewport_cursor);
 
     if (obj) {
-        if (obj == m_selected_source) {
-            m_selected_source = nullptr;
-        }
         if (obj->source()) {
             return std::make_pair(nullptr, std::make_unique<sim::ops::FluidSourceDestroy>(obj->source()->object_id()));
         }

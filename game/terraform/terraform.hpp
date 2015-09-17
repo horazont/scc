@@ -323,8 +323,8 @@ private slots:
     void on_brush_list_clicked(const QModelIndex &index);
     void on_action_terraform_tool_test_triggered();
     void on_action_terraform_tool_fluid_edit_sources_triggered();
-
     void on_level_tool_reference_height_slider_valueChanged(int value);
+    void on_fluid_source_capacity_slider_valueChanged(int value);
 
 private:
     void on_camera_pan_triggered();
@@ -333,6 +333,7 @@ private:
     void on_tool_secondary_triggered();
 
     void on_tool_level_reference_height_changed(float new_value);
+    void on_tool_fluid_source_selected_capacity_changed(float new_value);
 
 };
 

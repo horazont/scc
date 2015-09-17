@@ -351,7 +351,11 @@ public:
 private:
     ffe::FluidSourceMaterial &m_material;
     ffe::Material &m_drag_plane_material;
-    ffe::FluidSource *m_selected_source;
+    ffe::FluidSource *m_selected_source_vis;
+    sim::object_ptr<sim::Fluid::Source> m_selected_source;
+
+    float m_selected_height;
+    float m_selected_capacity;
 
     ffe::scenegraph::OctGroup *m_visualisation_group;
 
@@ -368,6 +372,16 @@ protected:
     void on_fluid_source_changed(sim::object_ptr<sim::Fluid::Source> source);
     void on_fluid_source_removed(sim::object_ptr<sim::Fluid::Source> source);
     void remove_visualisation(ffe::FluidSource *vis);
+    void select_source(ffe::FluidSource *vis, sim::object_ptr<sim::Fluid::Source> &&ptr);
+
+signals:
+    void selected_capacity_changed(float value);
+    void selected_height_changed(float value);
+    void selection_changed(bool has_selected);
+
+public:
+    sim::WorldOperationPtr set_selected_capacity(float value);
+    sim::WorldOperationPtr set_selected_height(float value);
 
 public:
     void activate() override;

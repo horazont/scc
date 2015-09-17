@@ -911,6 +911,8 @@ void TerraformMode::initialise_tools()
                 *m_tool_backend,
                 m_scene->m_fluid_source_material,
                 m_scene->m_fancy_drag_plane_material);
+    connect(m_tool_fluid_source.get(), &TerraFluidSourceTool::selected_capacity_changed,
+            this, &TerraformMode::on_tool_fluid_source_selected_capacity_changed);
 
     // testing tools
     m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
@@ -947,10 +949,12 @@ void TerraformMode::switch_to_tool(AbstractTerraTool *new_tool)
 
     bool any_settings = false;
 
-    any_settings = any_settings || m_curr_tool->uses_brush();
+    any_settings =
+            m_curr_tool->uses_brush()
+            || (m_curr_tool == m_tool_fluid_source.get());
     m_ui->brush_settings->setVisible(m_curr_tool->uses_brush());
-
     m_ui->level_tool_settings->setVisible(m_curr_tool == m_tool_level.get());
+    m_ui->fluid_source_settings->setVisible(m_curr_tool == m_tool_fluid_source.get());
 
     m_ui->tool_settings_frame->setVisible(any_settings);
 
@@ -1210,6 +1214,33 @@ void TerraformMode::on_action_terraform_tool_fluid_edit_sources_triggered()
     switch_to_tool(m_tool_fluid_source.get());
 }
 
+void TerraformMode::on_level_tool_reference_height_slider_valueChanged(int value)
+{
+    if (!m_curr_tool || m_curr_tool != m_tool_level.get()) {
+        return;
+    }
+
+    const float scaled_value = float(value) / 100.f;
+    m_tool_level->set_reference_height(scaled_value);
+    m_ui->level_tool_reference_height_label->setText(QString::asprintf("%.2f", scaled_value));
+}
+
+void TerraformMode::on_fluid_source_capacity_slider_valueChanged(int value)
+{
+    if (!m_curr_tool || m_curr_tool != m_tool_fluid_source.get()) {
+        return;
+    }
+
+    const float scaled_value = float(value) / 100.f;
+    m_ui->fluid_source_capacity_label->setText(QString::asprintf("%.2f", scaled_value));
+
+    if (!m_ui->fluid_source_capacity_slider->isSliderDown()) {
+        return;
+    }
+
+    m_server->enqueue_op(m_tool_fluid_source->set_selected_capacity(scaled_value));
+}
+
 void TerraformMode::on_camera_pan_triggered()
 {
     if (!m_scene) {
@@ -1309,13 +1340,11 @@ void TerraformMode::on_tool_level_reference_height_changed(float new_value)
     m_ui->level_tool_reference_height_slider->setValue(std::round(new_value * 100.f));
 }
 
-void TerraformMode::on_level_tool_reference_height_slider_valueChanged(int value)
+void TerraformMode::on_tool_fluid_source_selected_capacity_changed(float new_value)
 {
-    if (!m_curr_tool || m_curr_tool != m_tool_level.get()) {
+    if (m_ui->fluid_source_capacity_slider->isSliderDown()) {
         return;
     }
 
-    const float scaled_value = float(value) / 100.f;
-    m_tool_level->set_reference_height(scaled_value);
-    m_ui->level_tool_reference_height_label->setText(QString::asprintf("%.2f", scaled_value));
+    m_ui->fluid_source_capacity_slider->setValue(std::round(new_value * 100.f));
 }
