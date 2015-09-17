@@ -36,6 +36,30 @@ the AUTHORS file.
 #include "ffengine/render/renderpass.hpp"
 
 
+HoverState::HoverState():
+    m_enable_cursor_override(false),
+    m_world_cursor_valid(false)
+{
+
+}
+
+HoverState::HoverState(const Vector3f &world_cursor):
+    m_enable_cursor_override(false),
+    m_world_cursor_valid(true),
+    m_world_cursor(world_cursor)
+{
+
+}
+
+HoverState::HoverState(const QCursor &cursor_override):
+    m_enable_cursor_override(true),
+    m_cursor_override(cursor_override),
+    m_world_cursor_valid(false)
+{
+
+}
+
+
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
                          const sim::WorldState &world,
                          ffe::scenegraph::Group &sgroot,
@@ -158,9 +182,9 @@ void AbstractTerraTool::deactivate()
 
 }
 
-std::pair<bool, Vector3f> AbstractTerraTool::hover(const Vector2f &)
+HoverState AbstractTerraTool::hover(const Vector2f &)
 {
-    return std::make_pair(false, Vector3f());
+    return HoverState();
 }
 
 std::pair<ToolDragPtr, sim::WorldOperationPtr> AbstractTerraTool::primary_start(const Vector2f &)
@@ -473,7 +497,7 @@ public:
         m_source(std::move(source)),
         m_terrain_size(terrain_size)
     {
-
+        set_cursor(Qt::SizeAllCursor);
     }
 
 private:
@@ -485,6 +509,10 @@ private:
     sim::WorldOperationPtr plane_drag(const Vector2f &,
                                       const Vector3f &world_pos)
     {
+        if (std::isnan(world_pos[eX])) {
+            return nullptr;
+        }
+
         if (!m_source) {
             return nullptr;
         }
@@ -539,7 +567,7 @@ public:
         m_original_height(m_source->m_absolute_height),
         m_original_pos(raycast(viewport_cursor))
     {
-
+        set_cursor(Qt::SizeVerCursor);
     }
 
 private:
@@ -731,7 +759,7 @@ void TerraFluidSourceTool::deactivate()
     m_source_visualisations.clear();
 }
 
-std::pair<bool, Vector3f> TerraFluidSourceTool::hover(const Vector2f &viewport_cursor)
+HoverState TerraFluidSourceTool::hover(const Vector2f &viewport_cursor)
 {
     if (m_selected_source) {
         m_selected_source->set_ui_state(ffe::UI_STATE_SELECTED);
@@ -744,11 +772,22 @@ std::pair<bool, Vector3f> TerraFluidSourceTool::hover(const Vector2f &viewport_c
     if (obj) {
         if (obj != m_selected_source) {
             obj->set_ui_state(ffe::UI_STATE_HOVER);
+            return HoverState(Qt::PointingHandCursor);
         }
-        return std::make_pair(true, Vector3f());
+        switch (control)
+        {
+        case POSITION:
+        {
+            return HoverState(Qt::SizeAllCursor);
+        }
+        case HEIGHT:
+        {
+            return HoverState(Qt::SizeVerCursor);
+        }
+        }
     }
 
-    return std::make_pair(false, Vector3f());
+    return HoverState();
 }
 
 std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_start(
@@ -760,7 +799,10 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidSourceTool::primary_sta
 
     if (obj) {
         obj->set_ui_state(ffe::UI_STATE_SELECTED);
-        m_selected_source = obj;
+        if (obj != m_selected_source) {
+            m_selected_source = obj;
+            return std::make_pair(nullptr, nullptr);
+        }
         switch (control)
         {
         case HEIGHT:
@@ -928,7 +970,7 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
     return std::make_pair(valid, p);
 }
 
-std::pair<bool, Vector3f> TerraTestingTool::hover(const Vector2f &viewport_cursor)
+HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
 {
     switch (m_step)
     {
@@ -936,7 +978,7 @@ std::pair<bool, Vector3f> TerraTestingTool::hover(const Vector2f &viewport_curso
     {
         auto potential_result = snapped_point(viewport_cursor);
         if (potential_result.first) {
-            return potential_result;
+            return HoverState(potential_result.second);
         }
         break;
     }
@@ -961,7 +1003,7 @@ std::pair<bool, Vector3f> TerraTestingTool::hover(const Vector2f &viewport_curso
         m_tmp_curve.p3 = p;
         m_debug_node->set_curve(m_tmp_curve);
         if (valid) {
-            return std::make_pair(valid, p);
+            return HoverState(p);
         }
         break;
     }

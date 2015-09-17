@@ -29,7 +29,8 @@ the AUTHORS file.
 /* AbstractToolDrag */
 
 AbstractToolDrag::AbstractToolDrag(bool continuous):
-    m_continuous(continuous)
+    m_continuous(continuous),
+    m_use_cursor(false)
 {
 
 }
@@ -37,6 +38,17 @@ AbstractToolDrag::AbstractToolDrag(bool continuous):
 AbstractToolDrag::~AbstractToolDrag()
 {
 
+}
+
+void AbstractToolDrag::set_cursor(const QCursor &cursor)
+{
+    m_use_cursor = true;
+    m_cursor = cursor;
+}
+
+void AbstractToolDrag::reset_cursor()
+{
+    m_use_cursor = false;
 }
 
 

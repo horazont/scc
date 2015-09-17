@@ -279,9 +279,11 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 private:
+    void apply_hover_state(const HoverState &state);
     void clear_mouse_mode();
     void enter_mouse_mode(MouseMode mode,
                           MouseAction *original_action);
+    void enter_mouse_mode(ToolDragPtr &&drag, MouseAction *original_action);
     std::pair<bool, Vector3f> get_mouse_world_pos();
     void initialise_tools();
     bool may_clear_mouse_mode(MouseMode potential_mode);

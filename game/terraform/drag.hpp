@@ -24,7 +24,11 @@ the AUTHORS file.
 #ifndef GAME_TERRAFORM_DRAG_HPP
 #define GAME_TERRAFORM_DRAG_HPP
 
+#include "fixups.hpp"
+
 #include <functional>
+
+#include <QCursor>
 
 #include "ffengine/math/shapes.hpp"
 #include "ffengine/math/vector.hpp"
@@ -44,11 +48,27 @@ public:
 
 private:
     bool m_continuous;
+    bool m_use_cursor;
+    QCursor m_cursor;
+
+protected:
+    void set_cursor(const QCursor &cursor);
+    void reset_cursor();
 
 public:
+    inline const QCursor &cursor() const
+    {
+        return m_cursor;
+    }
+
     inline bool is_continuous() const
     {
         return m_continuous;
+    }
+
+    inline bool use_cursor() const
+    {
+        return m_use_cursor;
     }
 
 public:

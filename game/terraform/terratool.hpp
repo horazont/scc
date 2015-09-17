@@ -28,6 +28,8 @@ the AUTHORS file.
 
 #include <sigc++/sigc++.h>
 
+#include <QCursor>
+
 #include "ffengine/math/curve.hpp"
 
 #include "ffengine/sim/signals.hpp"
@@ -53,6 +55,21 @@ using ToolDragPtr = std::unique_ptr<AbstractToolDrag>;
 enum class TerraToolType
 {
     BRUSH = 0,
+};
+
+
+struct HoverState
+{
+    HoverState();
+    HoverState(const Vector3f &world_cursor);
+    HoverState(const Vector3f &world_cursor, const QCursor &cursor_override);
+    HoverState(const QCursor &cursor_override);
+
+    bool m_enable_cursor_override;
+    QCursor m_cursor_override;
+
+    bool m_world_cursor_valid;
+    Vector3f m_world_cursor;
 };
 
 
@@ -164,7 +181,7 @@ public:
     virtual void activate();
     virtual void deactivate();
 
-    virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor);
+    virtual HoverState hover(const Vector2f &viewport_cursor);
 
     virtual std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor);
@@ -355,7 +372,7 @@ protected:
 public:
     void activate() override;
     void deactivate() override;
-    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor) override;
+    HoverState hover(const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
@@ -385,7 +402,7 @@ protected:
     std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor);
 
 public:
-    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor) override;
+    HoverState hover(const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
             const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(

@@ -714,19 +714,25 @@ void TerraformMode::before_gl_sync()
     if (m_curr_tool) {
         Vector3f cursor;
         bool valid = false;
-        if (m_curr_tool->uses_hover()) {
-            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win);
-        }
-
-        if (!valid) {
-            std::tie(valid, cursor) = get_mouse_world_pos();
+        if (m_curr_tool->uses_hover() && !m_drag) {
+            HoverState state(m_curr_tool->hover(m_mouse_pos_win));
+            apply_hover_state(state);
+            cursor = state.m_world_cursor;
+            valid = state.m_world_cursor_valid;
         }
 
         if (m_curr_tool->uses_brush()) {
+            if (!valid) {
+                std::tie(valid, cursor) = get_mouse_world_pos();
+            }
             update_brush(cursor, valid);
         } else {
             m_scene->m_terrain_geometry.remove_overlay(
                         m_scene->m_overlay_material);
+        }
+    } else {
+        if (!m_drag) {
+            apply_hover_state(HoverState());
         }
     }
 
@@ -832,11 +838,21 @@ void TerraformMode::wheelEvent(QWheelEvent *event)
                 );
 }
 
+void TerraformMode::apply_hover_state(const HoverState &state)
+{
+    if (state.m_enable_cursor_override) {
+        setCursor(state.m_cursor_override);
+    } else {
+        setCursor(Qt::ArrowCursor);
+    }
+}
+
 void TerraformMode::clear_mouse_mode()
 {
     releaseMouse();
     if (m_mouse_mode == MOUSE_TOOL_DRAG) {
         m_drag->done(m_mouse_pos_win);
+        QApplication::restoreOverrideCursor();
         m_drag = nullptr;
     }
     m_mouse_mode = MOUSE_IDLE;
@@ -848,6 +864,15 @@ void TerraformMode::enter_mouse_mode(MouseMode mode, MouseAction *original_actio
     grabMouse();
     m_mouse_mode = mode;
     m_mouse_action = original_action;
+}
+
+void TerraformMode::enter_mouse_mode(ToolDragPtr &&drag, MouseAction *original_action)
+{
+    m_drag = std::move(drag);
+    if (m_drag->use_cursor()) {
+        QApplication::setOverrideCursor(m_drag->cursor());
+    }
+    enter_mouse_mode(MOUSE_TOOL_DRAG, original_action);
 }
 
 std::pair<bool, Vector3f> TerraformMode::get_mouse_world_pos()
