@@ -529,7 +529,7 @@ private:
 
 /* FluidSourceResize */
 
-class FluidSourceResize: public VisualPlaneToolDrag
+class FluidSourceResize: public PlaneToolDrag
 {
 public:
     FluidSourceResize(ToolBackend &backend,
@@ -538,16 +538,15 @@ public:
                       ffe::Material &plane_material,
                       const sim::object_ptr<sim::Fluid::Source> &source,
                       const unsigned int terrain_size):
-        VisualPlaneToolDrag(Plane(Vector3f(source->m_pos, 0), plane_normal),
-                            backend.camera(),
-                            backend.viewport_size(),
-                            backend.sgroot(),
-                            plane_material,
-                            std::bind(&FluidSourceResize::plane_drag,
-                                      this,
-                                      std::placeholders::_1,
-                                      std::placeholders::_2)),
+        PlaneToolDrag(Plane(Vector3f(source->m_pos, 0), plane_normal),
+                      backend.camera(),
+                      backend.viewport_size(),
+                      std::bind(&FluidSourceResize::plane_drag,
+                                this,
+                                std::placeholders::_1,
+                                std::placeholders::_2)),
         m_backend(backend),
+        m_plane(&backend.sgroot().emplace<ffe::PlaneNode>(Plane(Vector3f(source->m_pos, source->m_absolute_height), Vector3f(0, 0, 1)), plane_material)),
         m_source(std::move(source)),
         m_terrain_size(terrain_size),
         m_original_height(m_source->m_absolute_height),
@@ -556,12 +555,35 @@ public:
         set_cursor(Qt::SizeVerCursor);
     }
 
+    ~FluidSourceResize()
+    {
+        delete_plane();
+    }
+
 private:
     ToolBackend m_backend;
+    ffe::PlaneNode *m_plane;
     sim::object_ptr<sim::Fluid::Source> m_source;
     unsigned int m_terrain_size;
     float m_original_height;
     Vector3f m_original_pos;
+
+private:
+    void delete_plane()
+    {
+        if (!m_plane) {
+            return;
+        }
+
+        ffe::scenegraph::Group &group = m_backend.sgroot();
+
+        auto iter = std::find_if(group.begin(),
+                                 group.end(),
+                                 [this](const ffe::scenegraph::Node &node){ return &node == m_plane; });
+        assert(iter != group.end());
+        group.erase(iter);
+        m_plane = nullptr;
+    }
 
 private:
     sim::WorldOperationPtr plane_drag(const Vector2f &,
@@ -584,6 +606,8 @@ private:
 
         float new_height = std::max(m_original_height + world_pos[eZ] - m_original_pos[eZ], curr_terrain_height);
 
+        m_plane->set_plane(Plane(Vector3f(m_source->m_pos, new_height), Vector3f(0, 0, 1)));
+
         if (m_source->m_absolute_height == new_height) {
             return nullptr;
         }
@@ -591,6 +615,13 @@ private:
         return std::make_unique<sim::ops::FluidSourceSetHeight>(
                     m_source.object_id(),
                     new_height);
+    }
+
+public:
+    sim::WorldOperationPtr done(const Vector2f &viewport_pos) override
+    {
+        delete_plane();
+        return PlaneToolDrag::done(viewport_pos);
     }
 
 };

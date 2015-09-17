@@ -87,6 +87,7 @@ struct TerraformScene
     ffe::IBO m_drag_plane_ibo;
 
     ffe::Material &m_fancy_drag_plane_material;
+    ffe::Material &m_terrain_drag_plane_material;
 
     ffe::Material &m_overlay_material;
     ffe::Material &m_bezier_material;

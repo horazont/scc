@@ -130,7 +130,11 @@ TerraformScene::TerraformScene(
                            terrain_interface, m_resources, m_solid_pass)),
     m_drag_plane_vbo(ffe::VBOFormat({ffe::VBOAttribute(3), ffe::VBOAttribute(3)})),
     m_fancy_drag_plane_material(m_resources.emplace<ffe::Material>(
-                                   "test_drag_plane",
+                                   "depth_drag_plane",
+                                   m_drag_plane_vbo,
+                                   m_drag_plane_ibo)),
+    m_terrain_drag_plane_material(m_resources.emplace<ffe::Material>(
+                                   "terrain_drag_plane",
                                    m_drag_plane_vbo,
                                    m_drag_plane_ibo)),
     m_overlay_material(m_resources.manage<ffe::Material>(
@@ -190,7 +194,7 @@ TerraformScene::TerraformScene(
 
     m_full_terrain.set_detail_level(0);
 
-    m_terrain_geometry.set_enable_linear_filter(false);
+    m_terrain_geometry.set_enable_linear_filter(true);
     m_terrain_geometry.attach_grass_texture(&m_grass);
     m_terrain_geometry.attach_rock_texture(&m_rock);
     m_terrain_geometry.attach_blend_texture(&m_blend);
@@ -249,6 +253,35 @@ TerraformScene::TerraformScene(
 
         m_fancy_drag_plane_material.attach_texture("scene_depth", &m_prewater_depth);
         m_fancy_drag_plane_material.attach_texture("scene_colour", &m_prewater_colour);
+    }
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ctx.define1f("terrain_size", terrain_interface.terrain().size());
+
+        ffe::MaterialPass &pass = m_terrain_drag_plane_material.make_pass_material(m_water_pass);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/drag_plane.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/terraform/terrain_drag_plane.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_terrain_drag_plane_material.declare_attribute("position", 0);
+        m_terrain_drag_plane_material.declare_attribute("normal", 1);
+
+        success = success && m_terrain_drag_plane_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link AABB material");
+        }
+
+        m_terrain_drag_plane_material.attach_texture("heightmap", &m_terrain_geometry.heightmap());
+        m_terrain_drag_plane_material.set_depth_test(false);
     }
 
     /* testing materials */
@@ -910,7 +943,7 @@ void TerraformMode::initialise_tools()
     m_tool_fluid_source = std::make_unique<TerraFluidSourceTool>(
                 *m_tool_backend,
                 m_scene->m_fluid_source_material,
-                m_scene->m_fancy_drag_plane_material);
+                m_scene->m_terrain_drag_plane_material);
     connect(m_tool_fluid_source.get(), &TerraFluidSourceTool::selected_capacity_changed,
             this, &TerraformMode::on_tool_fluid_source_selected_capacity_changed);
 

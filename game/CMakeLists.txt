@@ -52,6 +52,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/terraform/fancy_drag_plane.frag
   resources/shaders/terraform/fluidsource.frag
   resources/shaders/terraform/fluidsource.vert
+  resources/shaders/terraform/terrain_drag_plane.frag
   resources/shaders/terrain/normal_debug.geom
   resources/shaders/terrain/main.vert
   resources/shaders/terrain/main.geom

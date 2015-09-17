@@ -33,5 +33,6 @@
         <file>shaders/lib/unproject.glsl</file>
         <file>shaders/lib/inv_matrix_block.glsl</file>
         <file>shaders/terraform/fancy_drag_plane.frag</file>
+        <file>shaders/terraform/terrain_drag_plane.frag</file>
     </qresource>
 </RCC>
