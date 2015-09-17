@@ -253,11 +253,6 @@ private:
 
     ToolDragPtr m_drag;
 
-    bool m_mouse_world_pos_updated;
-    bool m_mouse_world_pos_valid;
-    Vector3f m_mouse_world_pos;
-
-    ParzenBrush m_test_brush;
     BrushFrontend m_brush_frontend;
     bool m_brush_changed;
 
@@ -287,17 +282,17 @@ private:
     void clear_mouse_mode();
     void enter_mouse_mode(MouseMode mode,
                           MouseAction *original_action);
+    std::pair<bool, Vector3f> get_mouse_world_pos();
     void initialise_tools();
     bool may_clear_mouse_mode(MouseMode potential_mode);
 
 protected:
     void switch_to_tool(AbstractTerraTool *new_tool);
     void collect_aabbs(std::vector<AABB> &dest);
-    void ensure_mouse_world_pos();
     void load_brushes();
     void load_brushes_from(QDir dir, bool recurse=true);
     void prepare_scene();
-    void update_brush();
+    void update_brush(const Vector3f &cursor, bool cursor_valid);
 
 public slots:
     void advance(ffe::TimeInterval dt);

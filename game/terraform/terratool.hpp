@@ -119,6 +119,7 @@ public:
     std::pair<ffe::OctreeObject*, float> hittest_octree_object(
             const Ray &ray,
             const std::function<bool(const ffe::OctreeObject &)> &predicate);
+    std::tuple<Vector3f, bool> hittest_terrain(const Ray &ray);
 
     void set_viewport_size(const Vector2f &size);
 
@@ -163,16 +164,13 @@ public:
     virtual void activate();
     virtual void deactivate();
 
-    virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
-                                            const Vector3f &world_cursor);
+    virtual std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor);
 
     virtual std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor);
+            const Vector2f &viewport_cursor);
 
     virtual std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor);
+            const Vector2f &viewport_cursor);
 
 };
 
@@ -215,15 +213,13 @@ public:
 
 public:
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
     virtual sim::WorldOperationPtr primary_move(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
 
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
     virtual sim::WorldOperationPtr secondary_move(
             const Vector2f &viewport_cursor,
             const Vector3f &world_cursor);
@@ -257,8 +253,7 @@ public:
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
 
 signals:
     void reference_height_changed(float new_reference_height);
@@ -283,8 +278,7 @@ public:
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
 
 };
 
@@ -300,13 +294,11 @@ private:
 
 public:
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
     sim::WorldOperationPtr primary_move(const Vector2f &viewport_cursor,
                                         const Vector3f &world_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
 
 };
 
@@ -363,14 +355,11 @@ protected:
 public:
     void activate() override;
     void deactivate() override;
-    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
-                                    const Vector3f &world_cursor) override;
+    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
 
 
 };
@@ -393,18 +382,14 @@ private:
 protected:
     void add_segment(const QuadBezier3f &curve);
     void add_segmentized();
-    std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor,
-                                            const Vector3f &world_cursor);
+    std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor);
 
 public:
-    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor,
-                                    const Vector3f &world_cursor) override;
+    std::pair<bool, Vector3f> hover(const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> primary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
     std::pair<ToolDragPtr, sim::WorldOperationPtr> secondary_start(
-            const Vector2f &viewport_cursor,
-            const Vector3f &world_cursor) override;
+            const Vector2f &viewport_cursor) override;
 
 };
 

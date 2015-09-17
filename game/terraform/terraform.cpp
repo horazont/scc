@@ -570,8 +570,6 @@ TerraformMode::TerraformMode(Application &app, QWidget *parent):
     m_mouse_mode(MOUSE_IDLE),
     m_mouse_action(nullptr),
     m_drag(nullptr),
-    m_mouse_world_pos_updated(false),
-    m_mouse_world_pos_valid(false),
     m_brush_changed(true),
     m_curr_tool(nullptr),
     m_brush_objects(this),
@@ -679,8 +677,6 @@ void TerraformMode::advance(ffe::TimeInterval dt)
         if (op) {
             m_server->enqueue_op(std::move(op));
         }
-        // terrain under mouse probably changed
-        m_mouse_world_pos_updated = false;
     }
     /*if (dt > 0.02) {
         logger.logf(io::LOG_WARNING, "long frame: %.4f seconds", dt);
@@ -716,25 +712,21 @@ void TerraformMode::before_gl_sync()
     }
 
     if (m_curr_tool) {
+        Vector3f cursor;
+        bool valid = false;
+        if (m_curr_tool->uses_hover()) {
+            std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win);
+        }
+
+        if (!valid) {
+            std::tie(valid, cursor) = get_mouse_world_pos();
+        }
+
         if (m_curr_tool->uses_brush()) {
-            update_brush();
+            update_brush(cursor, valid);
         } else {
             m_scene->m_terrain_geometry.remove_overlay(
                         m_scene->m_overlay_material);
-        }
-
-        if (m_curr_tool->uses_hover()) {
-            ensure_mouse_world_pos();
-
-            Vector3f cursor;
-            bool valid = m_mouse_world_pos_valid;
-            if (valid) {
-                std::tie(valid, cursor) = m_curr_tool->hover(m_mouse_pos_win,
-                                                             m_mouse_world_pos);
-            }
-            if (valid) {
-                // FIXME: m_scene->m_pointer_trafo_node->transformation() = translation4(cursor);
-            }
         }
     }
 
@@ -781,7 +773,6 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
                                       event->pos().y());
     const Vector2f dist = m_mouse_pos_win - new_pos;
     m_mouse_pos_win = new_pos;
-    m_mouse_world_pos_updated = false;
 
     switch (m_mouse_mode) {
     case MOUSE_ROTATE:
@@ -810,7 +801,6 @@ void TerraformMode::mouseMoveEvent(QMouseEvent *event)
 void TerraformMode::mousePressEvent(QMouseEvent *event)
 {
     m_mouse_pos_win = Vector2f(event->pos().x(), event->pos().y());
-    m_mouse_world_pos_updated = false;
 
     if (m_mouse_mode != MOUSE_IDLE) {
         return;
@@ -858,6 +848,15 @@ void TerraformMode::enter_mouse_mode(MouseMode mode, MouseAction *original_actio
     grabMouse();
     m_mouse_mode = mode;
     m_mouse_action = original_action;
+}
+
+std::pair<bool, Vector3f> TerraformMode::get_mouse_world_pos()
+{
+    bool valid;
+    Vector3f p;
+    const Ray r = m_scene->m_camera.ray(m_mouse_pos_win, m_viewport_size);
+    std::tie(p, valid) = m_terrain_interface->hittest(r);
+    return std::make_pair(valid, p);
 }
 
 void TerraformMode::initialise_tools()
@@ -952,14 +951,6 @@ void TerraformMode::collect_aabbs(std::vector<AABB> &dest)
     collect_octree_aabbs(dest, m_scene->m_octree_group.octree().root());
 }
 
-void TerraformMode::ensure_mouse_world_pos()
-{
-    if (m_mouse_world_pos_updated) {
-        return;
-    }
-    std::tie(m_mouse_world_pos, m_mouse_world_pos_valid) = hittest(m_mouse_pos_win);
-}
-
 void TerraformMode::load_brushes()
 {
     for (unsigned int i = 0;
@@ -1043,10 +1034,9 @@ void TerraformMode::prepare_scene()
     initialise_tools();
 }
 
-void TerraformMode::update_brush()
+void TerraformMode::update_brush(const Vector3f &cursor, bool cursor_valid)
 {
     Brush *const curr_brush = m_brush_frontend.curr_brush();
-    ensure_mouse_world_pos();
     if (m_brush_changed) {
         if (curr_brush) {
             std::vector<Brush::density_t> buf(129*129);
@@ -1057,22 +1047,22 @@ void TerraformMode::update_brush()
         }
         m_brush_changed = false;
     }
-    if (curr_brush && m_mouse_world_pos_valid) {
+    if (curr_brush && cursor_valid) {
         float brush_radius = m_brush_frontend.brush_size()/2.f;
 
         ffe::ShaderProgram &shader = m_scene->m_overlay_material.make_pass_material(
                     m_scene->m_solid_pass).shader();
         shader.bind();
         glUniform2f(shader.uniform_location("location"),
-                    m_mouse_world_pos[eX], m_mouse_world_pos[eY]);
+                    cursor[eX], cursor[eY]);
         glUniform1f(shader.uniform_location("radius"),
                     brush_radius);
         m_scene->m_terrain_geometry.configure_overlay(
                     m_scene->m_overlay_material,
-                    sim::TerrainRect(std::max(0.f, std::floor(m_mouse_world_pos[eX]-brush_radius)),
-                                     std::max(0.f, std::floor(m_mouse_world_pos[eY]-brush_radius)),
-                                     std::ceil(m_mouse_world_pos[eX]+brush_radius),
-                                     std::ceil(m_mouse_world_pos[eY]+brush_radius)));
+                    sim::TerrainRect(std::max(0.f, std::floor(cursor[eX]-brush_radius)),
+                                     std::max(0.f, std::floor(cursor[eY]-brush_radius)),
+                                     std::ceil(cursor[eX]+brush_radius),
+                                     std::ceil(cursor[eY]+brush_radius)));
     } else {
         m_scene->m_terrain_geometry.remove_overlay(m_scene->m_overlay_material);
     }
@@ -1205,11 +1195,13 @@ void TerraformMode::on_camera_pan_triggered()
         return;
     }
 
-    ensure_mouse_world_pos();
-    if (m_mouse_world_pos_valid) {
+    bool valid;
+    Vector3f world_pos;
+    std::tie(valid, world_pos) = get_mouse_world_pos();
+    if (valid) {
         m_drag = std::make_unique<CameraDrag>(m_scene->m_camera,
                                               m_tool_backend->viewport_size(),
-                                              m_mouse_world_pos);
+                                              world_pos);
         enter_mouse_mode(MOUSE_TOOL_DRAG, m_app.shared_actions().action_camera_pan);
     }
 }
@@ -1245,7 +1237,7 @@ void TerraformMode::on_tool_primary_triggered()
     sim::WorldOperationPtr op;
     {
         auto lock = m_server->sync_safe_point();
-        std::tie(drag, op) = m_curr_tool->primary_start(m_mouse_pos_win, m_mouse_world_pos);
+        std::tie(drag, op) = m_curr_tool->primary_start(m_mouse_pos_win);
     }
 
     if (drag) {
@@ -1275,7 +1267,7 @@ void TerraformMode::on_tool_secondary_triggered()
     sim::WorldOperationPtr op = nullptr;
     {
         auto lock = m_server->sync_safe_point();
-        std::tie(drag, op) = m_curr_tool->secondary_start(m_mouse_pos_win, m_mouse_world_pos);
+        std::tie(drag, op) = m_curr_tool->secondary_start(m_mouse_pos_win);
     }
 
     if (drag) {
