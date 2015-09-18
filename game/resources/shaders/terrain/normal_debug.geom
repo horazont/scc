@@ -11,6 +11,7 @@ in TerrainData {
     vec3 world;
     vec2 tc0;
     vec3 normal;
+    float sandiness;
 } terrain_in[3];
 
 out NDData {

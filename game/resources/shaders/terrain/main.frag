@@ -8,6 +8,7 @@ in TerrainData {
     vec3 world;
     vec2 tc0;
     vec3 normal;
+    float sandiness;
 } terraindata;
 
 uniform vec3 lod_viewpoint;
@@ -58,5 +59,5 @@ void main()
                                      steepness);
 
     vec3 color = lighting(normal, eyedir, base_colour, metallic, roughness);
-    outcolor = vec4(color, 1.0f);
+    outcolor = vec4(vec3(terraindata.sandiness), 1.0f);
 }
