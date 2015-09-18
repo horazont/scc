@@ -675,12 +675,11 @@ std::pair<ffe::FluidSource *, TerraFluidSourceTool::Control> TerraFluidSourceToo
 
         Control ctrl;
         if (from_center.length() < source->m_radius / 3.f) {
-            std::cout << "too central" << std::endl;
             ctrl = POSITION;
         } else {
             const Vector3f viewdir = (-r.direction).normalized();
             float angle = from_center.normalized() * viewdir;
-            std::cout << from_center.normalized() << " " << angle << " " << viewdir << std::endl;
+            // std::cout << from_center.normalized() << " " << angle << " " << viewdir << std::endl;
             ctrl = (angle > 0.5 ? HEIGHT : POSITION);
         }
         return std::make_pair(source_vis, ctrl);
@@ -998,11 +997,9 @@ private:
     {
         float new_height = m_original_height - m_original_pos[eZ] + world_pos[eZ];
 
-        std::cout << new_height << std::endl;
-
-        if (new_height < (sim::Terrain::min_height - 1) || new_height > sim::Terrain::max_height) {
-            return nullptr;
-        }
+        new_height = clamp(new_height,
+                           sim::Terrain::min_height - 1.f,
+                           sim::Terrain::max_height);
 
         m_plane->set_plane(Plane(Vector3f(0, 0, new_height), Vector3f(0, 0, 1)));
 

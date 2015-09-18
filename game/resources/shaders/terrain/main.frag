@@ -16,6 +16,7 @@ uniform vec3 lod_viewpoint;
 uniform sampler2D grass;
 uniform sampler2D rock;
 uniform sampler2D blend;
+uniform sampler2D sand;
 
 {% include ":/shaders/lib/universal_shader.frag" %}
 {% include ":/shaders/lib/sunlight.frag" %}
@@ -52,12 +53,25 @@ void main()
 
     float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;
 
+    float base_sandiness = sqrt(terraindata.sandiness) * 6.f;
+
     float steepness = blend_with_texture(terraindata.tc0/2.f, base_steepness);
 
-    vec3 base_colour = interp_colour(texture2D(grass, terraindata.tc0).rgb,
+    float sandiness = blend_with_texture(terraindata.tc0*5.f, base_sandiness);
+    /*float sandiness = clamp(base_sandiness, 0, 1);*/
+
+    vec3 grass_colour = texture2D(grass, terraindata.tc0).rgb;
+    vec3 rock_colour = texture2D(rock, terraindata.tc0).rgb;
+    vec3 sand_colour = texture2D(sand, terraindata.tc0).rgb;
+
+    vec3 non_rock_colour = interp_colour(grass_colour,
+                                         sand_colour,
+                                         sandiness);
+
+    vec3 base_colour = interp_colour(non_rock_colour,
                                      texture2D(rock, terraindata.tc0).rgb,
                                      steepness);
 
     vec3 color = lighting(normal, eyedir, base_colour, metallic, roughness);
-    outcolor = vec4(vec3(terraindata.sandiness), 1.0f);
+    outcolor = vec4(color, 1.0f);
 }

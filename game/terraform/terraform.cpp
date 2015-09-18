@@ -123,6 +123,7 @@ TerraformScene::TerraformScene(
     m_rock(load_texture_resource("rock", ":/textures/rock00.png")),
     m_blend(load_texture_resource("blend", ":/textures/blend00.png")),
     m_waves(load_texture_resource("waves", ":/textures/waves00.png")),
+    m_sand(load_texture_resource("sand", ":/textures/sand00.png")),
     m_full_terrain(m_scenegraph.root().emplace<ffe::FullTerrainNode>(
                        terrain_interface.size(),
                        terrain_interface.grid_size())),
@@ -198,6 +199,7 @@ TerraformScene::TerraformScene(
     m_terrain_geometry.attach_grass_texture(&m_grass);
     m_terrain_geometry.attach_rock_texture(&m_rock);
     m_terrain_geometry.attach_blend_texture(&m_blend);
+    m_terrain_geometry.attach_sand_texture(&m_sand);
 
     {
         spp::EvaluationContext ctx(m_resources.shader_library());

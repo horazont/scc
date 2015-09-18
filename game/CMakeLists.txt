@@ -44,6 +44,7 @@ set(GAME_TEXTURE_RESOURCES
   resources/textures/rock00.png
   resources/textures/blend00.png
   resources/textures/waves00.png
+  resources/textures/sand00.png
   )
 
 set(GAME_SHADER_RESOURCES
