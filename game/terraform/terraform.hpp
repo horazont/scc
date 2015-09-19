@@ -60,6 +60,8 @@ struct TerraformScene
     ~TerraformScene();
 
     ffe::GLResourceManager m_resources;
+    sim::SignalQueue m_signal_queue;
+
     ffe::WindowRenderTarget m_window;
     ffe::SceneGraph m_scenegraph;
     ffe::PerspectivalCamera m_camera;
@@ -241,9 +243,6 @@ private:
     QMetaObject::Connection m_advance_conn;
     QMetaObject::Connection m_after_gl_sync_conn;
     QMetaObject::Connection m_before_gl_sync_conn;
-
-    std::mutex m_sim_callback_queue_mutex;
-    std::vector<std::function<void()> > m_sim_callback_queue;
 
     float m_t;
 

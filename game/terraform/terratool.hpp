@@ -77,22 +77,20 @@ class ToolBackend
 {
 public:
     ToolBackend(BrushFrontend &brush_frontend,
+                sim::SignalQueue &signal_queue,
                 const sim::WorldState &world,
                 ffe::scenegraph::Group &sgroot,
                 ffe::scenegraph::OctreeGroup &sgoctree,
-                ffe::PerspectivalCamera &camera,
-                std::mutex &queue_mutex,
-                std::vector<std::function<void()> > &queue_vector);
+                ffe::PerspectivalCamera &camera);
     virtual ~ToolBackend();
 
 private:
     BrushFrontend &m_brush_frontend;
+    sim::SignalQueue &m_signal_queue;
     const sim::WorldState &m_world;
     ffe::scenegraph::Group &m_sgroot;
     ffe::scenegraph::OctreeGroup &m_sgoctree;
     ffe::PerspectivalCamera &m_camera;
-    std::mutex &m_queue_mutex;
-    std::vector<std::function<void()> > &m_queue;
     Vector2f m_viewport_size;
 
     std::vector<ffe::OctreeRayHitInfo> m_ray_hitset;
@@ -149,7 +147,7 @@ public:
             sig11::signal<void(arg_ts...)> &signal,
             callable_t &&receiver)
     {
-        return sim::connect_queued_locked(signal, receiver, m_queue, m_queue_mutex);
+        return m_signal_queue.connect_queued(signal, std::forward<callable_t>(receiver));
     }
 };
 

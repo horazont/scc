@@ -61,19 +61,17 @@ HoverState::HoverState(const QCursor &cursor_override):
 
 
 ToolBackend::ToolBackend(BrushFrontend &brush_frontend,
+                         sim::SignalQueue &signal_queue,
                          const sim::WorldState &world,
                          ffe::scenegraph::Group &sgroot,
                          ffe::scenegraph::OctreeGroup &sgoctree,
-                         ffe::PerspectivalCamera &camera,
-                         std::mutex &queue_mutex,
-                         std::vector<std::function<void()> > &queue_vector):
+                         ffe::PerspectivalCamera &camera):
     m_brush_frontend(brush_frontend),
+    m_signal_queue(signal_queue),
     m_world(world),
     m_sgroot(sgroot),
     m_sgoctree(sgoctree),
-    m_camera(camera),
-    m_queue_mutex(queue_mutex),
-    m_queue(queue_vector)
+    m_camera(camera)
 {
 
 }

@@ -739,14 +739,7 @@ void TerraformMode::before_gl_sync()
     m_scene->m_window.set_fbo_id(m_gl_scene->defaultFramebufferObject());
 
     m_sync_lock = m_server->sync_safe_point();
-
-    {
-        std::lock_guard<std::mutex> guard(m_sim_callback_queue_mutex);
-        for (auto &cb: m_sim_callback_queue) {
-            cb();
-        }
-        m_sim_callback_queue.clear();
-    }
+    m_scene->m_signal_queue.replay();
 
     if (m_curr_tool) {
         Vector3f cursor;
@@ -924,12 +917,11 @@ std::pair<bool, Vector3f> TerraformMode::get_mouse_world_pos()
 void TerraformMode::initialise_tools()
 {
     m_tool_backend = std::make_unique<ToolBackend>(m_brush_frontend,
+                                                   m_scene->m_signal_queue,
                                                    m_server->state(),
                                                    m_scene->m_scenegraph.root(),
                                                    m_scene->m_octree_group,
-                                                   m_scene->m_camera,
-                                                   m_sim_callback_queue_mutex,
-                                                   m_sim_callback_queue);
+                                                   m_scene->m_camera);
 
     const QSize size = window()->size() * window()->devicePixelRatio();
     m_tool_backend->set_viewport_size(Vector2f(size.width(), size.height()));
