@@ -114,6 +114,11 @@ void OpenGLScene::initializeGL()
                 : "compatibility")
             << io::submit;
 
+    logger.log(io::LOG_DEBUG)
+            << "QOpenGLScene uses FBO #"
+            << defaultFramebufferObject()
+            << io::submit;
+
     logger.log(io::LOG_INFO)
             << "initializing GLEW in experimental mode"
             << io::submit;

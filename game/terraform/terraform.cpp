@@ -113,7 +113,7 @@ TerraformScene::TerraformScene(
                           GL_RGBA8, window_size.width(), window_size.height())),
     m_prewater_depth(m_resources.emplace<ffe::Texture2D>(
                          "prewater_buffer/depth",
-                         GL_DEPTH_COMPONENT24,
+                         GL_DEPTH24_STENCIL8,
                          window_size.width(), window_size.height(),
                          GL_DEPTH_COMPONENT, GL_FLOAT)),
     m_solid_pass(m_rendergraph.new_node<ffe::RenderPass>(m_prewater_buffer)),
@@ -158,6 +158,9 @@ TerraformScene::TerraformScene(
                 GL_FLOAT)),
     m_octree_group(m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>())
 {
+    m_prewater_buffer.attach(GL_COLOR_ATTACHMENT0, &m_prewater_colour);
+    m_prewater_buffer.attach(GL_DEPTH_ATTACHMENT, &m_prewater_depth);
+
     m_scenegraph.set_sun_colour(Vector4f(1, 0.99, 0.95, 2.3));
     m_scenegraph.set_sun_direction(Vector3f(1, 1, 4).normalized());
     m_scenegraph.set_sky_colour(Vector4f(0.95, 0.99, 1.0, 1.0));
@@ -444,7 +447,8 @@ void TerraformScene::update_size(const QSize &new_size)
         m_prewater_colour.bind();
         m_prewater_colour.reinit(GL_RGBA, new_size.width(), new_size.height());
         m_prewater_depth.bind();
-        m_prewater_depth.reinit(GL_DEPTH_COMPONENT24, new_size.width(), new_size.height());
+        m_prewater_depth.reinit(GL_DEPTH24_STENCIL8, new_size.width(), new_size.height(),
+                                GL_DEPTH_COMPONENT, GL_FLOAT);
         m_prewater_buffer.attach(GL_COLOR_ATTACHMENT0, &m_prewater_colour);
         m_prewater_buffer.attach(GL_DEPTH_ATTACHMENT, &m_prewater_depth);
     }
