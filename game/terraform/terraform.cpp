@@ -1168,9 +1168,12 @@ void TerraformMode::deactivate()
     m_tool_smooth = nullptr;
     m_tool_testing = nullptr;
     m_tool_backend = nullptr;
-    m_server = nullptr;
     m_terrain_interface = nullptr;
     m_scene = nullptr;
+
+    // kill the server after the visuals to allow the visuals to cleanly
+    // disconnect their signals
+    m_server = nullptr;
     ApplicationMode::deactivate();
 }
 
