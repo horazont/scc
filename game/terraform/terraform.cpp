@@ -224,7 +224,8 @@ TerraformScene::TerraformScene(
     /* fluid configuration */
 
     m_full_terrain.emplace<ffe::CPUFluid>(m_resources,
-                                          state.fluid(),
+                                          state,
+                                          m_signal_queue,
                                           m_transparent_pass,
                                           m_water_pass);
 
