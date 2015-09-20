@@ -150,6 +150,12 @@ TerraformScene::TerraformScene(
     m_aabb_material(m_resources.emplace<ffe::Material>(
                         "debug/aabb",
                         ffe::VBOFormat({ffe::VBOAttribute(4)}))),
+    m_node_debug_material(m_resources.emplace<ffe::Material>(
+                              "debug/graph_node_debug",
+                              ffe::VBOFormat({ffe::VBOAttribute(3)}))),
+    m_edge_debug_material(m_resources.emplace<ffe::Material>(
+                              "debug/graph_edge_debug",
+                              ffe::VBOFormat({ffe::VBOAttribute(3), ffe::VBOAttribute(2)}))),
     m_fluid_source_material(m_resources.emplace<ffe::FluidSourceMaterial>("terraform/fluidsource", 13)),
     m_brush(m_resources.emplace<ffe::Texture2D>(
                 "runtime/brush_texture",
@@ -365,6 +371,57 @@ TerraformScene::TerraformScene(
         }
 
         m_road_material.set_polygon_mode(GL_LINE);
+    }
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_node_debug_material.make_pass_material(m_water_pass);
+        pass.set_order(100);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/debug/graph_node.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/debug/graph_node.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_node_debug_material.declare_attribute("position", 0);
+
+        success = success && m_node_debug_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link bezier material");
+        }
+
+        m_node_debug_material.set_point_size(5.f);
+    }
+
+    {
+        spp::EvaluationContext ctx(m_resources.shader_library());
+        ffe::MaterialPass &pass = m_edge_debug_material.make_pass_material(m_water_pass);
+        pass.set_order(100);
+        bool success = true;
+
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/debug/graph_edge.vert"),
+                    ctx,
+                    GL_VERTEX_SHADER);
+        success = success && pass.shader().attach(
+                    m_resources.load_shader_checked(":/shaders/debug/graph_edge.frag"),
+                    ctx,
+                    GL_FRAGMENT_SHADER);
+
+        m_edge_debug_material.declare_attribute("position", 0);
+        m_edge_debug_material.declare_attribute("direction", 1);
+
+        success = success && m_edge_debug_material.link();
+
+        if (!success) {
+            throw std::runtime_error("failed to compile or link bezier material");
+        }
     }
 
     {
@@ -954,7 +1011,9 @@ void TerraformMode::initialise_tools()
     // testing tools
     m_tool_testing = std::make_unique<TerraTestingTool>(*m_tool_backend,
                                                         m_scene->m_bezier_material,
-                                                        m_scene->m_road_material);
+                                                        m_scene->m_road_material,
+                                                        m_scene->m_node_debug_material,
+                                                        m_scene->m_edge_debug_material);
 
     m_ui->action_terraform_tool_terrain_raise_lower->trigger();
 }

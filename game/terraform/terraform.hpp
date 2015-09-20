@@ -43,6 +43,7 @@ the AUTHORS file.
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
 #include "ffengine/sim/server.hpp"
+#include "ffengine/sim/network.hpp"
 
 #include "mode.hpp"
 #include "mousebinding.hpp"
@@ -96,6 +97,8 @@ struct TerraformScene
     ffe::Material &m_bezier_material;
     ffe::Material &m_road_material;
     ffe::Material &m_aabb_material;
+    ffe::Material &m_node_debug_material;
+    ffe::Material &m_edge_debug_material;
     ffe::FluidSourceMaterial &m_fluid_source_material;
 
     ffe::Texture2D &m_brush;

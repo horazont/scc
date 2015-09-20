@@ -35,6 +35,7 @@ the AUTHORS file.
 #include "ffengine/sim/signals.hpp"
 #include "ffengine/sim/terrain.hpp"
 #include "ffengine/sim/world.hpp"
+#include "ffengine/sim/network.hpp"
 
 #include "ffengine/render/scenegraph.hpp"
 
@@ -47,6 +48,7 @@ class FluidSource;
 class FluidSourceMaterial;
 class QuadBezier3fDebug;
 class Material;
+class DebugNodes;
 
 }
 
@@ -418,7 +420,9 @@ class TerraTestingTool: public AbstractTerraTool
 public:
     TerraTestingTool(ToolBackend &backend,
                      ffe::Material &preview_material,
-                     ffe::Material &road_material);
+                     ffe::Material &road_material,
+                     ffe::Material &node_debug_material,
+                     ffe::Material &edge_bundle_debug_material);
 
 private:
     ffe::QuadBezier3fDebug *m_debug_node;
@@ -426,10 +430,17 @@ private:
     QuadBezier3f m_tmp_curve;
     ffe::Material &m_preview_material;
     ffe::Material &m_road_material;
+    ffe::Material &m_edge_bundle_debug_material;
+    ffe::DebugNodes &m_node_debug_node;
+
+    sig11::connection_guard<void(sim::object_ptr<sim::PhysicalEdgeBundle>)> m_edge_bundle_created;
+    sig11::connection_guard<void(sim::object_ptr<sim::PhysicalNode>)> m_node_created;
+
+private:
+    void on_edge_bundle_created(sim::object_ptr<sim::PhysicalEdgeBundle> bundle);
+    void on_node_created(sim::object_ptr<sim::PhysicalNode> node);
 
 protected:
-    void add_segment(const QuadBezier3f &curve);
-    void add_segmentized();
     std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor);
 
 public:

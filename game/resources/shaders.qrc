@@ -34,5 +34,9 @@
         <file>shaders/lib/inv_matrix_block.glsl</file>
         <file>shaders/terraform/fancy_drag_plane.frag</file>
         <file>shaders/terraform/terrain_drag_plane.frag</file>
+        <file>shaders/debug/graph_node.frag</file>
+        <file>shaders/debug/graph_node.vert</file>
+        <file>shaders/debug/graph_edge.frag</file>
+        <file>shaders/debug/graph_edge.vert</file>
     </qresource>
 </RCC>

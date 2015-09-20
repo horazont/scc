@@ -35,6 +35,7 @@ the AUTHORS file.
 #include "ffengine/render/fancyterraindata.hpp"
 #include "ffengine/render/fluidsource.hpp"
 #include "ffengine/render/renderpass.hpp"
+#include "ffengine/render/network_debug.hpp"
 
 
 HoverState::HoverState():
@@ -1061,31 +1062,43 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraFluidOceanLevelTool::primary
 
 TerraTestingTool::TerraTestingTool(ToolBackend &backend,
                                    ffe::Material &preview_material,
-                                   ffe::Material &road_material):
+                                   ffe::Material &road_material,
+                                   ffe::Material &node_debug_material,
+                                   ffe::Material &edge_bundle_debug_material):
 
     AbstractTerraTool(backend),
     m_debug_node(nullptr),
     m_step(0),
     m_preview_material(preview_material),
-    m_road_material(road_material)
+    m_road_material(road_material),
+    m_edge_bundle_debug_material(edge_bundle_debug_material),
+    m_node_debug_node(m_backend.sgroot().emplace<ffe::DebugNodes>(node_debug_material)),
+    m_edge_bundle_created(backend.connect_to_signal(
+                              backend.world().graph().edge_bundle_created(),
+                              std::bind(&TerraTestingTool::on_edge_bundle_created,
+                                        this,
+                                        std::placeholders::_1))),
+    m_node_created(backend.connect_to_signal(
+                       backend.world().graph().node_created(),
+                       std::bind(&TerraTestingTool::on_node_created,
+                                 this,
+                                 std::placeholders::_1)))
 {
     m_uses_brush = false;
     m_uses_hover = true;
 }
 
-void TerraTestingTool::add_segment(const QuadBezier3f &curve)
+void TerraTestingTool::on_edge_bundle_created(sim::object_ptr<sim::PhysicalEdgeBundle> bundle)
 {
     ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
-    group.emplace<ffe::QuadBezier3fRoadTest>(m_road_material, 20).set_curve(curve);
+    group.emplace<ffe::DebugEdgeBundle>(m_edge_bundle_debug_material, *bundle);
+    std::cout << "edge bundle created" << std::endl;
 }
 
-void TerraTestingTool::add_segmentized()
+void TerraTestingTool::on_node_created(sim::object_ptr<sim::PhysicalNode> node)
 {
-    std::vector<QuadBezier3f> segments;
-    sim::segmentize_curve(m_tmp_curve, segments);
-    for (auto &segment: segments) {
-        add_segment(segment);
-    }
+    m_node_debug_node.register_node(node);
+    std::cout << "node created" << std::endl;
 }
 
 std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewport_cursor)
@@ -1179,9 +1192,9 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(c
         m_debug_node->set_curve(m_tmp_curve);
         auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
-        add_segmentized();
         m_debug_node = nullptr;
         m_step = 0;
+        return std::make_pair(nullptr, std::make_unique<sim::ops::ConstructNewCurve>(m_tmp_curve));
         break;
     }
     default:

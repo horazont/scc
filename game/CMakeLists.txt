@@ -48,6 +48,10 @@ set(GAME_TEXTURE_RESOURCES
   )
 
 set(GAME_SHADER_RESOURCES
+  resources/shaders/debug/graph_edge.frag
+  resources/shaders/debug/graph_edge.vert
+  resources/shaders/debug/graph_node.frag
+  resources/shaders/debug/graph_node.vert
   resources/shaders/generic/normal_debug.frag
   resources/shaders/terraform/drag_plane.vert
   resources/shaders/terraform/fancy_drag_plane.frag
