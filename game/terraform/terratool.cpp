@@ -1098,7 +1098,7 @@ std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewpo
 
     ffe::QuadBezier3fRoadTest *obj = static_cast<ffe::QuadBezier3fRoadTest*>(abstract_obj);
     if (obj) {
-        return std::make_pair(true, obj->curve().p3);
+        return std::make_pair(true, obj->curve().p_end);
     }
 
     bool valid;
@@ -1126,8 +1126,8 @@ HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
         const Ray r = m_backend.view_ray(viewport_cursor);
         std::tie(world_pos, valid) = m_backend.hittest_terrain(r);
         if (valid) {
-            m_tmp_curve.p2 = world_pos;
-            m_tmp_curve.p3 = world_pos;
+            m_tmp_curve.p_control = world_pos;
+            m_tmp_curve.p_end = world_pos;
             m_debug_node->set_curve(m_tmp_curve);
         }
         break;
@@ -1137,7 +1137,7 @@ HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
         bool valid;
         Vector3f p;
         std::tie(valid, p) = snapped_point(viewport_cursor);
-        m_tmp_curve.p3 = p;
+        m_tmp_curve.p_end = p;
         m_debug_node->set_curve(m_tmp_curve);
         if (valid) {
             return HoverState(p);
@@ -1160,8 +1160,8 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(c
         const Ray r = m_backend.view_ray(viewport_cursor);
         std::tie(world_pos, valid) = m_backend.hittest_terrain(r);
         if (valid) {
-            m_tmp_curve.p2 = world_pos;
-            m_tmp_curve.p3 = world_pos;
+            m_tmp_curve.p_control = world_pos;
+            m_tmp_curve.p_end = world_pos;
             m_debug_node->set_curve(m_tmp_curve);
         }
         m_step += 1;
@@ -1175,7 +1175,7 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(c
 
         ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
 
-        m_tmp_curve.p3 = p;
+        m_tmp_curve.p_end = p;
         m_debug_node->set_curve(m_tmp_curve);
         auto iter = std::find_if(group.begin(), group.end(), [this](ffe::scenegraph::OctNode &node){ return &node == m_debug_node; });
         group.erase(iter);
