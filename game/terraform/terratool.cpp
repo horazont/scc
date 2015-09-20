@@ -29,6 +29,7 @@ the AUTHORS file.
 #include "ffengine/math/intersect.hpp"
 
 #include "ffengine/sim/world_ops.hpp"
+#include "ffengine/sim/network.hpp"
 
 #include "ffengine/render/curve.hpp"
 #include "ffengine/render/fancyterraindata.hpp"
@@ -1080,61 +1081,8 @@ void TerraTestingTool::add_segment(const QuadBezier3f &curve)
 
 void TerraTestingTool::add_segmentized()
 {
-    const float segment_length = 10;
-    const float min_length = 5;
-    std::vector<float> ts;
-    // we use the autosampled points as a reference for where we can approximate
-    // the curve using line segments. inside those segments, we split as
-    // neccessary
-    autosample_quadbezier(m_tmp_curve, std::back_inserter(ts));
-
-    std::vector<float> segment_ts;
-
-    float len_accum = 0.f;
-    float prev_t = 0.f;
-    Vector3f prev_point = m_tmp_curve[0.];
-    for (float sampled_t: ts) {
-        Vector3f curr_point = m_tmp_curve[sampled_t];
-        float segment_len = (prev_point - curr_point).length();
-        float existing_len = len_accum;
-        float split_t = 0.f;
-        len_accum += segment_len;
-
-        std::cout << "segment: t = " << sampled_t
-                  << "; len = " << segment_len
-                  << "; existing len = " << existing_len
-                  << "; len accum = " << len_accum
-                  << std::endl;
-
-        if (len_accum >= segment_length) {
-            // special handling for re-using the existing length
-            float local_len = segment_length - existing_len;
-            split_t = prev_t + (sampled_t - prev_t) * local_len / segment_len;
-            segment_ts.push_back(split_t);
-            std::cout << split_t << " (first)"<< std::endl;
-
-            len_accum -= segment_length;
-        }
-
-        while (len_accum >= segment_length) {
-            split_t += (sampled_t - prev_t) * segment_length / segment_len;
-            len_accum -= segment_length;
-            segment_ts.push_back(split_t);
-            std::cout << split_t << " (more)"<< std::endl;
-        }
-
-        prev_t = sampled_t;
-        prev_point = curr_point;
-    }
-
-    // drop the last segment if it would otherwise result in a very short piece
-    if (len_accum < min_length) {
-        segment_ts.pop_back();
-    }
-
     std::vector<QuadBezier3f> segments;
-    m_tmp_curve.segmentize(segment_ts.begin(), segment_ts.end(),
-                           std::back_inserter(segments));
+    sim::segmentize_curve(m_tmp_curve, segments);
     for (auto &segment: segments) {
         add_segment(segment);
     }
