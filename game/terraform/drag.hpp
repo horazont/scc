@@ -30,7 +30,7 @@ the AUTHORS file.
 
 #include <QCursor>
 
-#include "ffengine/math/shapes.hpp"
+#include "ffengine/math/plane.hpp"
 #include "ffengine/math/vector.hpp"
 
 #include "ffengine/sim/world_ops.hpp"
