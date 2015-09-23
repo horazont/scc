@@ -128,6 +128,11 @@ public:
         return m_sgoctree;
     }
 
+    inline sim::SignalQueue &signal_queue()
+    {
+        return m_signal_queue;
+    }
+
     inline Ray view_ray(const Vector2f &viewport_pos) const
     {
         return m_camera.ray(viewport_pos, m_viewport_size);

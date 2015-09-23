@@ -1091,7 +1091,7 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend,
 void TerraTestingTool::on_edge_bundle_created(sim::object_ptr<sim::PhysicalEdgeBundle> bundle)
 {
     ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
-    group.emplace<ffe::DebugEdgeBundle>(m_edge_bundle_debug_material, *bundle);
+    group.emplace<ffe::DebugEdgeBundle>(m_edge_bundle_debug_material, m_backend.signal_queue(), m_backend.world().graph(), bundle);
     std::cout << "edge bundle created" << std::endl;
 }
 
