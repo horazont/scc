@@ -428,6 +428,8 @@ private:
     ffe::QuadBezier3fDebug *m_debug_node;
     unsigned int m_step;
     QuadBezier3f m_tmp_curve;
+    sim::object_ptr<sim::PhysicalNode> m_start_node;
+    sim::object_ptr<sim::PhysicalNode> m_end_node;
     ffe::Material &m_preview_material;
     ffe::Material &m_road_material;
     ffe::Material &m_edge_bundle_debug_material;
@@ -441,7 +443,7 @@ private:
     void on_node_created(sim::object_ptr<sim::PhysicalNode> node);
 
 protected:
-    std::pair<bool, Vector3f> snapped_point(const Vector2f &viewport_cursor);
+    std::tuple<bool, sim::object_ptr<sim::PhysicalNode>, Vector3f> snapped_point(const Vector2f &viewport_cursor);
 
 public:
     HoverState hover(const Vector2f &viewport_cursor) override;

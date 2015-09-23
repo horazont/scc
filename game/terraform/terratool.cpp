@@ -1072,7 +1072,7 @@ TerraTestingTool::TerraTestingTool(ToolBackend &backend,
     m_preview_material(preview_material),
     m_road_material(road_material),
     m_edge_bundle_debug_material(edge_bundle_debug_material),
-    m_node_debug_node(m_backend.sgroot().emplace<ffe::DebugNodes>(node_debug_material)),
+    m_node_debug_node(m_backend.sgoctree().root().emplace<ffe::DebugNodes>(node_debug_material)),
     m_edge_bundle_created(backend.connect_to_signal(
                               backend.world().graph().edge_bundle_created(),
                               std::bind(&TerraTestingTool::on_edge_bundle_created,
@@ -1101,23 +1101,23 @@ void TerraTestingTool::on_node_created(sim::object_ptr<sim::PhysicalNode> node)
     std::cout << "node created" << std::endl;
 }
 
-std::pair<bool, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewport_cursor)
+std::tuple<bool, sim::object_ptr<sim::PhysicalNode>, Vector3f> TerraTestingTool::snapped_point(const Vector2f &viewport_cursor)
 {
     const Ray r = m_backend.view_ray(viewport_cursor);
 
     ffe::OctreeObject *abstract_obj;
     float t;
-    std::tie(abstract_obj, t) = m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::QuadBezier3fRoadTest*>(&obj)); });
+    std::tie(abstract_obj, t) = m_backend.hittest_octree_object(r, [](const ffe::OctreeObject &obj){ return bool(dynamic_cast<const ffe::DebugNode*>(&obj)); });
 
-    ffe::QuadBezier3fRoadTest *obj = static_cast<ffe::QuadBezier3fRoadTest*>(abstract_obj);
-    if (obj) {
-        return std::make_pair(true, obj->curve().p_end);
+    ffe::DebugNode *obj = static_cast<ffe::DebugNode*>(abstract_obj);
+    if (obj && obj->node()) {
+        return std::make_tuple(true, obj->node(), obj->node()->position());
     }
 
     bool valid;
     Vector3f p;
     std::tie(p, valid) = m_backend.hittest_terrain(r);
-    return std::make_pair(valid, p);
+    return std::make_tuple(valid, nullptr, p);
 }
 
 HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
@@ -1127,8 +1127,8 @@ HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
     case 0:
     {
         auto potential_result = snapped_point(viewport_cursor);
-        if (potential_result.first) {
-            return HoverState(potential_result.second);
+        if (std::get<0>(potential_result)) {
+            return HoverState(std::get<2>(potential_result));
         }
         break;
     }
@@ -1147,13 +1147,11 @@ HoverState TerraTestingTool::hover(const Vector2f &viewport_cursor)
     }
     case 2:
     {
-        bool valid;
-        Vector3f p;
-        std::tie(valid, p) = snapped_point(viewport_cursor);
-        m_tmp_curve.p_end = p;
-        m_debug_node->set_curve(m_tmp_curve);
-        if (valid) {
-            return HoverState(p);
+        auto potential_result = snapped_point(viewport_cursor);
+        if (std::get<0>(potential_result)) {
+            m_tmp_curve.p_end = std::get<2>(potential_result);
+            m_debug_node->set_curve(m_tmp_curve);
+            return HoverState(std::get<2>(potential_result));
         }
         break;
     }
@@ -1184,7 +1182,10 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(c
     {
         bool valid;
         Vector3f p;
-        std::tie(valid, p) = snapped_point(viewport_cursor);
+        std::tie(valid, m_end_node, p) = snapped_point(viewport_cursor);
+        if (!valid) {
+            return std::make_pair(nullptr, nullptr);
+        }
 
         ffe::scenegraph::OctGroup &group = m_backend.sgoctree().root();
 
@@ -1194,14 +1195,22 @@ std::pair<ToolDragPtr, sim::WorldOperationPtr> TerraTestingTool::primary_start(c
         group.erase(iter);
         m_debug_node = nullptr;
         m_step = 0;
-        return std::make_pair(nullptr, std::make_unique<sim::ops::ConstructNewCurve>(m_tmp_curve));
+        return std::make_pair(nullptr, std::make_unique<sim::ops::ConstructNewCurve>(
+                                  m_tmp_curve.p_start,
+                                  m_start_node,
+                                  m_tmp_curve.p_control,
+                                  m_tmp_curve.p_end,
+                                  m_end_node));
         break;
     }
     default:
     {
         bool valid;
         Vector3f p;
-        std::tie(valid, p) = snapped_point(viewport_cursor);
+        std::tie(valid, m_start_node, p) = snapped_point(viewport_cursor);
+        if (!valid) {
+            return std::make_pair(nullptr, nullptr);
+        }
 
         assert(!m_debug_node);
         assert(m_preview_material);
