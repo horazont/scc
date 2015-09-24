@@ -93,7 +93,8 @@ struct TerraformScene
     ffe::Material &m_fancy_drag_plane_material;
     ffe::Material &m_terrain_drag_plane_material;
 
-    ffe::Material &m_overlay_material;
+    const spp::Program &m_brush_shader;
+
     ffe::Material &m_bezier_material;
     ffe::Material &m_road_material;
     ffe::Material &m_aabb_material;

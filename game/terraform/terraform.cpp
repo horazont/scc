@@ -138,9 +138,7 @@ TerraformScene::TerraformScene(
                                    "terrain_drag_plane",
                                    m_drag_plane_vbo,
                                    m_drag_plane_ibo)),
-    m_overlay_material(m_resources.manage<ffe::Material>(
-                           "brush_overlay",
-                           std::move(ffe::Material::shared_with(m_terrain_geometry.material())))),
+    m_brush_shader(m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag")),
     m_bezier_material(m_resources.emplace<ffe::Material>(
                           "bezier",
                           ffe::VBOFormat({ffe::VBOAttribute(4)}))),
@@ -211,24 +209,17 @@ TerraformScene::TerraformScene(
     m_terrain_geometry.attach_sand_texture(&m_sand);
 
     {
-        spp::EvaluationContext ctx(m_resources.shader_library());
-        ffe::MaterialPass &pass = m_overlay_material.make_pass_material(m_solid_pass);
-        bool success = pass.shader().attach(
-                    m_resources.load_shader_checked(":/shaders/terrain/brush_overlay.frag"),
-                    ctx,
-                    GL_FRAGMENT_SHADER);
-
-        if (!success || !m_terrain_geometry.configure_overlay_material(m_overlay_material)) {
-            throw std::runtime_error("overlay material failed to build");
-        }
-
+        m_terrain_geometry.configure_overlay_material(
+                    m_brush_shader,
+                    [this](ffe::MaterialPass &pass){
+                        pass.attach_texture("brush", &m_brush);
+                    });
         m_brush.bind();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
-    m_overlay_material.attach_texture("brush", &m_brush);
 
     /* fluid configuration */
 
@@ -819,8 +810,9 @@ void TerraformMode::before_gl_sync()
             }
             update_brush(cursor, valid);
         } else {
-            m_scene->m_terrain_geometry.remove_overlay(
-                        m_scene->m_overlay_material);
+            m_scene->m_terrain_geometry.reposition_overlay(
+                        m_scene->m_brush_shader,
+                        NotARect);
         }
     } else {
         if (!m_drag) {
@@ -1177,21 +1169,24 @@ void TerraformMode::update_brush(const Vector3f &cursor, bool cursor_valid)
     if (curr_brush && cursor_valid) {
         float brush_radius = m_brush_frontend.brush_size()/2.f;
 
-        ffe::ShaderProgram &shader = m_scene->m_overlay_material.make_pass_material(
-                    m_scene->m_solid_pass).shader();
+        ffe::MaterialPass *pass = m_scene->m_terrain_geometry.get_overlay_material(
+                    m_scene->m_brush_shader);
+        ffe::ShaderProgram &shader = pass->shader();
         shader.bind();
         glUniform2f(shader.uniform_location("location"),
                     cursor[eX], cursor[eY]);
         glUniform1f(shader.uniform_location("radius"),
                     brush_radius);
-        m_scene->m_terrain_geometry.configure_overlay(
-                    m_scene->m_overlay_material,
+        m_scene->m_terrain_geometry.reposition_overlay(
+                    m_scene->m_brush_shader,
                     sim::TerrainRect(std::max(0.f, std::floor(cursor[eX]-brush_radius)),
                                      std::max(0.f, std::floor(cursor[eY]-brush_radius)),
                                      std::ceil(cursor[eX]+brush_radius),
                                      std::ceil(cursor[eY]+brush_radius)));
     } else {
-        m_scene->m_terrain_geometry.remove_overlay(m_scene->m_overlay_material);
+        m_scene->m_terrain_geometry.reposition_overlay(
+                    m_scene->m_brush_shader,
+                    NotARect);
     }
 }
 
