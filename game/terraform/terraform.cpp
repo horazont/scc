@@ -203,6 +203,7 @@ TerraformScene::TerraformScene(
     m_full_terrain.set_detail_level(0);
 
     m_terrain_geometry.set_enable_linear_filter(true);
+    m_terrain_geometry.set_sharp_geometry(false);
     m_terrain_geometry.attach_grass_texture(&m_grass);
     m_terrain_geometry.attach_rock_texture(&m_rock);
     m_terrain_geometry.attach_blend_texture(&m_blend);
