@@ -26,6 +26,8 @@ the AUTHORS file.
 #include "openglscene.hpp"
 #include "ui_openglscene.h"
 
+#include "ffengine/gl/debug.hpp"
+
 #include <QWindow>
 
 static io::Logger &logger = io::logging().get_logger("app.glscene");
@@ -132,6 +134,9 @@ void OpenGLScene::initializeGL()
                 << io::submit;
         throw std::runtime_error("failed to initialize GLEW: " + error);
     }
+
+    glEnable(GL_DEBUG_OUTPUT);
+    ffe::send_gl_debug_to_logger(io::logging().get_logger("gl.debug"));
 }
 
 void OpenGLScene::resizeGL(int, int)

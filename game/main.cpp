@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
     io::logging().get_logger("gl.array").set_level(io::LOG_WARNING);
     io::logging().get_logger("render.quadterrain").set_level(io::LOG_WARNING);
     io::logging().get_logger("gl.vao").set_level(io::LOG_WARNING);
+    io::logging().get_logger("gl.shader").set_level(io::LOG_INFO);
+    io::logging().get_logger("gl.debug").set_level(io::LOG_DEBUG);
     io::logging().get_logger("render.scenegraph").set_level(io::LOG_WARNING);
     io::logging().get_logger("render.camera").set_level(io::LOG_WARNING);
 
