@@ -117,23 +117,23 @@ void OpenGLScene::initializeGL()
             << io::submit;
 
     logger.log(io::LOG_DEBUG)
+            << "OpenGL limits:" << io::submit;
+    logger.log(io::LOG_DEBUG)
+            << "  GL_MAX_ARRAY_TEXTURE_LAYERS = "
+            << ffe::gl_get_integer(GL_MAX_ARRAY_TEXTURE_LAYERS)
+            << io::submit;
+
+    logger.log(io::LOG_DEBUG)
             << "QOpenGLScene uses FBO #"
             << defaultFramebufferObject()
             << io::submit;
 
+    const unsigned int gl_version = epoxy_gl_version();
+    const unsigned int gl_major = gl_version / 10;
+    const unsigned int gl_minor = gl_version % 10;
     logger.log(io::LOG_INFO)
-            << "initializing GLEW in experimental mode"
+            << "libepoxy reports OpenGL version " << gl_major << "." << gl_minor
             << io::submit;
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        const std::string error = std::string((const char*)glewGetErrorString(err));
-        logger.log(io::LOG_EXCEPTION)
-                << "GLEW failed to initialize"
-                << error
-                << io::submit;
-        throw std::runtime_error("failed to initialize GLEW: " + error);
-    }
 
     glEnable(GL_DEBUG_OUTPUT);
     ffe::send_gl_debug_to_logger(io::logging().get_logger("gl.debug"));

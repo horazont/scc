@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt5Widgets REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
+find_package(epoxy REQUIRED)
 find_package(SIGC++ REQUIRED)
 find_package(Protobuf REQUIRED)
 
@@ -131,7 +131,6 @@ add_resource_pack("stylesheets" "resources/stylesheets.qrc" "${GAME_STYLESHEET_R
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${OPENGL_INCLUDE_DIR})
-include_directories(${GLEW_INCLUDE_DIR})
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS brush.proto)
@@ -146,7 +145,7 @@ target_link_libraries(game ffengine-sim)
 target_link_libraries(game sigc++)
 target_link_libraries(game ${PROTOBUF_LIBRARIES})
 target_link_libraries(game ${OPENGL_LIBRARIES})
-target_link_libraries(game ${GLEW_LIBRARIES})
+target_link_libraries(game epoxy)
 target_link_libraries(game "atomic")
 
 add_dependencies(game game-resources)
