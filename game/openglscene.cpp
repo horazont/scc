@@ -97,7 +97,7 @@ void OpenGLScene::initializeGL()
             << format.redBufferSize() << " "
             << format.greenBufferSize() << " "
             << format.blueBufferSize() << " "
-            << format.alphaBufferSize() << " "
+            << format.alphaBufferSize()
             << io::submit;
     logger.log(context_info_level)
             << "  stencil     : "
