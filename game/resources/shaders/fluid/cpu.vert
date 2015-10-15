@@ -16,6 +16,7 @@ in vec2 position;
 
 out vec3 world;
 out vec3 normal;
+out vec3 tangent;
 out vec3 data_tc;
 
 vec2 morph_vertex(vec2 vertex, float morph_k)
@@ -39,6 +40,7 @@ void main() {
     vec4 normalt = textureLod(normalt, vec3(lookup_coord, layer), 0);
 
     normal = normalt.xyz;
+    tangent = vec3(1, 0, normalt.w);
     data_tc = vec3(lookup_coord, layer);
 
     vec3 world_pos = vec3(morphed, fluiddata.x);

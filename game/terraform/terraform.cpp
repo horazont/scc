@@ -232,6 +232,7 @@ TerraformScene::TerraformScene(
                 m_water_pass);
     fluid.set_scene_colour(&m_prewater_colour);
     fluid.set_scene_depth(&m_prewater_depth);
+    fluid.attach_wave_normalmap(&m_waves);
     m_terrain_geometry.attach_fluid_data_texture(fluid.fluid_data());
 
     /* drag plane materials */
