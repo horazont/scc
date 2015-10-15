@@ -19,8 +19,8 @@ in vec2 position;
 out TerrainData {
     vec3 world;
     vec2 tc0;
+    vec2 lookup;
     vec3 normal;
-    float sandiness;
 };
 
 vec2 morph_vertex(vec2 grid_pos, vec2 vertex, float morph_k)
@@ -46,9 +46,8 @@ void main() {
 
     vec2 lookup_coord = (morphed + 0.5) * heightmap_factor;
     /* tc0 = lookup_coord; */
-    vec3 terrain_data = textureLod(heightmap, lookup_coord, 0).rgb;
-    float height = terrain_data.x;
-    sandiness = terrain_data.y;
+    lookup = lookup_coord;
+    float height = textureLod(heightmap, lookup_coord, 0).r;
     normal = textureLod(normalt, lookup_coord, 0).xyz;
 
     world = vec3(morphed, height);

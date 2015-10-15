@@ -7,12 +7,13 @@ out vec4 outcolor;
 in TerrainData {
     vec3 world;
     vec2 tc0;
+    vec2 lookup;
     vec3 normal;
-    float sandiness;
 } terraindata;
 
 uniform vec3 lod_viewpoint;
 
+uniform sampler2D heightmap;
 uniform sampler2D grass;
 uniform sampler2D rock;
 uniform sampler2D blend;
@@ -50,10 +51,9 @@ void main()
     const float metallic = 0.0f;
     const float roughness = 0.9f;
 
-
     float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;
 
-    float base_sandiness = sqrt(terraindata.sandiness) * 6.f;
+    float base_sandiness = sqrt(textureLod(heightmap, terraindata.lookup, 0).g) * 6.f;
 
     float steepness = blend_with_texture(terraindata.tc0/2.f, base_steepness);
 

@@ -3,8 +3,8 @@
 in TerrainData {
     vec3 world;
     vec2 tc0;
+    vec2 lookup;
     vec3 normal;
-    float sandiness;
 } terraindata;
 
 uniform vec2 location;
