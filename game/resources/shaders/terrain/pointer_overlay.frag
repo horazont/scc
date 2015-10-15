@@ -3,7 +3,8 @@
 in TerrainData {
     vec3 world;
     vec2 tc0;
-    vec2 lookup;
+    vec2 global_lookup;
+    vec2 local_lookup;
     vec3 normal;
 } terraindata;
 

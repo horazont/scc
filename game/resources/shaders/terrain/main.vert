@@ -19,7 +19,8 @@ in vec2 position;
 out TerrainData {
     vec3 world;
     vec2 tc0;
-    vec2 lookup;
+    vec2 global_lookup;
+    vec2 local_lookup;
     vec3 normal;
 };
 
@@ -46,7 +47,8 @@ void main() {
 
     vec2 lookup_coord = (morphed + 0.5) * heightmap_factor;
     /* tc0 = lookup_coord; */
-    lookup = lookup_coord;
+    global_lookup = lookup_coord;
+    local_lookup = (morphed - chunk_translation + 0.5) / (chunk_size*1.01666667);
     float height = textureLod(heightmap, lookup_coord, 0).r;
     normal = textureLod(normalt, lookup_coord, 0).xyz;
 

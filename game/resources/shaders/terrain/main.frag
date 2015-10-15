@@ -7,13 +7,20 @@ out vec4 outcolor;
 in TerrainData {
     vec3 world;
     vec2 tc0;
-    vec2 lookup;
+    vec2 global_lookup;
+    vec2 local_lookup;
     vec3 normal;
 } terraindata;
 
 uniform vec3 lod_viewpoint;
 
 uniform sampler2D heightmap;
+
+#ifdef USE_WATER_DEPTH
+uniform sampler2DArray fluid_data;
+uniform float data_layer;
+#endif
+
 uniform sampler2D grass;
 uniform sampler2D rock;
 uniform sampler2D blend;
@@ -21,6 +28,7 @@ uniform sampler2D sand;
 
 {% include ":/shaders/lib/universal_shader.frag" %}
 {% include ":/shaders/lib/sunlight.frag" %}
+{% include ":/shaders/lib/fluidatten.frag" %}
 
 vec3 interp_colour(vec3 c1, vec3 c2, float t)
 {
@@ -53,7 +61,7 @@ void main()
 
     float base_steepness = (1.f - abs(dot(normal, vec3(0, 0, 1))))*7.f;
 
-    float base_sandiness = sqrt(textureLod(heightmap, terraindata.lookup, 0).g) * 6.f;
+    float base_sandiness = sqrt(textureLod(heightmap, terraindata.global_lookup, 0).g) * 6.f;
 
     float steepness = blend_with_texture(terraindata.tc0/2.f, base_steepness);
 
@@ -73,5 +81,11 @@ void main()
                                      steepness);
 
     vec3 color = lighting(normal, eyedir, base_colour, metallic, roughness);
+
+#ifdef USE_WATER_DEPTH
+    color *= fluidatten(textureLod(fluid_data, vec3(terraindata.local_lookup, data_layer), 0).y);
+#endif
+
     outcolor = vec4(color, 1.0f);
+    // outcolor = vec4(terraindata.local_lookup, 0.f, 1.f);
 }

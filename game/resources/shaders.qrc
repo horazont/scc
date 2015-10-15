@@ -38,5 +38,6 @@
         <file>shaders/debug/graph_node.vert</file>
         <file>shaders/debug/graph_edge.frag</file>
         <file>shaders/debug/graph_edge.vert</file>
+        <file>shaders/lib/fluidatten.frag</file>
     </qresource>
 </RCC>

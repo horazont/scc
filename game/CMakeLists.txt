@@ -82,6 +82,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/curve/main.vert
   resources/shaders/lib/universal_shader.frag
   resources/shaders/lib/cubehelix.frag
+  resources/shaders/lib/fluidatten.frag
   resources/shaders/lib/matrix_block.glsl
   resources/shaders/lib/inv_matrix_block.glsl
   resources/shaders/lib/sunlight.frag

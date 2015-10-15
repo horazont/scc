@@ -224,11 +224,13 @@ TerraformScene::TerraformScene(
 
     /* fluid configuration */
 
-    m_full_terrain.emplace<ffe::CPUFluid>(m_resources,
-                                          state,
-                                          m_signal_queue,
-                                          m_transparent_pass,
-                                          m_water_pass);
+    ffe::CPUFluid &fluid = m_full_terrain.emplace<ffe::CPUFluid>(
+                m_resources,
+                state,
+                m_signal_queue,
+                m_transparent_pass,
+                m_water_pass);
+    m_terrain_geometry.attach_fluid_data_texture(fluid.fluid_data());
 
     /* drag plane materials */
 

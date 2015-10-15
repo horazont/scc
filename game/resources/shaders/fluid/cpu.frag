@@ -24,7 +24,8 @@ void main() {
     vec3 diffuse_colour = base_colour.rgb;
     vec3 specular_colour = vec3(1, 1, 1);
 
-    float alpha = min(1, 1 - pow(0.8, depth_factor*depth));
+    //float alpha = min(1, 1 - pow(0.8, depth_factor*depth));
+    float alpha = 0.f;
 
     vec3 result = sunlight(normal, eyedir, nDotV,
                            diffuse_colour*alpha, specular_colour, roughness,
