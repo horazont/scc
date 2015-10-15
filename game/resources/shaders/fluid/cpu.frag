@@ -15,6 +15,7 @@ in vec3 normal;
 in vec3 tangent;
 
 uniform sampler2DArray fluiddata;
+uniform samplerCube skycube;
 uniform float t;
 
 #ifdef REFRACTIVE
@@ -37,6 +38,24 @@ const float max_flow = 10.f;
 #endif
 
 const float depth_factor = 0.5f;
+
+#ifdef REFRACTIVE
+
+vec4 scene_lookup(vec4 eye, vec2 offset)
+{
+    vec4 scene_lookup_ndc = mats.proj * (eye+vec4(offset, 0., 0.));
+    scene_lookup_ndc /= scene_lookup_ndc.w;
+
+    vec2 scene_texcoord = scene_lookup_ndc.xy * 0.5 + 0.5;
+
+    float depth = unproject(vec3(gl_FragCoord.xy, texture2D(scene_depth, scene_texcoord).r)).z;
+
+    vec3 colour = texture2D(scene_colour, scene_texcoord).rgb;
+
+    return vec4(colour, depth);
+}
+
+#endif
 
 #ifdef TILED_FLOW
 
@@ -151,6 +170,7 @@ void main() {
                        vec3(0, 0, 0), specular_colour, 1.f,
                        mats.sky_colour.xyz, mats.sky_colour.w,
                        reflect(-mats.sun_direction, vec3(0, 0, 1)));
+    reflective += texture(skycube, reflect(-eyedir, normal)).rgb;
 
 #ifdef REFRACTIVE
     const float alpha = 1.f;
@@ -159,17 +179,13 @@ void main() {
 
     vec4 eye = mats.view * vec4(world, 1.f);
 
+    vec4 scene_info = scene_lookup(eye, offs);
     float frag_depth = eye.z;
-
-    vec4 scene_lookup_ndc = mats.proj * (eye+vec4(offs, 0., 0.));
-    scene_lookup_ndc /= scene_lookup_ndc.w;
-
-    vec2 scene_texcoord = scene_lookup_ndc.xy * 0.5 + 0.5;
-
-    float scene_depth = unproject(vec3(gl_FragCoord.xy, texture2D(scene_depth, scene_texcoord).r)).z;
-
-    vec3 refractive = texture2D(scene_colour, scene_texcoord).rgb;
-    refractive *= fluidatten(frag_depth - scene_depth);
+    float depth = frag_depth - scene_info.w;
+    if (depth < 0) {
+        scene_info = scene_lookup(eye, vec2(0, 0));
+    }
+    vec3 refractive = scene_info.xyz * fluidatten(frag_depth - scene_info.w);
 #else
     vec3 refractive = vec3(0, 0, 0);
     const float alpha = 0.f;

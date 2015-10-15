@@ -83,6 +83,7 @@ struct TerraformScene
     ffe::Texture2D &m_blend;
     ffe::Texture2D &m_waves;
     ffe::Texture2D &m_sand;
+    ffe::TextureCubeMap &m_sky;
 
     ffe::FullTerrainNode &m_full_terrain;
     ffe::FancyTerrainNode &m_terrain_geometry;

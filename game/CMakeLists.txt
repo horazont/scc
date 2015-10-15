@@ -45,6 +45,12 @@ set(GAME_TEXTURE_RESOURCES
   resources/textures/blend00.png
   resources/textures/waves00.png
   resources/textures/sand00.png
+  resources/textures/skycube/01.png
+  resources/textures/skycube/02.png
+  resources/textures/skycube/03.png
+  resources/textures/skycube/04.png
+  resources/textures/skycube/05.png
+  resources/textures/skycube/06.png
   )
 
 set(GAME_SHADER_RESOURCES
@@ -80,6 +86,8 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/oct_sphere/main.vert
   resources/shaders/curve/main.frag
   resources/shaders/curve/main.vert
+  resources/shaders/skycube/skycube.frag
+  resources/shaders/skycube/skycube.vert
   resources/shaders/lib/universal_shader.frag
   resources/shaders/lib/cubehelix.frag
   resources/shaders/lib/fluidatten.frag

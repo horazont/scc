@@ -40,6 +40,7 @@ the AUTHORS file.
 #include "ffengine/render/aabb.hpp"
 #include "ffengine/render/oct_sphere.hpp"
 #include "ffengine/render/curve.hpp"
+#include "ffengine/render/skycube.hpp"
 
 #include "application.hpp"
 
@@ -55,7 +56,9 @@ static const char *brush_search_paths[] = {
     "/usr/share/kde4/apps/krita/brushes/"
 };
 
-void load_image_to_texture(const QString &url)
+void load_image_to_texture(const QString &url,
+                           const GLenum target,
+                           bool setup_mipmap)
 {
     QImage texture = QImage(url);
     texture = texture.convertToFormat(QImage::Format_ARGB32);
@@ -76,15 +79,19 @@ void load_image_to_texture(const QString &url)
         pixbase += 4;
     }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexSubImage2D(GL_TEXTURE_2D, 0,
+    if (setup_mipmap) {
+        glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    glTexSubImage2D(target, 0,
                     0, 0,
                     texture.width(), texture.height(),
                     GL_RGBA,
                     GL_UNSIGNED_BYTE,
                     texture.bits());
-    glGenerateMipmap(GL_TEXTURE_2D);
+    if (setup_mipmap) {
+        glGenerateMipmap(target);
+    }
 }
 
 
@@ -124,6 +131,8 @@ TerraformScene::TerraformScene(
     m_blend(load_texture_resource("blend", ":/textures/blend00.png")),
     m_waves(load_texture_resource("waves", ":/textures/waves00.png")),
     m_sand(load_texture_resource("sand", ":/textures/sand00.png")),
+    m_sky(m_resources.emplace<ffe::TextureCubeMap>("skycube",
+                                                   GL_RGBA8, 512, 512)),
     m_full_terrain(m_scenegraph.root().emplace<ffe::FullTerrainNode>(
                        terrain_interface.size(),
                        terrain_interface.grid_size())),
@@ -162,6 +171,8 @@ TerraformScene::TerraformScene(
                 GL_FLOAT)),
     m_octree_group(m_scenegraph.root().emplace<ffe::scenegraph::OctreeGroup>())
 {
+    m_scenegraph.root().emplace<ffe::SkyCubeNode>(m_resources, m_solid_pass);
+
     m_prewater_buffer.attach(GL_COLOR_ATTACHMENT0, &m_prewater_colour);
     m_prewater_buffer.attach(GL_DEPTH_ATTACHMENT, &m_prewater_depth);
 
@@ -222,6 +233,25 @@ TerraformScene::TerraformScene(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
 
+    /* skycube loading */
+
+    m_sky.bind();
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    load_image_to_texture(":/textures/skycube/01.png",
+                          GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
+    load_image_to_texture(":/textures/skycube/02.png",
+                          GL_TEXTURE_CUBE_MAP_POSITIVE_X, false);
+    load_image_to_texture(":/textures/skycube/03.png",
+                          GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
+    load_image_to_texture(":/textures/skycube/04.png",
+                          GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
+    load_image_to_texture(":/textures/skycube/05.png",
+                          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false);
+    load_image_to_texture(":/textures/skycube/06.png",
+                          GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
     /* fluid configuration */
 
     ffe::CPUFluid &fluid = m_full_terrain.emplace<ffe::CPUFluid>(
@@ -233,6 +263,7 @@ TerraformScene::TerraformScene(
     fluid.set_scene_colour(&m_prewater_colour);
     fluid.set_scene_depth(&m_prewater_depth);
     fluid.attach_wave_normalmap(&m_waves);
+    fluid.attach_skycube(&m_sky);
     m_terrain_geometry.attach_fluid_data_texture(fluid.fluid_data());
 
     /* drag plane materials */

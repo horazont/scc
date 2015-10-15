@@ -39,5 +39,7 @@
         <file>shaders/debug/graph_edge.frag</file>
         <file>shaders/debug/graph_edge.vert</file>
         <file>shaders/lib/fluidatten.frag</file>
+        <file>shaders/skycube/skycube.frag</file>
+        <file>shaders/skycube/skycube.vert</file>
     </qresource>
 </RCC>

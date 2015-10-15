@@ -5,5 +5,11 @@
         <file>textures/blend00.png</file>
         <file>textures/waves00.png</file>
         <file>textures/sand00.png</file>
+        <file>textures/skycube/01.png</file>
+        <file>textures/skycube/02.png</file>
+        <file>textures/skycube/03.png</file>
+        <file>textures/skycube/04.png</file>
+        <file>textures/skycube/05.png</file>
+        <file>textures/skycube/06.png</file>
     </qresource>
 </RCC>
