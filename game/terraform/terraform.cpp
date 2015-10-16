@@ -320,8 +320,8 @@ TerraformScene::TerraformScene(
             throw std::runtime_error("failed to compile or link AABB material");
         }
 
-        m_terrain_drag_plane_material.attach_texture("heightmap", &m_terrain_geometry.heightmap());
-        m_terrain_drag_plane_material.set_depth_test(false);
+        pass.attach_texture("heightmap", &m_terrain_geometry.heightmap());
+        pass.set_depth_test(false);
     }
 
     /* testing materials */
@@ -398,7 +398,7 @@ TerraformScene::TerraformScene(
             throw std::runtime_error("failed to compile or link bezier material");
         }
 
-        m_road_material.set_polygon_mode(GL_LINE);
+        pass.set_polygon_mode(GL_LINE);
     }
 
     {
@@ -424,7 +424,7 @@ TerraformScene::TerraformScene(
             throw std::runtime_error("failed to compile or link bezier material");
         }
 
-        m_node_debug_material.set_point_size(5.f);
+        pass.set_point_size(5.f);
     }
 
     {
