@@ -48,7 +48,7 @@ void main() {
     vec2 lookup_coord = (morphed + 0.5) * heightmap_factor;
     /* tc0 = lookup_coord; */
     global_lookup = lookup_coord;
-    local_lookup = (morphed - chunk_translation + 0.5) / (chunk_size*1.01666667);
+    local_lookup = (morphed - chunk_translation + 0.5*chunk_size/60) / (chunk_size*1.01666667);
     float height = textureLod(heightmap, lookup_coord, 0).r;
     normal = textureLod(normalt, lookup_coord, 0).xyz;
 

@@ -14,10 +14,12 @@ uniform float layer;
 
 in vec2 position;
 
+#ifndef MINIMAL
 out vec3 world;
 out vec3 normal;
 out vec3 tangent;
 out vec3 data_tc;
+#endif
 
 vec2 morph_vertex(vec2 vertex, float morph_k)
 {
@@ -34,17 +36,20 @@ void main() {
 
     vec2 morphed = morph_vertex(position, morph_k_value) + vec2(0.5, 0.5);
 
-    vec2 lookup_coord = (morphed - base) / (chunk_size+1);
+    vec2 lookup_coord = (morphed - vec2(0.5, 0.5) + vec2(0.5, 0.5) * chunk_lod_scale - base) / (chunk_size+chunk_lod_scale);
 
-    vec4 fluiddata = textureLod(fluiddata, vec3(lookup_coord, layer), 0);
+    vec4 fluid_data = textureLod(fluiddata, vec3(lookup_coord, layer), 0);
+    vec3 world_pos = vec3(morphed, fluid_data.x);
+
+#ifndef MINIMAL
     vec4 normalt = textureLod(normalt, vec3(lookup_coord, layer), 0);
 
     normal = normalt.xyz;
     tangent = vec3(1, 0, normalt.w);
     data_tc = vec3(lookup_coord, layer);
 
-    vec3 world_pos = vec3(morphed, fluiddata.x);
     world = world_pos;
+#endif
 
     gl_Position = mats.proj * mats.view * vec4(world_pos, 1.f);
 }

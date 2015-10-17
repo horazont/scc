@@ -77,6 +77,7 @@ set(GAME_SHADER_RESOURCES
   resources/shaders/fluid/main.vert
   resources/shaders/fluid/main.geom
   resources/shaders/fluid/cpu.frag
+  resources/shaders/fluid/dummy.frag
   resources/shaders/fluid/cpu.vert
   resources/shaders/frustum/main.vert
   resources/shaders/frustum/main.frag

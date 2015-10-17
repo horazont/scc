@@ -41,5 +41,6 @@
         <file>shaders/lib/fluidatten.frag</file>
         <file>shaders/skycube/skycube.frag</file>
         <file>shaders/skycube/skycube.vert</file>
+        <file>shaders/fluid/dummy.frag</file>
     </qresource>
 </RCC>
