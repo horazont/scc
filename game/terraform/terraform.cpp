@@ -858,7 +858,7 @@ void TerraformMode::before_gl_sync()
         }
     }
 
-    const QSize size = window()->size() * window()->devicePixelRatio();
+    const QSize size = window()->size() * window()->devicePixelRatioF();
     m_scene->update_size(size);
 
     /*{
