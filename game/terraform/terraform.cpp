@@ -264,6 +264,7 @@ TerraformScene::TerraformScene(
     fluid.set_scene_depth(&m_prewater_depth);
     fluid.attach_wave_normalmap(&m_waves);
     fluid.attach_skycube(&m_sky);
+    fluid.set_detail_level(ffe::CPUFluid::DETAIL_REFLECTIVE_TILED_FLOW);
     m_terrain_geometry.attach_fluid_data_texture(fluid.fluid_data());
 
     /* drag plane materials */

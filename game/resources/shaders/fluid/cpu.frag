@@ -188,7 +188,7 @@ void main() {
     vec3 refractive = scene_info.xyz * fluidatten(frag_depth - scene_info.w);
 #else
     vec3 refractive = vec3(0, 0, 0);
-    const float alpha = 0.f;
+    float alpha = 1.f - fluidatten(fluiddata.g).g;
 #endif
 
     colour = vec4(refractive+fresnel*reflective, alpha);
